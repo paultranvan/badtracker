@@ -194,6 +194,31 @@ export async function callFFBaD<T extends z.ZodType>(
       );
     }
 
+    // Handle non-JSON responses (e.g., "No Function ?" plain text)
+    if (typeof response.data === 'string') {
+      const text = response.data.trim();
+      if (text === 'No Function ?' || text.startsWith('No Function')) {
+        throw new ServerError(
+          200,
+          `FFBaD API returned error: ${text}`
+        );
+      }
+      // Try parsing as JSON in case axios didn't auto-parse
+      try {
+        response.data = JSON.parse(text);
+      } catch {
+        throw new SchemaValidationError(
+          new z.ZodError([
+            {
+              code: 'custom',
+              path: [],
+              message: `Non-JSON response: ${text.substring(0, 100)}`,
+            },
+          ])
+        );
+      }
+    }
+
     // Validate response against schema
     const result = schema.safeParse(response.data);
     if (!result.success) {
