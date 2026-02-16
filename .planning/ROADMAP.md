@@ -27,10 +27,13 @@ BadTracker delivers a native mobile experience for French badminton players to t
   3. User session persists across app restarts without re-entering credentials
   4. User can log out from any screen and credentials are cleared from secure storage
   5. API client enforces HTTPS, handles rate limiting with exponential backoff, and validates responses with runtime schema checks
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] TBD (plans created during /gsd:plan-phase 1)
+- [ ] 01-01-PLAN.md — Expo project scaffolding, routing, and FR/EN i18n
+- [ ] 01-02-PLAN.md — FFBaD API client with HTTPS, Zod validation, retry logic
+- [ ] 01-03-PLAN.md — Authentication flow (SecureStore, login, protected routes, logout)
+- [ ] 01-04-PLAN.md — Integration validation and end-to-end verification
 
 ### Phase 2: Player Discovery
 **Goal**: Users can search for and view any FFBaD player's profile
