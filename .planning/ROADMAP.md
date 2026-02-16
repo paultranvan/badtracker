@@ -6,7 +6,7 @@ BadTracker delivers a native mobile experience for French badminton players to t
 
 ## Phases
 
-- [ ] **Phase 1: Foundation & Security** - Secure API client, authentication, environment setup
+- [x] **Phase 1: Foundation & Security** - Secure API client, authentication, environment setup (completed 2026-02-16)
 - [ ] **Phase 2: Player Discovery** - Search players, view profiles
 - [ ] **Phase 3: Personal Dashboard** - User's own stats and rankings
 - [ ] **Phase 4: Match History** - Full match tracking with filters
@@ -134,7 +134,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Security | 0/TBD | Not started | - |
+| 1. Foundation & Security | 0/TBD | Complete    | 2026-02-16 |
 | 2. Player Discovery | 0/TBD | Not started | - |
 | 3. Personal Dashboard | 0/TBD | Not started | - |
 | 4. Match History | 0/TBD | Not started | - |
