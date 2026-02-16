@@ -94,36 +94,36 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | — | Pending |
-| AUTH-02 | — | Pending |
-| AUTH-03 | — | Pending |
-| AUTH-04 | — | Pending |
-| PLYR-01 | — | Pending |
-| PLYR-02 | — | Pending |
-| PLYR-03 | — | Pending |
-| PLYR-04 | — | Pending |
-| PLYR-05 | — | Pending |
-| PLYR-06 | — | Pending |
-| PLYR-07 | — | Pending |
-| MTCH-01 | — | Pending |
-| MTCH-02 | — | Pending |
-| MTCH-03 | — | Pending |
-| MTCH-04 | — | Pending |
-| MTCH-05 | — | Pending |
-| RANK-01 | — | Pending |
-| RANK-02 | — | Pending |
-| RANK-03 | — | Pending |
-| RANK-04 | — | Pending |
-| DASH-01 | — | Pending |
-| DASH-02 | — | Pending |
-| INFR-01 | — | Pending |
-| INFR-02 | — | Pending |
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Pending |
+| PLYR-01 | Phase 2 | Pending |
+| PLYR-02 | Phase 2 | Pending |
+| PLYR-03 | Phase 2 | Pending |
+| PLYR-04 | Phase 2 | Pending |
+| PLYR-05 | Phase 7 | Pending |
+| PLYR-06 | Phase 7 | Pending |
+| PLYR-07 | Phase 7 | Pending |
+| MTCH-01 | Phase 4 | Pending |
+| MTCH-02 | Phase 4 | Pending |
+| MTCH-03 | Phase 4 | Pending |
+| MTCH-04 | Phase 4 | Pending |
+| MTCH-05 | Phase 4 | Pending |
+| RANK-01 | Phase 3 | Pending |
+| RANK-02 | Phase 5 | Pending |
+| RANK-03 | Phase 5 | Pending |
+| RANK-04 | Phase 6 | Pending |
+| DASH-01 | Phase 3 | Pending |
+| DASH-02 | Phase 3 | Pending |
+| INFR-01 | Phase 8 | Pending |
+| INFR-02 | Phase 8 | Pending |
 
 **Coverage:**
 - v1 requirements: 24 total
-- Mapped to phases: 0
-- Unmapped: 24 ⚠️
+- Mapped to phases: 24
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-02-16*
-*Last updated: 2026-02-16 after initial definition*
+*Last updated: 2026-02-16 after roadmap creation*
