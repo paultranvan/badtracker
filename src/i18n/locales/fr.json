@@ -1,0 +1,36 @@
+{
+  "common": {
+    "loading": "Chargement...",
+    "retry": "R\u00e9essayer",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "logout": "D\u00e9connexion",
+    "settings": "Param\u00e8tres",
+    "home": "Accueil"
+  },
+  "auth": {
+    "title": "BadTracker",
+    "subtitle": "Votre classement badminton",
+    "licence": "Num\u00e9ro de licence",
+    "password": "Mot de passe",
+    "rememberMe": "Se souvenir de moi",
+    "login": "Se connecter",
+    "loginError": "Identifiants incorrects",
+    "networkError": "Pas de connexion internet",
+    "serverError": "Le serveur FFBaD est indisponible"
+  },
+  "settings": {
+    "title": "Param\u00e8tres",
+    "language": "Langue",
+    "french": "Fran\u00e7ais",
+    "english": "English",
+    "logoutConfirm": "Voulez-vous vous d\u00e9connecter ?",
+    "logoutTitle": "D\u00e9connexion",
+    "logoutCancel": "Annuler",
+    "logoutOk": "Se d\u00e9connecter"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "welcome": "Bienvenue sur BadTracker"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "logout": "Log out",
+    "settings": "Settings",
+    "home": "Home"
+  },
+  "auth": {
+    "title": "BadTracker",
+    "subtitle": "Your badminton rankings",
+    "licence": "Licence number",
+    "password": "Password",
+    "rememberMe": "Remember me",
+    "login": "Sign in",
+    "loginError": "Invalid credentials",
+    "networkError": "No internet connection",
+    "serverError": "FFBaD server unavailable"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "french": "Fran\u00e7ais",
+    "english": "English",
+    "logoutConfirm": "Do you want to log out?",
+    "logoutTitle": "Log out",
+    "logoutCancel": "Cancel",
+    "logoutOk": "Log out"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome to BadTracker"
+  }
+}
