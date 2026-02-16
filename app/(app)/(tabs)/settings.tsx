@@ -1,13 +1,33 @@
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useSession } from '../../../src/auth/context';
 
 export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
+  const { signOut } = useSession();
   const currentLanguage = i18n.language;
 
   const toggleLanguage = () => {
     const newLang = currentLanguage === 'fr' ? 'en' : 'fr';
     i18n.changeLanguage(newLang);
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      t('settings.logoutTitle'),
+      t('settings.logoutConfirm'),
+      [
+        { text: t('settings.logoutCancel'), style: 'cancel' },
+        {
+          text: t('settings.logoutOk'),
+          style: 'destructive',
+          onPress: async () => {
+            await signOut();
+            // Stack.Protected guard automatically navigates to sign-in
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -51,26 +71,8 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Logout button placeholder — functional logout added in Plan 03 */}
-      <TouchableOpacity
-        style={styles.logoutButton}
-        onPress={() => {
-          Alert.alert(
-            t('settings.logoutTitle'),
-            t('settings.logoutConfirm'),
-            [
-              { text: t('settings.logoutCancel'), style: 'cancel' },
-              {
-                text: t('settings.logoutOk'),
-                style: 'destructive',
-                onPress: () => {
-                  // signOut() wired in Plan 03
-                },
-              },
-            ]
-          );
-        }}
-      >
+      {/* Logout Button — in settings screen per user decision */}
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutText}>{t('common.logout')}</Text>
       </TouchableOpacity>
     </View>
