@@ -31,7 +31,26 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "welcome": "Welcome to BadTracker"
+    "welcome": "Welcome to BadTracker",
+    "greeting": "Hello, {{name}}",
+    "greetingWin": "Nice win, {{name}}!",
+    "greetingGeneric": "Hello, {{name}}",
+    "rankings": "Rankings",
+    "recentMatches": "Recent Matches",
+    "viewAllMatches": "View all matches",
+    "stats": "Stats",
+    "bestRanking": "Best ranking",
+    "matchesPlayed": "Matches played",
+    "winRate": "Win rate",
+    "pointsToNext": "+{{points}} pts to {{rank}}",
+    "pointsAbovePrev": "{{points}} pts above {{rank}}",
+    "unranked": "NC",
+    "noMatches": "No recent matches",
+    "loadError": "Unable to load dashboard",
+    "networkError": "No internet connection",
+    "victory": "W",
+    "defeat": "L",
+    "pullToRefresh": "Pull to refresh"
   },
   "search": {
     "tab": "Search",

@@ -31,7 +31,26 @@
   },
   "dashboard": {
     "title": "Tableau de bord",
-    "welcome": "Bienvenue sur BadTracker"
+    "welcome": "Bienvenue sur BadTracker",
+    "greeting": "Bonjour, {{name}}",
+    "greetingWin": "Bravo pour ta victoire, {{name}} !",
+    "greetingGeneric": "Bonjour, {{name}}",
+    "rankings": "Classements",
+    "recentMatches": "Derniers matchs",
+    "viewAllMatches": "Voir tous les matchs",
+    "stats": "Statistiques",
+    "bestRanking": "Meilleur classement",
+    "matchesPlayed": "Matchs jou\u00e9s",
+    "winRate": "Taux de victoire",
+    "pointsToNext": "+{{points}} pts vers {{rank}}",
+    "pointsAbovePrev": "{{points}} pts au-dessus de {{rank}}",
+    "unranked": "NC",
+    "noMatches": "Aucun match r\u00e9cent",
+    "loadError": "Impossible de charger le tableau de bord",
+    "networkError": "Pas de connexion internet",
+    "victory": "V",
+    "defeat": "D",
+    "pullToRefresh": "Tirer pour actualiser"
   },
   "search": {
     "tab": "Recherche",
