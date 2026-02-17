@@ -7,7 +7,7 @@ BadTracker delivers a native mobile experience for French badminton players to t
 ## Phases
 
 - [x] **Phase 1: Foundation & Security** - Secure API client, authentication, environment setup (completed 2026-02-16)
-- [ ] **Phase 2: Player Discovery** - Search players, view profiles
+- [x] **Phase 2: Player Discovery** - Search players, view profiles (completed 2026-02-17)
 - [ ] **Phase 3: Personal Dashboard** - User's own stats and rankings
 - [ ] **Phase 4: Match History** - Full match tracking with filters
 - [ ] **Phase 5: Ranking Visualization** - Charts showing ranking progression over time
@@ -47,8 +47,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Player search screen with live debounce, auto-detect name vs licence
-- [ ] 02-02-PLAN.md — Player profile screen with rankings by discipline, dynamic route navigation
+- [x] 02-01-PLAN.md — Player search screen with live debounce, auto-detect name vs licence
+- [x] 02-02-PLAN.md — Player profile screen with rankings by discipline, dynamic route navigation
 
 ### Phase 3: Personal Dashboard
 **Goal**: User sees their own ranking and quick stats on app launch
@@ -135,8 +135,8 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Security | 0/TBD | Complete    | 2026-02-16 |
-| 2. Player Discovery | 0/TBD | Not started | - |
+| 1. Foundation & Security | 4/4 | Complete    | 2026-02-16 |
+| 2. Player Discovery | 2/2 | Complete | 2026-02-17 |
 | 3. Personal Dashboard | 0/TBD | Not started | - |
 | 4. Match History | 0/TBD | Not started | - |
 | 5. Ranking Visualization | 0/TBD | Not started | - |
@@ -146,4 +146,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-02-16*
-*Last updated: 2026-02-16*
+*Last updated: 2026-02-17*
