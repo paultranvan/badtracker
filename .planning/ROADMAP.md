@@ -44,10 +44,11 @@ Plans:
   2. User can search for players by license number and find exact match
   3. User can tap a search result to view player's profile showing name, club, and current rankings by discipline
   4. User can tap an opponent name in match history to navigate directly to that player's profile
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] TBD (plans created during /gsd:plan-phase 2)
+- [ ] 02-01-PLAN.md — Player search screen with live debounce, auto-detect name vs licence
+- [ ] 02-02-PLAN.md — Player profile screen with rankings by discipline, dynamic route navigation
 
 ### Phase 3: Personal Dashboard
 **Goal**: User sees their own ranking and quick stats on app launch
