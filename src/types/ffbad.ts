@@ -5,6 +5,7 @@ import type {
   ResultByLicenceResponse,
   RankingEvolutionResponse,
 } from '../api/schemas';
+import type { PlayerProfile } from '../api/ffbad';
 
 // Re-export Zod-inferred types for use across the app
 export type { AccountPoonaResponse };
@@ -12,6 +13,7 @@ export type { LicenceInfoResponse };
 export type { LicenceSearchResponse };
 export type { ResultByLicenceResponse };
 export type { RankingEvolutionResponse };
+export type { PlayerProfile };
 
 /**
  * FFBaD API credentials.

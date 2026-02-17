@@ -116,6 +116,114 @@ export async function searchPlayersByName(
 }
 
 // ============================================================
+// Player Profile
+// ============================================================
+
+/**
+ * Normalized player profile with ranking data by discipline.
+ */
+export interface PlayerProfile {
+  licence: string;
+  nom: string;
+  prenom: string;
+  club?: string;
+  nomClub?: string;
+  isActive?: boolean;
+  rankings: {
+    simple?: { classement: string; cpph?: number };
+    double?: { classement: string; cpph?: number };
+    mixte?: { classement: string; cpph?: number };
+  };
+}
+
+/**
+ * Parse a CPPH value from the API response (may be string or number).
+ * Returns undefined if not a valid number.
+ */
+function parseCpph(value: string | number | undefined): number | undefined {
+  if (value == null) return undefined;
+  const num = typeof value === 'number' ? value : parseFloat(value);
+  return isNaN(num) ? undefined : num;
+}
+
+/**
+ * Build a ranking entry from a classement + CPPH pair.
+ * Returns undefined if no classement is available.
+ */
+function buildRanking(
+  classement: string | undefined,
+  cpph: string | number | undefined
+): { classement: string; cpph?: number } | undefined {
+  if (!classement) return undefined;
+  return { classement, cpph: parseCpph(cpph) };
+}
+
+/**
+ * Get a player's full profile including rankings by discipline.
+ *
+ * Calls ws_getlicenceinfobylicence and normalizes the response
+ * into a PlayerProfile with ranking data extracted from the API fields.
+ *
+ * @throws NetworkError, ServerError, SchemaValidationError
+ * @returns null if player not found
+ */
+export async function getPlayerProfile(
+  licence: string
+): Promise<PlayerProfile | null> {
+  const response = await getLicenceInfo(licence);
+
+  // FFBaD returns string Retour when player not found
+  if (typeof response.Retour === 'string') {
+    return null;
+  }
+
+  if (response.Retour.length === 0) {
+    return null;
+  }
+
+  const data = response.Retour[0];
+
+  // Normalize IS_ACTIF to boolean
+  let isActive: boolean | undefined;
+  if (data.IS_ACTIF != null) {
+    if (typeof data.IS_ACTIF === 'boolean') {
+      isActive = data.IS_ACTIF;
+    } else if (typeof data.IS_ACTIF === 'number') {
+      isActive = data.IS_ACTIF === 1;
+    } else {
+      isActive = data.IS_ACTIF === '1' || data.IS_ACTIF.toLowerCase() === 'true';
+    }
+  }
+
+  // Extract ranking fields (may be undefined if API doesn't return them)
+  // The .passthrough() on the schema captures any extra fields from the API
+  const raw = data as Record<string, unknown>;
+
+  return {
+    licence: data.Licence,
+    nom: data.Nom,
+    prenom: data.Prenom,
+    club: data.Club,
+    nomClub: data.NomClub,
+    isActive,
+    rankings: {
+      simple: buildRanking(
+        (raw.ClassementSimple as string) ?? data.ClassementSimple,
+        (raw.CPPHSimple as string | number) ?? data.CPPHSimple
+      ),
+      double: buildRanking(
+        (raw.ClassementDouble as string) ?? data.ClassementDouble,
+        (raw.CPPHDouble as string | number) ?? data.CPPHDouble
+      ),
+      mixte: buildRanking(
+        (raw.ClassementMixte as string) ?? data.ClassementMixte,
+        (raw.CPPHMixte as string | number) ?? data.CPPHMixte
+      ),
+    },
+  };
+}
+
+// ============================================================
 // Match History (Phase 4)
 // ============================================================
 

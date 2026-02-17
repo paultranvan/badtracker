@@ -37,7 +37,13 @@ export type AccountPoonaResponse = z.infer<typeof AccountPoonaSchema>;
 
 /**
  * Response from ws_getlicenceinfobylicence.
- * Returns player info including name, club, active status.
+ * Returns player info including name, club, active status, and ranking data.
+ *
+ * Ranking fields per discipline (Simple, Double, Mixte):
+ * - ClassementX: ranking category (e.g., "P12", "D8", "NC")
+ * - CPPHX: CPPH points value (may be string or number)
+ *
+ * .passthrough() ensures unknown fields from API don't break validation.
  */
 const LicenceInfoItem = z
   .object({
@@ -47,6 +53,13 @@ const LicenceInfoItem = z
     Club: z.string().optional(),
     NomClub: z.string().optional(),
     IS_ACTIF: z.union([z.boolean(), z.number(), z.string()]).optional(),
+    // Ranking fields per discipline
+    ClassementSimple: z.string().optional(),
+    ClassementDouble: z.string().optional(),
+    ClassementMixte: z.string().optional(),
+    CPPHSimple: z.union([z.string(), z.number()]).optional(),
+    CPPHDouble: z.union([z.string(), z.number()]).optional(),
+    CPPHMixte: z.union([z.string(), z.number()]).optional(),
   })
   .passthrough();
 
