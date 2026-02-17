@@ -73,5 +73,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Phase 2 complete, ready for Phase 3
-Resume file: .planning/phases/02-player-discovery/02-02-SUMMARY.md
+Stopped at: Phase 3 context gathered, ready to plan
+Resume file: .planning/phases/03-personal-dashboard/03-CONTEXT.md
