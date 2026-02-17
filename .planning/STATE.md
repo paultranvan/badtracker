@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** French badminton players can instantly see their ranking evolution and match stats in a native mobile experience that makes myffbad.fr data actually useful.
-**Current focus:** Phase 3 - Personal Dashboard
+**Current focus:** Phase 4 - Match History
 
 ## Current Position
 
-Phase: 3 of 8 (Personal Dashboard)
+Phase: 4 of 8 (Match History)
 Plan: 0 of TBD in current phase
 Status: Ready to plan
-Last activity: 2026-02-17 — Phase 2 Player Discovery completed (2/2 plans)
+Last activity: 2026-02-17 — Phase 3 Personal Dashboard completed (2/2 plans)
 
-Progress: [██░░░░░░░░] 25%
+Progress: [████░░░░░░] 38%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: ~12 min/plan
-- Total execution time: ~1h 20min
+- Total plans completed: 8
+- Average duration: ~10 min/plan
+- Total execution time: ~1h 30min
 
 **By Phase:**
 
@@ -29,9 +29,10 @@ Progress: [██░░░░░░░░] 25%
 |-------|-------|-------|----------|
 | 1 - Foundation & Security | 4/4 | ~1 hr | ~15 min |
 | 2 - Player Discovery | 2/2 | ~18 min | ~9 min |
+| 3 - Personal Dashboard | 2/2 | ~10 min | ~5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-03, 01-04, 02-01, 02-02
+- Last 5 plans: 02-01, 02-02, 03-01, 03-02
 - Trend: Accelerating
 
 *Updated after each plan completion*
@@ -54,6 +55,9 @@ Recent decisions affecting current work:
 - Single search bar auto-detects name vs licence number (Phase 2)
 - Player profile route /player/[licence] outside tabs for universal access (Phase 2)
 - 300ms debounce for search, minimum 3 characters (Phase 2)
+- Promise.allSettled for parallel dashboard data fetching (Phase 3)
+- CPPH boundaries as static lookup table — approximate values, easily updatable (Phase 3)
+- Dashboard ranking cards: flex row, 3 equal-width cards with gap indicators (Phase 3)
 
 ### Pending Todos
 
@@ -70,8 +74,13 @@ None.
 - Ranking fields in getLicenceInfo response may use different field names — .passthrough() + optional fields handle gracefully
 - Profile shows "No ranking data" if fields aren't present — acceptable degradation
 
+**Phase 3 (Personal Dashboard) — RESOLVED:**
+- CPPH rank boundary values are approximate — will verify with real FFBaD data
+- Match result API response shape uncertain — win/loss detection tries multiple field names
+- Dashboard renders correctly with partial data (profile loads even if matches fail)
+
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Phase 3 context gathered, ready to plan
-Resume file: .planning/phases/03-personal-dashboard/03-CONTEXT.md
+Stopped at: Phase 3 complete, ready for Phase 4
+Resume file: .planning/phases/03-personal-dashboard/03-02-SUMMARY.md
