@@ -12,22 +12,19 @@ French badminton players can instantly see their ranking evolution and match sta
 
 ### Validated
 
-<!-- Shipped and confirmed valuable. -->
-
-(None yet — ship to validate)
+- Authenticate via FFBaD license number — Phase 1
+- Search for other players by name or license number — Phase 2
+- View subscribed players' profiles and stats — Phase 2 (profile view; bookmarking in Phase 7)
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] Authenticate via FFBaD license number
 - [ ] View personal dashboard (ranking, recent matches, quick stats)
 - [ ] See ranking/points evolution over time as a visual chart
 - [ ] View full match history from FFBaD
 - [ ] See win/loss breakdown by discipline (simple, double, mixte)
-- [ ] Search for other players by name or license number
 - [ ] Subscribe to (bookmark) other players
-- [ ] View subscribed players' profiles and stats
 - [ ] All FFBaD disciplines tracked (simple homme/dame, double, mixte)
 - [ ] Local caching for performance and offline access to recent data
 
@@ -63,11 +60,17 @@ French badminton players can instantly see their ranking evolution and match sta
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| React Native + Expo | Cross-platform with JS/TS, large ecosystem, quick setup | — Pending |
-| No backend for v1 | Keep architecture simple, direct FFBaD API + local cache | — Pending |
-| Android-first | User's primary platform, iOS trivial to add later with RN | — Pending |
-| Subscriptions = bookmarks only (v1) | Push notifs need backend, defer complexity | — Pending |
-| FFBaD API direct access | Existing third-party apps confirm this works | — Pending |
+| React Native + Expo | Cross-platform with JS/TS, large ecosystem, quick setup | Validated Phase 1 |
+| No backend for v1 | Keep architecture simple, direct FFBaD API + local cache | Validated Phase 1 |
+| Android-first | User's primary platform, iOS trivial to add later with RN | Validated Phase 1 |
+| Subscriptions = bookmarks only (v1) | Push notifs need backend, defer complexity | -- Pending |
+| FFBaD API direct access | Existing third-party apps confirm this works | Validated Phase 1 |
+| FFBaD API is RPC-over-REST | Single endpoint, function name + params as JSON | Validated Phase 1 |
+| SecureStore for credentials | Hardware-backed encryption, AFTER_FIRST_UNLOCK accessibility | Validated Phase 1 |
+| i18n with i18next | French default, English alternative, device detection | Validated Phase 1 |
+| Single search bar auto-detect | Name vs licence number detection by input content | Validated Phase 2 |
+| Player route outside tabs | /player/[licence] accessible from any screen | Validated Phase 2 |
+| 300ms debounce, 3-char minimum | Balances responsiveness vs API load | Validated Phase 2 |
 
 ---
-*Last updated: 2026-02-16 after initialization*
+*Last updated: 2026-02-17 after Phase 2*
