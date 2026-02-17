@@ -1,6 +1,17 @@
 import { Stack } from 'expo-router';
 
 export default function AppLayout() {
-  // Auth guard added in Plan 03 via SessionProvider + Stack.Protected
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <Stack>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="player/[licence]"
+        options={{
+          headerShown: true,
+          headerTitle: '',
+          headerBackTitle: '',
+        }}
+      />
+    </Stack>
+  );
 }

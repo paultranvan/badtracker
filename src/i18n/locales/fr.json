@@ -39,5 +39,17 @@
     "noResults": "Aucun joueur trouv\u00e9",
     "error": "Erreur de recherche",
     "minChars": "Tapez au moins 3 caract\u00e8res"
+  },
+  "player": {
+    "rankings": "Classements",
+    "simple": "Simple",
+    "double": "Double",
+    "mixte": "Mixte",
+    "club": "Club",
+    "licence": "Licence",
+    "noRankings": "Aucune donn\u00e9e de classement",
+    "cpph": "CPPH",
+    "error": "Impossible de charger le profil",
+    "retry": "R\u00e9essayer"
   }
 }

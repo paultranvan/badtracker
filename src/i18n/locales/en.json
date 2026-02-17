@@ -39,5 +39,17 @@
     "noResults": "No players found",
     "error": "Search error",
     "minChars": "Type at least 3 characters"
+  },
+  "player": {
+    "rankings": "Rankings",
+    "simple": "Singles",
+    "double": "Doubles",
+    "mixte": "Mixed",
+    "club": "Club",
+    "licence": "Licence",
+    "noRankings": "No ranking data",
+    "cpph": "CPPH",
+    "error": "Unable to load profile",
+    "retry": "Retry"
   }
 }
