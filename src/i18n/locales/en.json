@@ -32,5 +32,12 @@
   "dashboard": {
     "title": "Dashboard",
     "welcome": "Welcome to BadTracker"
+  },
+  "search": {
+    "tab": "Search",
+    "placeholder": "Player name or licence number",
+    "noResults": "No players found",
+    "error": "Search error",
+    "minChars": "Type at least 3 characters"
   }
 }

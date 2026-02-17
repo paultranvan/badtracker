@@ -32,5 +32,12 @@
   "dashboard": {
     "title": "Tableau de bord",
     "welcome": "Bienvenue sur BadTracker"
+  },
+  "search": {
+    "tab": "Recherche",
+    "placeholder": "Nom du joueur ou n\u00b0 de licence",
+    "noResults": "Aucun joueur trouv\u00e9",
+    "error": "Erreur de recherche",
+    "minChars": "Tapez au moins 3 caract\u00e8res"
   }
 }

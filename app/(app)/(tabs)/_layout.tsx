@@ -18,6 +18,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="search"
+        options={{
+          title: t('search.tab'),
+          tabBarLabel: t('search.tab'),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: t('common.settings'),
