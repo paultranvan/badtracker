@@ -58,10 +58,11 @@ Plans:
   1. User sees a personal dashboard on app launch showing current ranking, recent matches, and quick stats
   2. User can see their current CPPH ranking value and category per discipline (simple, double, mixte)
   3. User can navigate to detailed sections (matches, rankings, bookmarks) from dashboard
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] TBD (plans created during /gsd:plan-phase 3)
+- [ ] 03-01-PLAN.md — Dashboard data layer: ranking utilities, data hook, i18n strings
+- [ ] 03-02-PLAN.md — Dashboard UI: greeting, quick stats, ranking cards, recent matches, pull-to-refresh
 
 ### Phase 4: Match History
 **Goal**: Complete match tracking with filters and statistics
@@ -137,7 +138,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Foundation & Security | 4/4 | Complete    | 2026-02-16 |
 | 2. Player Discovery | 2/2 | Complete | 2026-02-17 |
-| 3. Personal Dashboard | 0/TBD | Not started | - |
+| 3. Personal Dashboard | 0/2 | Planned | - |
 | 4. Match History | 0/TBD | Not started | - |
 | 5. Ranking Visualization | 0/TBD | Not started | - |
 | 6. Club Features | 0/TBD | Not started | - |
