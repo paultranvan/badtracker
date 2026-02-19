@@ -88,10 +88,11 @@ Plans:
   1. User can see a visual line chart of ranking/points evolution over time
   2. User can see a timeline of ranking milestones (when they reached NC, P12, P10, etc.)
   3. Charts display smoothly with 52+ weeks of CPPH data without performance degradation
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] TBD (plans created during /gsd:plan-phase 5)
+- [ ] 05-01-PLAN.md — Data layer: chart library, ranking evolution schema, chart utilities, evolution hook, i18n
+- [ ] 05-02-PLAN.md — Chart screen UI: multi-line chart, tappable legend, milestone markers, dashboard navigation
 
 ### Phase 6: Club Features
 **Goal**: Club-specific leaderboards and context
@@ -141,7 +142,7 @@ Plans:
 | 2. Player Discovery | 2/2 | Complete | 2026-02-17 |
 | 3. Personal Dashboard | 2/2 | Complete | 2026-02-17 |
 | 4. Match History | 2/2 | Complete | 2026-02-19 |
-| 5. Ranking Visualization | 0/TBD | Not started | - |
+| 5. Ranking Visualization | 0/2 | Planned | - |
 | 6. Club Features | 0/TBD | Not started | - |
 | 7. Player Bookmarks | 0/TBD | Not started | - |
 | 8. Offline Support | 0/TBD | Not started | - |
