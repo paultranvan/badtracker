@@ -145,11 +145,7 @@ export default function DashboardScreen() {
                 pressed && styles.rankingCardPressed,
               ]}
               onPress={() => {
-                // Stub: Phase 5 will add ranking evolution route
-                // For now, navigate to own player profile
-                if (session?.licence) {
-                  router.push(`/player/${session.licence}`);
-                }
+                router.push('/ranking-chart');
               }}
             >
               <Text style={styles.rankingDiscipline}>{t(translationKey)}</Text>
