@@ -101,10 +101,11 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. User can view club leaderboards showing rankings of players in their club
   2. Club leaderboards update when user pulls to refresh
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] TBD (plans created during /gsd:plan-phase 6)
+- [ ] 06-01-PLAN.md — Club data layer: API schemas, API functions, leaderboard sort utilities, data hooks, i18n strings
+- [ ] 06-02-PLAN.md — Club UI: tab screen with leaderboard and search, stack route, navigation wiring, player profile club link
 
 ### Phase 7: Player Bookmarks
 **Goal**: Follow and track other players for quick access
@@ -143,7 +144,7 @@ Plans:
 | 3. Personal Dashboard | 2/2 | Complete | 2026-02-17 |
 | 4. Match History | 2/2 | Complete | 2026-02-19 |
 | 5. Ranking Visualization | 2/2 | Complete | 2026-02-20 |
-| 6. Club Features | 0/TBD | Not started | - |
+| 6. Club Features | 0/2 | Not started | - |
 | 7. Player Bookmarks | 0/TBD | Not started | - |
 | 8. Offline Support | 0/TBD | Not started | - |
 
