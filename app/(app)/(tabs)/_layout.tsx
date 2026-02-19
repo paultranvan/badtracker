@@ -18,6 +18,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="matches"
+        options={{
+          title: t('matchHistory.title'),
+          tabBarLabel: t('matchHistory.tab'),
+        }}
+      />
+      <Tabs.Screen
         name="search"
         options={{
           title: t('search.tab'),

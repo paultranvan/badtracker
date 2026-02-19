@@ -200,8 +200,7 @@ export default function DashboardScreen() {
               pressed && styles.viewAllLinkPressed,
             ]}
             onPress={() => {
-              // Stub: Phase 4 will add match history route
-              // For now, do nothing
+              router.push('/(app)/(tabs)/matches');
             }}
           >
             <Text style={styles.viewAllText}>
