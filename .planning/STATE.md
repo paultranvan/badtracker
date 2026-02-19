@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** French badminton players can instantly see their ranking evolution and match stats in a native mobile experience that makes myffbad.fr data actually useful.
-**Current focus:** Phase 5 - Ranking Visualization
+**Current focus:** Phase 6 - Club Features
 
 ## Current Position
 
-Phase: 5 of 8 (Ranking Visualization)
+Phase: 6 of 8 (Club Features)
 Plan: 0 of TBD in current phase
 Status: Ready to discuss/plan
-Last activity: 2026-02-19 — Phase 4 Match History completed (2/2 plans)
+Last activity: 2026-02-20 — Phase 5 Ranking Visualization completed (2/2 plans)
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 63%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
-- Average duration: ~8 min/plan
-- Total execution time: ~1h 40min
+- Total plans completed: 12
+- Average duration: ~7 min/plan
+- Total execution time: ~1h 50min
 
 **By Phase:**
 
@@ -31,9 +31,10 @@ Progress: [█████░░░░░] 50%
 | 2 - Player Discovery | 2/2 | ~18 min | ~9 min |
 | 3 - Personal Dashboard | 2/2 | ~10 min | ~5 min |
 | 4 - Match History | 2/2 | ~10 min | ~5 min |
+| 5 - Ranking Visualization | 2/2 | ~10 min | ~5 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-01, 03-02, 04-01, 04-02
+- Last 5 plans: 04-01, 04-02, 05-01, 05-02
 - Trend: Accelerating
 
 *Updated after each plan completion*
@@ -63,6 +64,11 @@ Recent decisions affecting current work:
 - Client-side filtering with useMemo chain for discipline and season filters (Phase 4)
 - LayoutAnimation for accordion expand/collapse in match detail (Phase 4)
 - Matches tab between Home and Search in bottom navigation (Phase 4)
+- react-native-gifted-charts for ranking visualization — no Skia/Reanimated deps needed (Phase 5)
+- dataSet prop for multi-line chart rendering with per-discipline colors (Phase 5)
+- Milestone detection by comparing consecutive rank values — shown as colored badges on chart (Phase 5)
+- Ranking chart as Stack screen outside tabs — accessible from dashboard ranking card tap (Phase 5)
+- Tappable legend toggles discipline line visibility with useMemo filtering (Phase 5)
 
 ### Pending Todos
 
@@ -89,8 +95,13 @@ None.
 - Season detection uses month >= 8 (September) threshold for French badminton calendar
 - LayoutAnimation enabled experimentally on Android for accordion
 
+**Phase 5 (Ranking Visualization) — RESOLVED:**
+- FFBaD ranking evolution API response shape uncertain — expanded schema with .passthrough() + optional fields
+- Date format handling: parser tries ISO then DD/MM/YYYY then fallback
+- NC disciplines rendered as flat line at value 0 with "NC" label in legend
+
 ## Session Continuity
 
-Last session: 2026-02-19
-Stopped at: Phase 5 context gathered, ready to plan
-Resume file: .planning/phases/05-ranking-visualization/05-CONTEXT.md
+Last session: 2026-02-20
+Stopped at: Phase 5 complete, ready to discuss/plan Phase 6
+Resume file: .planning/STATE.md

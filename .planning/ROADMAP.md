@@ -10,7 +10,7 @@ BadTracker delivers a native mobile experience for French badminton players to t
 - [x] **Phase 2: Player Discovery** - Search players, view profiles (completed 2026-02-17)
 - [x] **Phase 3: Personal Dashboard** - User's own stats and rankings (completed 2026-02-17)
 - [x] **Phase 4: Match History** - Full match tracking with filters (completed 2026-02-19)
-- [ ] **Phase 5: Ranking Visualization** - Charts showing ranking progression over time
+- [x] **Phase 5: Ranking Visualization** - Charts showing ranking progression over time (completed 2026-02-20)
 - [ ] **Phase 6: Club Features** - Club leaderboards
 - [ ] **Phase 7: Player Bookmarks** - Follow and track other players
 - [ ] **Phase 8: Offline Support** - Cache and offline viewing
@@ -142,7 +142,7 @@ Plans:
 | 2. Player Discovery | 2/2 | Complete | 2026-02-17 |
 | 3. Personal Dashboard | 2/2 | Complete | 2026-02-17 |
 | 4. Match History | 2/2 | Complete | 2026-02-19 |
-| 5. Ranking Visualization | 0/2 | Planned | - |
+| 5. Ranking Visualization | 2/2 | Complete | 2026-02-20 |
 | 6. Club Features | 0/TBD | Not started | - |
 | 7. Player Bookmarks | 0/TBD | Not started | - |
 | 8. Offline Support | 0/TBD | Not started | - |

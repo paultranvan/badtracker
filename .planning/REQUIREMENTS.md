@@ -35,8 +35,8 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Rankings & Stats
 
 - [ ] **RANK-01**: User can see their current CPPH ranking value and category per discipline
-- [ ] **RANK-02**: User can see a visual line chart of ranking/points evolution over time
-- [ ] **RANK-03**: User can see a timeline of ranking milestones (when they reached NC, P12, P10, etc.)
+- [x] **RANK-02**: User can see a visual line chart of ranking/points evolution over time
+- [x] **RANK-03**: User can see a timeline of ranking milestones (when they reached NC, P12, P10, etc.)
 - [ ] **RANK-04**: User can view club leaderboards showing rankings of players in their club
 
 ### Dashboard
@@ -111,8 +111,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MTCH-04 | Phase 4 | Complete |
 | MTCH-05 | Phase 4 | Complete |
 | RANK-01 | Phase 3 | Pending |
-| RANK-02 | Phase 5 | Pending |
-| RANK-03 | Phase 5 | Pending |
+| RANK-02 | Phase 5 | Complete |
+| RANK-03 | Phase 5 | Complete |
 | RANK-04 | Phase 6 | Pending |
 | DASH-01 | Phase 3 | Pending |
 | DASH-02 | Phase 3 | Pending |
