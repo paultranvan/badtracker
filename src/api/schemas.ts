@@ -84,16 +84,41 @@ export const LicenceSearchSchema = z.object({
 export type LicenceSearchResponse = z.infer<typeof LicenceSearchSchema>;
 
 // ============================================================
-// Results / Match History (stub for future phases)
+// Results / Match History
 // ============================================================
 
+/**
+ * Response item from ws_getresultbylicence.
+ * Contains match result data with opponent, score, discipline, and tournament info.
+ *
+ * Core fields (Date, Adversaire, Score, Epreuve, Tour) are the base set.
+ * Extended fields (Discipline, Partenaire, Points, Sets, etc.) capture
+ * additional data when available from the API.
+ * .passthrough() ensures unknown fields don't break validation.
+ */
 const ResultItem = z
   .object({
+    // Core fields
     Date: z.string().optional(),
     Adversaire: z.string().optional(),
     Score: z.string().optional(),
     Epreuve: z.string().optional(),
     Tour: z.string().optional(),
+    // Extended fields — match detail
+    Discipline: z.string().optional(),
+    Resultat: z.string().optional(),
+    Points: z.union([z.string(), z.number()]).optional(),
+    Sets: z.string().optional(),
+    Duree: z.string().optional(),
+    // Opponent and partner details
+    AdversaireLicence: z.string().optional(),
+    Adversaire2: z.string().optional(),
+    Adversaire2Licence: z.string().optional(),
+    Partenaire: z.string().optional(),
+    PartenaireLicence: z.string().optional(),
+    // Tournament/competition details
+    Competition: z.string().optional(),
+    DateCompetition: z.string().optional(),
   })
   .passthrough();
 
