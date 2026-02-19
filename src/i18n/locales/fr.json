@@ -89,6 +89,21 @@
     "tournamentUnknown": "Tournoi inconnu",
     "filterByTournament": "Filtrer par tournoi"
   },
+  "ranking": {
+    "title": "Évolution du classement",
+    "subtitle": "Progression CPPH par discipline",
+    "noData": "Aucune donnée d'évolution disponible",
+    "networkError": "Impossible de charger les données de classement",
+    "loadError": "Erreur lors du chargement des classements",
+    "simple": "Simple",
+    "double": "Double",
+    "mixte": "Mixte",
+    "points": "{{value}} pts",
+    "milestoneReached": "{{rank}} atteint",
+    "dateRange": "{{start}} — {{end}}",
+    "cpphAxis": "CPPH",
+    "legend": "Appuyez sur une discipline pour masquer/afficher"
+  },
   "player": {
     "rankings": "Classements",
     "simple": "Simple",

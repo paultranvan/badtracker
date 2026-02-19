@@ -89,6 +89,21 @@
     "tournamentUnknown": "Unknown tournament",
     "filterByTournament": "Filter by tournament"
   },
+  "ranking": {
+    "title": "Ranking Evolution",
+    "subtitle": "CPPH progression by discipline",
+    "noData": "No ranking evolution data available",
+    "networkError": "Unable to load ranking data",
+    "loadError": "Error loading ranking data",
+    "simple": "Singles",
+    "double": "Doubles",
+    "mixte": "Mixed",
+    "points": "{{value}} pts",
+    "milestoneReached": "{{rank}} reached",
+    "dateRange": "{{start}} — {{end}}",
+    "cpphAxis": "CPPH",
+    "legend": "Tap a discipline to hide/show"
+  },
   "player": {
     "rankings": "Rankings",
     "simple": "Singles",
