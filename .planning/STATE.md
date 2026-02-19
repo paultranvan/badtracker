@@ -92,5 +92,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Phase 4 complete, ready for Phase 5
-Resume: /gsd:discuss-phase 5 --auto
+Stopped at: Phase 5 context gathered, ready to plan
+Resume file: .planning/phases/05-ranking-visualization/05-CONTEXT.md
