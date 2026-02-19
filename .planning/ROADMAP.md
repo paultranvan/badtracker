@@ -74,10 +74,11 @@ Plans:
   3. User can see match details including date, opponent, score, tournament name, and round
   4. User can pull-to-refresh to update match data from FFBaD
   5. User can see win/loss breakdown statistics per discipline
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] TBD (plans created during /gsd:plan-phase 4)
+- [ ] 04-01-PLAN.md — Match history data layer: schema expansion, utility functions, data hook, i18n strings
+- [ ] 04-02-PLAN.md — Match history screen UI: SectionList, filter chips, collapsible stats, accordion detail, tab navigation
 
 ### Phase 5: Ranking Visualization
 **Goal**: Visual charts showing ranking progression over time (key differentiator from FFBaD official app)
