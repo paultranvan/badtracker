@@ -15,15 +15,16 @@ French badminton players can instantly see their ranking evolution and match sta
 - Authenticate via FFBaD license number — Phase 1
 - Search for other players by name or license number — Phase 2
 - View subscribed players' profiles and stats — Phase 2 (profile view; bookmarking in Phase 7)
+- View personal dashboard (ranking, recent matches, quick stats) — Phase 3
+- View full match history from FFBaD with filters — Phase 4
+- See win/loss breakdown by discipline (simple, double, mixte) — Phase 4
+- See ranking/points evolution over time as a visual chart — Phase 5
+- See ranking milestones (when rank changed) — Phase 5
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] View personal dashboard (ranking, recent matches, quick stats)
-- [ ] See ranking/points evolution over time as a visual chart
-- [ ] View full match history from FFBaD
-- [ ] See win/loss breakdown by discipline (simple, double, mixte)
 - [ ] Subscribe to (bookmark) other players
 - [ ] All FFBaD disciplines tracked (simple homme/dame, double, mixte)
 - [ ] Local caching for performance and offline access to recent data
@@ -71,6 +72,13 @@ French badminton players can instantly see their ranking evolution and match sta
 | Single search bar auto-detect | Name vs licence number detection by input content | Validated Phase 2 |
 | Player route outside tabs | /player/[licence] accessible from any screen | Validated Phase 2 |
 | 300ms debounce, 3-char minimum | Balances responsiveness vs API load | Validated Phase 2 |
+| Promise.allSettled for dashboard | Parallel fetch with graceful partial failure | Validated Phase 3 |
+| CPPH boundaries as static lookup | Approximate values, easily updatable | Validated Phase 3 |
+| SectionList for match history | Tournament-grouped display with sticky headers | Validated Phase 4 |
+| LayoutAnimation for accordion | Native animation for expand/collapse | Validated Phase 4 |
+| react-native-gifted-charts | No Skia/Reanimated deps, SVG-based, sufficient for 52-point charts | Validated Phase 5 |
+| dataSet prop for multi-line chart | Cleanly handles 1-3 discipline lines without data/data2/data3 | Validated Phase 5 |
+| Ranking chart outside tabs | Stack screen accessible from dashboard ranking card tap | Validated Phase 5 |
 
 ---
-*Last updated: 2026-02-17 after Phase 2*
+*Last updated: 2026-02-20 after Phase 5*
