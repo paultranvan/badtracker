@@ -105,11 +105,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PLYR-05 | Phase 7 | Pending |
 | PLYR-06 | Phase 7 | Pending |
 | PLYR-07 | Phase 7 | Pending |
-| MTCH-01 | Phase 4 | Pending |
-| MTCH-02 | Phase 4 | Pending |
-| MTCH-03 | Phase 4 | Pending |
-| MTCH-04 | Phase 4 | Pending |
-| MTCH-05 | Phase 4 | Pending |
+| MTCH-01 | Phase 4 | Complete |
+| MTCH-02 | Phase 4 | Complete |
+| MTCH-03 | Phase 4 | Complete |
+| MTCH-04 | Phase 4 | Complete |
+| MTCH-05 | Phase 4 | Complete |
 | RANK-01 | Phase 3 | Pending |
 | RANK-02 | Phase 5 | Pending |
 | RANK-03 | Phase 5 | Pending |
