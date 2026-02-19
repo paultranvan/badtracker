@@ -129,14 +129,29 @@ export const ResultByLicenceSchema = z.object({
 export type ResultByLicenceResponse = z.infer<typeof ResultByLicenceSchema>;
 
 // ============================================================
-// Ranking Evolution (stub for future phases)
+// Ranking Evolution (Phase 5)
 // ============================================================
 
+/**
+ * Response item from ws_getrankingevolutionbylicence.
+ * Contains ranking evolution data points with optional discipline breakdown.
+ *
+ * Core fields (Date, Classement, Points) are the base set.
+ * Extended fields (Discipline, CPPH, Saison, Semaine) capture
+ * per-discipline breakdown when available from the API.
+ * .passthrough() ensures unknown fields don't break validation.
+ */
 const RankingEvolutionItem = z
   .object({
+    // Core fields
     Date: z.string().optional(),
     Classement: z.string().optional(),
     Points: z.union([z.string(), z.number()]).optional(),
+    // Extended fields for discipline breakdown
+    Discipline: z.string().optional(),
+    CPPH: z.union([z.string(), z.number()]).optional(),
+    Saison: z.string().optional(),
+    Semaine: z.union([z.string(), z.number()]).optional(),
   })
   .passthrough();
 
