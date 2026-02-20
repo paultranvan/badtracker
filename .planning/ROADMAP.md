@@ -131,10 +131,11 @@ Plans:
   2. App shows a clear indicator when displaying cached/offline data vs live data
   3. User can view cached player profiles, matches, and rankings when offline
   4. App automatically refreshes stale data when connectivity returns
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] TBD (plans created during /gsd:plan-phase 8)
+- [ ] 08-01-PLAN.md — Offline infrastructure: cache utility, connectivity provider, OfflineBar, NetInfo install, i18n strings
+- [ ] 08-02-PLAN.md — Cache-first hooks, offline search/profile handling, Settings cache clear, sign-out cache clear
 
 ## Progress
 
@@ -147,7 +148,7 @@ Plans:
 | 5. Ranking Visualization | 2/2 | Complete | 2026-02-20 |
 | 6. Club Features | 2/2 | Complete | 2026-02-20 |
 | 7. Player Bookmarks | 2/2 | Complete | 2026-02-20 |
-| 8. Offline Support | 0/TBD | Not started | - |
+| 8. Offline Support | 0/2 | Not started | - |
 
 ---
 *Roadmap created: 2026-02-16*
