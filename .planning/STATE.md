@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-16)
 ## Current Position
 
 Phase: 7 of 8 (Player Bookmarks)
-Plan: 0 of TBD in current phase
-Status: Ready to discuss/plan
-Last activity: 2026-02-20 — Phase 6 Club Features completed (2/2 plans)
+Plan: 1 of 2 in current phase
+Status: Executing — Phase 7 Plan 1 complete
+Last activity: 2026-02-20 — Phase 7 Plan 1 Bookmark data layer complete
 
-Progress: [████████░░] 75%
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
@@ -35,10 +35,14 @@ Progress: [████████░░] 75%
 | 6 - Club Features | 2/2 | ~5 min | ~2.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 05-01, 05-02, 06-01, 06-02
+- Last 5 plans: 05-01, 05-02, 06-01, 06-02, 07-01
 - Trend: Accelerating
 
 *Updated after each plan completion*
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| 7 - Player Bookmarks (partial) | 1/2 | ~1 min | ~1 min |
 
 ## Accumulated Context
 
@@ -74,6 +78,8 @@ Recent decisions affecting current work:
 - [Phase 06-club-features]: normalizeToLeaderboard accepts unknown[] to decouple from Zod schema types; bestRank fallback: getBestRanking() -> classement string -> NC (Phase 6)
 - [Phase 06-club-features]: Club tab fetches user's club via getPlayerProfile in useEffect — no new hook needed
 - [Phase 06-club-features]: Dual-mode screen pattern for Club tab: leaderboard and search mode in single component with boolean flag
+- [Phase 07]: react-native-toast-message installed with --legacy-peer-deps to resolve peer dependency conflicts
+- [Phase 07]: Bookmarks tied to device not account — BookmarksProvider wraps outside of auth state awareness, loads on app mount regardless of login state
 
 ### Pending Todos
 
@@ -108,5 +114,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Phase 7 context gathered, ready to plan
-Resume file: .planning/phases/07-player-bookmarks/07-CONTEXT.md
+Stopped at: Completed 07-01-PLAN.md (bookmark data layer complete)
+Resume file: .planning/phases/07-player-bookmarks/07-02-PLAN.md
