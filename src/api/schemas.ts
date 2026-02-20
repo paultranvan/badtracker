@@ -162,6 +162,63 @@ export const RankingEvolutionSchema = z.object({
 export type RankingEvolutionResponse = z.infer<typeof RankingEvolutionSchema>;
 
 // ============================================================
+// Club Ranking (Phase 6)
+// ============================================================
+
+/**
+ * Response item from ws_getrankingallbyclub.
+ * Schema is inferred from analogy with LicenceInfoItem — use .passthrough()
+ * to avoid breaking on unknown fields until the real response is verified.
+ * Expected fields: Licence, Nom, Prenom, Club, NomClub + per-discipline rankings.
+ */
+const ClubRankingItem = z
+  .object({
+    Licence: z.string().optional(),
+    Nom: z.string().optional(),
+    Prenom: z.string().optional(),
+    Club: z.string().optional(),
+    NomClub: z.string().optional(),
+    ClassementSimple: z.string().optional(),
+    ClassementDouble: z.string().optional(),
+    ClassementMixte: z.string().optional(),
+    CPPHSimple: z.union([z.string(), z.number()]).optional(),
+    CPPHDouble: z.union([z.string(), z.number()]).optional(),
+    CPPHMixte: z.union([z.string(), z.number()]).optional(),
+  })
+  .passthrough();
+
+export const ClubRankingSchema = z.object({
+  Retour: z.union([z.array(ClubRankingItem), z.string()]),
+});
+
+export type ClubRankingResponse = z.infer<typeof ClubRankingSchema>;
+
+// ============================================================
+// Club List (Phase 6)
+// ============================================================
+
+/**
+ * Response item from ws_getclublist.
+ * Returns the full list of FFBaD-registered clubs (~3500 entries).
+ * .passthrough() ensures unknown fields don't break validation.
+ */
+const ClubItem = z
+  .object({
+    ID_Club: z.string().optional(),
+    Club: z.string().optional(),
+    NomClub: z.string().optional(),
+    Nom: z.string().optional(),
+  })
+  .passthrough();
+
+export const ClubListSchema = z.object({
+  Retour: z.union([z.array(ClubItem), z.string()]),
+});
+
+export type ClubListResponse = z.infer<typeof ClubListSchema>;
+export type ClubListItem = z.infer<typeof ClubItem>;
+
+// ============================================================
 // Generic FFBaD Response
 // ============================================================
 

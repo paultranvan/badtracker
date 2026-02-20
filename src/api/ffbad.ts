@@ -5,6 +5,8 @@ import {
   LicenceSearchSchema,
   ResultByLicenceSchema,
   RankingEvolutionSchema,
+  ClubRankingSchema,
+  ClubListSchema,
 } from './schemas';
 import type {
   AccountPoonaResponse,
@@ -12,6 +14,8 @@ import type {
   LicenceSearchResponse,
   ResultByLicenceResponse,
   RankingEvolutionResponse,
+  ClubRankingResponse,
+  ClubListResponse,
 } from './schemas';
 import { AuthError } from './errors';
 
@@ -258,5 +262,50 @@ export async function getRankingEvolution(
       params: [licence],
     },
     RankingEvolutionSchema
+  );
+}
+
+// ============================================================
+// Club Features (Phase 6)
+// ============================================================
+
+/**
+ * Get rankings for all disciplines for all members of a club.
+ *
+ * Uses ws_getrankingallbyclub with the club's ID_Club value.
+ * The club ID corresponds to the `Club` field returned by ws_getlicenceinfobylicence.
+ *
+ * NOTE: Response schema is inferred from changelog and analogy with LicenceInfoItem.
+ * .passthrough() on the schema ensures real API fields are captured even if names differ.
+ *
+ * @throws NetworkError, ServerError, SchemaValidationError
+ */
+export async function getClubLeaderboard(
+  clubId: string
+): Promise<ClubRankingResponse> {
+  return callFFBaD(
+    {
+      fonction: 'ws_getrankingallbyclub',
+      params: [clubId],
+    },
+    ClubRankingSchema
+  );
+}
+
+/**
+ * Get the full list of FFBaD-registered clubs for club search.
+ *
+ * Returns all clubs (~3500 entries). Intended to be cached client-side —
+ * the full list is fetched once and filtered locally.
+ *
+ * @throws NetworkError, ServerError, SchemaValidationError
+ */
+export async function getClubList(): Promise<ClubListResponse> {
+  return callFFBaD(
+    {
+      fonction: 'ws_getclublist',
+      params: [],
+    },
+    ClubListSchema
   );
 }
