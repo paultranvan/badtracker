@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getClubLeaderboard } from '../api/ffbad';
 import { NetworkError } from '../api/errors';
+import { cacheGet, cacheSet } from '../cache/storage';
+import { useConnectivity } from '../connectivity/context';
 import { normalizeToLeaderboard, type LeaderboardEntry } from '../utils/clubLeaderboard';
 
 // ============================================================
@@ -18,6 +20,13 @@ export interface ClubLeaderboardData {
   refresh: () => Promise<void>;
 }
 
+// Cache shape for club leaderboard
+interface CachedClubLeaderboard {
+  members: LeaderboardEntry[];
+  clubName: string;
+  rankedCount: number;
+}
+
 // ============================================================
 // Hook
 // ============================================================
@@ -25,16 +34,14 @@ export interface ClubLeaderboardData {
 /**
  * Fetches and manages club leaderboard state for a given club ID.
  *
- * Follows the established hook pattern from useDashboardData:
- * - useCallback + useEffect with cancelled flag for cleanup
- * - Separate isLoading (initial fetch) vs isRefreshing (pull-to-refresh)
- * - Error classification with i18n keys (club.networkError, club.loadError)
- * - Graceful null clubId handling — no fetch, empty state returned
+ * Cache-first pattern: reads cached leaderboard immediately, then fetches from API
+ * in background if online. Falls back to cache when offline.
  *
  * @param clubId - FFBaD club ID (Club field from player profile), or null if unknown
  */
 export function useClubLeaderboard(clubId: string | null): ClubLeaderboardData {
   const { t } = useTranslation();
+  const { isConnected } = useConnectivity();
 
   const [members, setMembers] = useState<LeaderboardEntry[]>([]);
   const [clubName, setClubName] = useState<string>('');
@@ -42,6 +49,9 @@ export function useClubLeaderboard(clubId: string | null): ClubLeaderboardData {
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const hasCachedData = useRef(false);
+  const prevConnected = useRef(isConnected);
 
   const fetchData = useCallback(
     async (isRefresh = false) => {
@@ -57,6 +67,26 @@ export function useClubLeaderboard(clubId: string | null): ClubLeaderboardData {
       }
       setError(null);
 
+      // Step 1: Read from cache
+      if (!isRefresh) {
+        const cached = await cacheGet<CachedClubLeaderboard>(`club:${clubId}`);
+        if (cached) {
+          setMembers(cached.members);
+          setClubName(cached.clubName);
+          setRankedCount(cached.rankedCount);
+          hasCachedData.current = true;
+          if (!isConnected) {
+            setIsLoading(false);
+            return;
+          }
+        } else if (!isConnected) {
+          setError(t('club.networkError'));
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Step 2: Fetch from API
       try {
         const response = await getClubLeaderboard(clubId);
 
@@ -66,17 +96,31 @@ export function useClubLeaderboard(clubId: string | null): ClubLeaderboardData {
 
           // Extract club name from first raw item's NomClub field
           const firstItem = response.Retour[0] as Record<string, unknown> | undefined;
-          setClubName((firstItem?.NomClub as string | undefined) ?? '');
+          const name = (firstItem?.NomClub as string | undefined) ?? '';
+          setClubName(name);
 
           // Count members with a real rank (anything other than NC)
-          setRankedCount(normalized.filter((m) => m.bestRank !== 'NC').length);
+          const ranked = normalized.filter((m) => m.bestRank !== 'NC').length;
+          setRankedCount(ranked);
+
+          // Step 3: Update cache
+          cacheSet(`club:${clubId}`, {
+            members: normalized,
+            clubName: name,
+            rankedCount: ranked,
+          });
+          hasCachedData.current = true;
         } else {
-          // Retour is a string — API returned an error/empty message
           setMembers([]);
           setClubName('');
           setRankedCount(0);
         }
       } catch (err) {
+        if (hasCachedData.current) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+          return;
+        }
         if (err instanceof NetworkError) {
           setError(t('club.networkError'));
         } else {
@@ -87,7 +131,7 @@ export function useClubLeaderboard(clubId: string | null): ClubLeaderboardData {
         setIsRefreshing(false);
       }
     },
-    [clubId, t]
+    [clubId, t, isConnected]
   );
 
   useEffect(() => {
@@ -115,6 +159,14 @@ export function useClubLeaderboard(clubId: string | null): ClubLeaderboardData {
       cancelled = true;
     };
   }, [clubId, fetchData]);
+
+  // Auto-refresh when connectivity returns
+  useEffect(() => {
+    if (!prevConnected.current && isConnected && clubId) {
+      fetchData(true);
+    }
+    prevConnected.current = isConnected;
+  }, [isConnected, clubId, fetchData]);
 
   const refresh = useCallback(async () => {
     await fetchData(true);

@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Platform, UIManager, LayoutAnimation } from 'react-native';
 import { getResultsByLicence } from '../api/ffbad';
 import { NetworkError, ServerError } from '../api/errors';
 import { useSession } from '../auth/context';
+import { cacheGet, cacheSet } from '../cache/storage';
+import { useConnectivity } from '../connectivity/context';
 import {
   toFullMatchItem,
   groupByTournament,
@@ -60,14 +62,12 @@ export type { MatchItem, MatchSection, WinLossStats, DisciplineFilter };
 /**
  * Orchestrates match history data fetching, filtering, grouping, and stats.
  *
- * Follows established patterns from useDashboardData:
- * - Cancelled flag for cleanup
- * - Separate isLoading (initial) vs isRefreshing (pull-to-refresh)
- * - Error classification with i18n keys
- * - useMemo for derived state
+ * Cache-first pattern: reads cached matches immediately, then fetches from API
+ * in background if online. Falls back to cache when offline.
  */
 export function useMatchHistory(): MatchHistoryData {
   const { session } = useSession();
+  const { isConnected } = useConnectivity();
 
   // Core state
   const [allMatches, setAllMatches] = useState<MatchItem[]>([]);
@@ -82,6 +82,8 @@ export function useMatchHistory(): MatchHistoryData {
   const [error, setError] = useState<string | null>(null);
 
   const licence = session?.licence;
+  const hasCachedData = useRef(false);
+  const prevConnected = useRef(isConnected);
 
   // ----------------------------------------------------------
   // Data fetching
@@ -101,6 +103,24 @@ export function useMatchHistory(): MatchHistoryData {
       }
       setError(null);
 
+      // Step 1: Read from cache
+      if (!isRefresh) {
+        const cached = await cacheGet<MatchItem[]>(`matches:${licence}`);
+        if (cached) {
+          setAllMatches(cached);
+          hasCachedData.current = true;
+          if (!isConnected) {
+            setIsLoading(false);
+            return;
+          }
+        } else if (!isConnected) {
+          setError('matchHistory.networkError');
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Step 2: Fetch from API
       try {
         const response = await getResultsByLicence(licence);
         const retour = response.Retour;
@@ -110,11 +130,18 @@ export function useMatchHistory(): MatchHistoryData {
             toFullMatchItem(item as Record<string, unknown>, index)
           );
           setAllMatches(matches);
+          // Step 3: Update cache
+          cacheSet(`matches:${licence}`, matches);
+          hasCachedData.current = true;
         } else {
-          // API returned a string (error message or no data)
           setAllMatches([]);
         }
       } catch (err) {
+        if (hasCachedData.current) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+          return;
+        }
         if (err instanceof NetworkError) {
           setError('matchHistory.networkError');
         } else if (err instanceof ServerError) {
@@ -127,7 +154,7 @@ export function useMatchHistory(): MatchHistoryData {
         setIsRefreshing(false);
       }
     },
-    [licence]
+    [licence, isConnected]
   );
 
   // Initial load
@@ -146,6 +173,14 @@ export function useMatchHistory(): MatchHistoryData {
       cancelled = true;
     };
   }, [fetchData]);
+
+  // Auto-refresh when connectivity returns
+  useEffect(() => {
+    if (!prevConnected.current && isConnected && licence) {
+      fetchData(true);
+    }
+    prevConnected.current = isConnected;
+  }, [isConnected, licence, fetchData]);
 
   // ----------------------------------------------------------
   // Derived state (memoized)

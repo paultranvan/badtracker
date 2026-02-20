@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getPlayerProfile,
@@ -8,6 +8,8 @@ import {
 import { NetworkError, ServerError } from '../api/errors';
 import { useSession } from '../auth/context';
 import { getBestRanking } from '../utils/rankings';
+import { cacheGet, cacheSet } from '../cache/storage';
+import { useConnectivity } from '../connectivity/context';
 
 // ============================================================
 // Types
@@ -40,6 +42,14 @@ export interface DashboardData {
   isRefreshing: boolean;
   error: string | null;
   refresh: () => Promise<void>;
+}
+
+// Cache shape for dashboard data
+interface CachedDashboard {
+  profile: PlayerProfile;
+  recentMatches: MatchPreview[];
+  quickStats: QuickStats | null;
+  allMatches: MatchPreview[];
 }
 
 // ============================================================
@@ -107,15 +117,13 @@ function computeQuickStats(
 /**
  * Orchestrates dashboard data fetching: player profile + match results in parallel.
  *
- * Follows established patterns from usePlayerSearch:
- * - Cancelled flag for cleanup
- * - Separate isLoading (initial) vs isRefreshing (pull-to-refresh)
- * - Error classification with i18n keys
- * - Graceful partial failure (profile loads even if matches fail)
+ * Cache-first pattern: reads cached data immediately, then fetches from API
+ * in background if online. Falls back to cache when offline.
  */
 export function useDashboardData(): DashboardData {
   const { t } = useTranslation();
   const { session } = useSession();
+  const { isConnected } = useConnectivity();
 
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [recentMatches, setRecentMatches] = useState<MatchPreview[]>([]);
@@ -126,6 +134,8 @@ export function useDashboardData(): DashboardData {
   const [error, setError] = useState<string | null>(null);
 
   const licence = session?.licence;
+  const hasCachedData = useRef(false);
+  const prevConnected = useRef(isConnected);
 
   const fetchData = useCallback(
     async (isRefresh = false) => {
@@ -141,6 +151,29 @@ export function useDashboardData(): DashboardData {
       }
       setError(null);
 
+      // Step 1: Read from cache (non-blocking, instant UI)
+      if (!isRefresh) {
+        const cached = await cacheGet<CachedDashboard>(`dashboard:${licence}`);
+        if (cached) {
+          setProfile(cached.profile);
+          setRecentMatches(cached.recentMatches);
+          setAllMatches(cached.allMatches);
+          setQuickStats(cached.quickStats);
+          hasCachedData.current = true;
+          // If offline, stop here — use cached data only
+          if (!isConnected) {
+            setIsLoading(false);
+            return;
+          }
+        } else if (!isConnected) {
+          // No cache and offline
+          setError('dashboard.networkError');
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Step 2: Fetch from API
       try {
         const [profileResult, matchesResult] = await Promise.allSettled([
           getPlayerProfile(licence),
@@ -153,7 +186,12 @@ export function useDashboardData(): DashboardData {
           loadedProfile = profileResult.value;
           setProfile(loadedProfile);
         } else if (profileResult.status === 'rejected') {
-          // Profile is critical — if it fails, show error
+          // If we have cached data, don't show error
+          if (hasCachedData.current) {
+            setIsLoading(false);
+            setIsRefreshing(false);
+            return;
+          }
           const err = profileResult.reason;
           if (err instanceof NetworkError) {
             setError('dashboard.networkError');
@@ -172,17 +210,34 @@ export function useDashboardData(): DashboardData {
             );
           }
         }
-        // If matches fail, we still show profile — just with empty matches
 
         setAllMatches(matchPreviews);
         setRecentMatches(matchPreviews.slice(0, 3));
 
         // Compute quick stats if we have profile data
+        let stats: QuickStats | null = null;
         if (loadedProfile) {
-          setQuickStats(computeQuickStats(loadedProfile, matchPreviews));
+          stats = computeQuickStats(loadedProfile, matchPreviews);
+          setQuickStats(stats);
+        }
+
+        // Step 3: Update cache on success
+        if (loadedProfile) {
+          cacheSet(`dashboard:${licence}`, {
+            profile: loadedProfile,
+            recentMatches: matchPreviews.slice(0, 3),
+            quickStats: stats,
+            allMatches: matchPreviews,
+          });
+          hasCachedData.current = true;
         }
       } catch (err) {
-        // Unexpected error outside Promise.allSettled
+        // If we have cached data, silently use it
+        if (hasCachedData.current) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+          return;
+        }
         if (err instanceof NetworkError) {
           setError('dashboard.networkError');
         } else if (err instanceof ServerError) {
@@ -195,7 +250,7 @@ export function useDashboardData(): DashboardData {
         setIsRefreshing(false);
       }
     },
-    [licence]
+    [licence, isConnected]
   );
 
   useEffect(() => {
@@ -213,6 +268,14 @@ export function useDashboardData(): DashboardData {
       cancelled = true;
     };
   }, [fetchData]);
+
+  // Auto-refresh when connectivity returns
+  useEffect(() => {
+    if (!prevConnected.current && isConnected && licence) {
+      fetchData(true);
+    }
+    prevConnected.current = isConnected;
+  }, [isConnected, licence, fetchData]);
 
   const refresh = useCallback(async () => {
     await fetchData(true);
