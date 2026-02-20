@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,8 @@ import {
 } from '../../../src/api/ffbad';
 import { useSession } from '../../../src/auth/context';
 import { useBookmarks } from '../../../src/bookmarks/context';
+import { useConnectivity } from '../../../src/connectivity/context';
+import { cacheGet, cacheSet } from '../../../src/cache/storage';
 import type { BookmarkedPlayer } from '../../../src/bookmarks/storage';
 
 // ============================================================
@@ -33,9 +35,12 @@ export default function PlayerProfileScreen() {
 
   const { session } = useSession();
   const { isBookmarked, addBookmark, removeBookmark, updateStoredRankings } = useBookmarks();
+  const { isConnected } = useConnectivity();
 
   const isOwnProfile = session?.licence === licence;
   const bookmarked = player ? isBookmarked(player.licence) : false;
+  const isBookmarkedByLicence = licence ? isBookmarked(licence) : false;
+  const hasCachedData = useRef(false);
 
   const handleBookmarkToggle = async () => {
     if (!player) return;
@@ -66,23 +71,52 @@ export default function PlayerProfileScreen() {
     setIsLoading(true);
     setError(null);
 
+    // Step 1: Read from cache
+    const cached = await cacheGet<PlayerProfile>(`player:${licence}`);
+    if (cached) {
+      setPlayer(cached);
+      hasCachedData.current = true;
+      if (!isConnected) {
+        setIsLoading(false);
+        return;
+      }
+    } else if (!isConnected) {
+      // No cache and offline
+      setError(t('offline.unavailable'));
+      setIsLoading(false);
+      return;
+    }
+
+    // Step 2: Fetch from API
     try {
       const profile = await getPlayerProfile(licence);
       if (cancelled) return;
 
       if (profile) {
         setPlayer(profile);
+        hasCachedData.current = true;
         // Passive ranking refresh: update stored bookmark if this player is bookmarked
         updateStoredRankings(profile.licence, {
           simple: profile.rankings.simple?.classement,
           double: profile.rankings.double?.classement,
           mixte: profile.rankings.mixte?.classement,
         });
+        // Step 3: Cache profile if bookmarked
+        if (isBookmarked(licence)) {
+          cacheSet(`player:${licence}`, profile);
+        }
       } else {
-        setError(t('player.error'));
+        if (!hasCachedData.current) {
+          setError(t('player.error'));
+        }
       }
     } catch {
       if (!cancelled) {
+        if (hasCachedData.current) {
+          // Silently use cached data
+          setIsLoading(false);
+          return;
+        }
         setError(t('player.error'));
       }
     } finally {
@@ -95,7 +129,7 @@ export default function PlayerProfileScreen() {
     return () => {
       cancelled = true;
     };
-  }, [licence, t, updateStoredRankings]);
+  }, [licence, t, updateStoredRankings, isConnected, isBookmarked]);
 
   useEffect(() => {
     let cleanup: (() => void) | undefined;
@@ -124,8 +158,12 @@ export default function PlayerProfileScreen() {
   // Error state
   // ----------------------------------------------------------
   if (error || !player) {
+    const isOfflineError = !isConnected;
     return (
       <View style={styles.centered}>
+        {isOfflineError && (
+          <Ionicons name="cloud-offline-outline" size={48} color="#9ca3af" style={styles.offlineIcon} />
+        )}
         <Text style={styles.errorText}>{error ?? t('player.error')}</Text>
         <Pressable
           style={({ pressed }) => [
@@ -134,7 +172,7 @@ export default function PlayerProfileScreen() {
           ]}
           onPress={() => fetchProfile()}
         >
-          <Text style={styles.retryText}>{t('player.retry')}</Text>
+          <Text style={styles.retryText}>{t('offline.retry')}</Text>
         </Pressable>
       </View>
     );
@@ -360,7 +398,10 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  // Error
+  // Error / Offline
+  offlineIcon: {
+    marginBottom: 12,
+  },
   errorText: {
     fontSize: 16,
     color: '#dc2626',

@@ -13,11 +13,25 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { usePlayerSearch } from '../../../src/hooks/usePlayerSearch';
 import { useBookmarks } from '../../../src/bookmarks/context';
+import { useConnectivity } from '../../../src/connectivity/context';
 
 export default function SearchScreen() {
   const { t } = useTranslation();
   const { query, setQuery, results, isLoading, error } = usePlayerSearch();
   const { isBookmarked } = useBookmarks();
+  const { isConnected } = useConnectivity();
+
+  // When offline, show disabled state per user decision
+  if (!isConnected) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.centered}>
+          <Ionicons name="cloud-offline-outline" size={48} color="#9ca3af" />
+          <Text style={styles.offlineText}>{t('offline.searchDisabled')}</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -187,5 +201,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9ca3af',
     textAlign: 'center',
+  },
+  offlineText: {
+    fontSize: 16,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginTop: 12,
   },
 });

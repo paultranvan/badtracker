@@ -14,6 +14,7 @@ import {
   clearCredentials,
 } from './storage';
 import { AuthError, NetworkError, FFBaDError } from '../api/errors';
+import { cacheClear } from '../cache/storage';
 import type { UserSession } from '../types/ffbad';
 
 // ============================================================
@@ -168,7 +169,10 @@ export function SessionProvider({ children }: PropsWithChildren) {
   // Sign out
   // ----------------------------------------------------------
   const signOut = useCallback(async () => {
-    // Clear stored credentials (but NOT cached data per user decision)
+    // Clear cached data first — clean slate for next login
+    await cacheClear();
+
+    // Clear stored credentials
     await clearCredentials();
 
     // Clear API client credentials

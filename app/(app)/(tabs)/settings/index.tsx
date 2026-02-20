@@ -2,7 +2,9 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, Pressable } from 'reac
 import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import { useSession } from '../../../../src/auth/context';
+import { cacheClear } from '../../../../src/cache/storage';
 
 export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
@@ -12,6 +14,24 @@ export default function SettingsScreen() {
   const toggleLanguage = () => {
     const newLang = currentLanguage === 'fr' ? 'en' : 'fr';
     i18n.changeLanguage(newLang);
+  };
+
+  const handleClearCache = () => {
+    Alert.alert(
+      t('settings.clearCacheTitle'),
+      t('settings.clearCacheConfirm'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('settings.clearCacheOk'),
+          style: 'destructive',
+          onPress: async () => {
+            await cacheClear();
+            Toast.show({ type: 'success', text1: t('settings.cacheCleared'), visibilityTime: 2000 });
+          },
+        },
+      ]
+    );
   };
 
   const handleLogout = () => {
@@ -81,6 +101,18 @@ export default function SettingsScreen() {
         <View style={styles.rowContent}>
           <Ionicons name="star" size={20} color="#f59e0b" style={styles.rowIcon} />
           <Text style={styles.label}>{t('bookmarks.settingsRow')}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+      </Pressable>
+
+      {/* Clear cache row */}
+      <Pressable
+        style={({ pressed }) => [styles.bookmarksRow, pressed && styles.rowPressed]}
+        onPress={handleClearCache}
+      >
+        <View style={styles.rowContent}>
+          <Ionicons name="trash-outline" size={20} color="#6b7280" style={styles.rowIcon} />
+          <Text style={styles.label}>{t('settings.clearCache')}</Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
       </Pressable>
