@@ -24,6 +24,7 @@
     "react-native": "0.81.5",
     "react-native-gifted-charts": "^1.4.74",
     "react-native-svg": "15.12.1",
+    "react-native-toast-message": "^2.3.3",
     "zod": "^4.3.6"
   },
   "devDependencies": {
