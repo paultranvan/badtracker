@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** French badminton players can instantly see their ranking evolution and match stats in a native mobile experience that makes myffbad.fr data actually useful.
-**Current focus:** Phase 7 (next phase)
+**Current focus:** Phase 7 - Player Bookmarks
 
 ## Current Position
 
-Phase: 6 of 8 (Club Features) — COMPLETE
-Plan: 2 of 2 in current phase
-Status: Phase 6 complete
-Last activity: 2026-02-20 — Phase 6 Plan 2 completed (club UI layer, RANK-04 done)
+Phase: 7 of 8 (Player Bookmarks)
+Plan: 0 of TBD in current phase
+Status: Ready to discuss/plan
+Last activity: 2026-02-20 — Phase 6 Club Features completed (2/2 plans)
 
-Progress: [███████░░░] 70%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
@@ -108,5 +108,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 06-02-PLAN.md (club UI layer complete, Phase 6 done)
-Resume file: .planning/phases/06-club-features/06-02-SUMMARY.md
+Stopped at: Phase 6 complete, ready to discuss/plan Phase 7
+Resume file: .planning/STATE.md
