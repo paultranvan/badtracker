@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** French badminton players can instantly see their ranking evolution and match stats in a native mobile experience that makes myffbad.fr data actually useful.
-**Current focus:** Phase 6 - Club Features
+**Current focus:** Phase 7 (next phase)
 
 ## Current Position
 
-Phase: 6 of 8 (Club Features)
-Plan: 1 of TBD in current phase
-Status: In progress
-Last activity: 2026-02-20 — Phase 6 Plan 1 completed (club data layer)
+Phase: 6 of 8 (Club Features) — COMPLETE
+Plan: 2 of 2 in current phase
+Status: Phase 6 complete
+Last activity: 2026-02-20 — Phase 6 Plan 2 completed (club UI layer, RANK-04 done)
 
-Progress: [██████░░░░] 65%
+Progress: [███████░░░] 70%
 
 ## Performance Metrics
 
@@ -32,10 +32,10 @@ Progress: [██████░░░░] 65%
 | 3 - Personal Dashboard | 2/2 | ~10 min | ~5 min |
 | 4 - Match History | 2/2 | ~10 min | ~5 min |
 | 5 - Ranking Visualization | 2/2 | ~10 min | ~5 min |
-| 6 - Club Features | 1/TBD | ~2 min | ~2 min |
+| 6 - Club Features | 2/2 | ~5 min | ~2.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-02, 05-01, 05-02, 06-01
+- Last 5 plans: 05-01, 05-02, 06-01, 06-02
 - Trend: Accelerating
 
 *Updated after each plan completion*
@@ -72,6 +72,8 @@ Recent decisions affecting current work:
 - Tappable legend toggles discipline line visibility with useMemo filtering (Phase 5)
 - [Phase 06-club-features]: Club list cached in memory + AsyncStorage (24h TTL) for fetch-once approach to ~3500-entry club list (Phase 6)
 - [Phase 06-club-features]: normalizeToLeaderboard accepts unknown[] to decouple from Zod schema types; bestRank fallback: getBestRanking() -> classement string -> NC (Phase 6)
+- [Phase 06-club-features]: Club tab fetches user's club via getPlayerProfile in useEffect — no new hook needed
+- [Phase 06-club-features]: Dual-mode screen pattern for Club tab: leaderboard and search mode in single component with boolean flag
 
 ### Pending Todos
 
@@ -106,5 +108,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 06-01-PLAN.md (club data layer complete)
-Resume file: .planning/phases/06-club-features/06-01-SUMMARY.md
+Stopped at: Completed 06-02-PLAN.md (club UI layer complete, Phase 6 done)
+Resume file: .planning/phases/06-club-features/06-02-SUMMARY.md
