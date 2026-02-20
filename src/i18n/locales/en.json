@@ -115,5 +115,22 @@
     "cpph": "CPPH",
     "error": "Unable to load profile",
     "retry": "Retry"
+  },
+  "club": {
+    "tab": "Club",
+    "title": "Club Leaderboard",
+    "leaderboard": "Leaderboard",
+    "members": "{{count}} ranked members",
+    "position": "#{{position}}",
+    "searchPlaceholder": "Search for a club",
+    "searchMinChars": "Type at least 3 characters",
+    "noResults": "No clubs found",
+    "noMembers": "No members in this club",
+    "noClub": "You are not affiliated with a club",
+    "browseClubs": "Browse clubs",
+    "myClub": "My club",
+    "loadError": "Unable to load club leaderboard",
+    "networkError": "No internet connection",
+    "pullToRefresh": "Pull to refresh"
   }
 }

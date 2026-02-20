@@ -115,5 +115,22 @@
     "cpph": "CPPH",
     "error": "Impossible de charger le profil",
     "retry": "R\u00e9essayer"
+  },
+  "club": {
+    "tab": "Club",
+    "title": "Classement du club",
+    "leaderboard": "Classement",
+    "members": "{{count}} membres class\u00e9s",
+    "position": "#{{position}}",
+    "searchPlaceholder": "Rechercher un club",
+    "searchMinChars": "Tapez au moins 3 caract\u00e8res",
+    "noResults": "Aucun club trouv\u00e9",
+    "noMembers": "Aucun membre dans ce club",
+    "noClub": "Vous n'\u00eates affili\u00e9 \u00e0 aucun club",
+    "browseClubs": "Parcourir les clubs",
+    "myClub": "Mon club",
+    "loadError": "Impossible de charger le classement du club",
+    "networkError": "Pas de connexion internet",
+    "pullToRefresh": "Tirer pour actualiser"
   }
 }
