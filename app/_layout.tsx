@@ -1,5 +1,7 @@
 import { Stack } from 'expo-router';
 import { SessionProvider, useSession } from '../src/auth/context';
+import { BookmarksProvider } from '../src/bookmarks/context';
+import Toast from 'react-native-toast-message';
 import '../src/i18n'; // Initialize i18n as side-effect
 
 function RootNavigator() {
@@ -25,7 +27,10 @@ function RootNavigator() {
 export default function RootLayout() {
   return (
     <SessionProvider>
-      <RootNavigator />
+      <BookmarksProvider>
+        <RootNavigator />
+        <Toast />
+      </BookmarksProvider>
     </SessionProvider>
   );
 }

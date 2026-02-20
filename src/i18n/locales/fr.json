@@ -132,5 +132,12 @@
     "loadError": "Impossible de charger le classement du club",
     "networkError": "Pas de connexion internet",
     "pullToRefresh": "Tirer pour actualiser"
+  },
+  "bookmarks": {
+    "title": "Favoris",
+    "added": "Joueur ajout\u00e9 aux favoris",
+    "removed": "Favori supprim\u00e9",
+    "empty": "Aucun favori",
+    "settingsRow": "Mes favoris"
   }
 }

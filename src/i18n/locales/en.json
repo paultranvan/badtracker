@@ -132,5 +132,12 @@
     "loadError": "Unable to load club leaderboard",
     "networkError": "No internet connection",
     "pullToRefresh": "Pull to refresh"
+  },
+  "bookmarks": {
+    "title": "Bookmarks",
+    "added": "Player bookmarked",
+    "removed": "Bookmark removed",
+    "empty": "No bookmarks",
+    "settingsRow": "My bookmarks"
   }
 }
