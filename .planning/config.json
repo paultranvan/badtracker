@@ -8,7 +8,7 @@
     "research": true,
     "plan_check": false,
     "verifier": false,
-    "auto_advance": true
+    "auto_advance": false
   },
   "git": {
     "branching_strategy": "none"

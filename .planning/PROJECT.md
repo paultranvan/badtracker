@@ -20,14 +20,18 @@ French badminton players can instantly see their ranking evolution and match sta
 - See win/loss breakdown by discipline (simple, double, mixte) — Phase 4
 - See ranking/points evolution over time as a visual chart — Phase 5
 - See ranking milestones (when rank changed) — Phase 5
+- View club leaderboards with ranked club members — Phase 6
+- Subscribe to (bookmark) other players for quick access — Phase 7
+- All FFBaD disciplines tracked (simple, double, mixte) — Phase 4/5
+- Local caching for performance and offline access to recent data — Phase 8
+- Offline indicator bar when no connection — Phase 8
+- Auto-refresh cached data when connectivity returns — Phase 8
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] Subscribe to (bookmark) other players
-- [ ] All FFBaD disciplines tracked (simple homme/dame, double, mixte)
-- [ ] Local caching for performance and offline access to recent data
+_All v1 requirements have been validated._
 
 ### Out of Scope
 
@@ -64,7 +68,6 @@ French badminton players can instantly see their ranking evolution and match sta
 | React Native + Expo | Cross-platform with JS/TS, large ecosystem, quick setup | Validated Phase 1 |
 | No backend for v1 | Keep architecture simple, direct FFBaD API + local cache | Validated Phase 1 |
 | Android-first | User's primary platform, iOS trivial to add later with RN | Validated Phase 1 |
-| Subscriptions = bookmarks only (v1) | Push notifs need backend, defer complexity | -- Pending |
 | FFBaD API direct access | Existing third-party apps confirm this works | Validated Phase 1 |
 | FFBaD API is RPC-over-REST | Single endpoint, function name + params as JSON | Validated Phase 1 |
 | SecureStore for credentials | Hardware-backed encryption, AFTER_FIRST_UNLOCK accessibility | Validated Phase 1 |
@@ -79,6 +82,15 @@ French badminton players can instantly see their ranking evolution and match sta
 | react-native-gifted-charts | No Skia/Reanimated deps, SVG-based, sufficient for 52-point charts | Validated Phase 5 |
 | dataSet prop for multi-line chart | Cleanly handles 1-3 discipline lines without data/data2/data3 | Validated Phase 5 |
 | Ranking chart outside tabs | Stack screen accessible from dashboard ranking card tap | Validated Phase 5 |
+| Club list cached with 24h TTL | Memory + AsyncStorage for ~3500-entry club list | Validated Phase 6 |
+| Dual-mode Club screen | Leaderboard and search in single component with boolean flag | Validated Phase 6 |
+| Subscriptions = bookmarks only (v1) | Push notifs need backend, defer complexity | Validated Phase 7 |
+| Bookmarks tied to device not account | Persist across logout, BookmarksProvider outside auth | Validated Phase 7 |
+| react-native-toast-message for feedback | Lightweight toast notifications for bookmark actions | Validated Phase 7 |
+| @react-native-community/netinfo | Real-time connectivity detection with null-safe initial state | Validated Phase 8 |
+| Cache-first-then-fetch pattern | cacheGet before API, cacheSet after success, instant UI | Validated Phase 8 |
+| Cache prefix namespacing | 'badtracker_cache:' avoids collision with bookmarks/language keys | Validated Phase 8 |
+| Sign-out clears cache | Clean slate for next login, cacheClear before clearCredentials | Validated Phase 8 |
 
 ---
-*Last updated: 2026-02-20 after Phase 5*
+*Last updated: 2026-02-20 after Phase 8*
