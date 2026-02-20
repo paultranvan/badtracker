@@ -18,6 +18,8 @@ import { getPlayerProfile } from '../../../src/api/ffbad';
 import type { LeaderboardEntry } from '../../../src/utils/clubLeaderboard';
 import type { ClubSearchResult } from '../../../src/hooks/useClubSearch';
 
+const Separator = () => <View style={styles.separator} />;
+
 // ============================================================
 // Main Club Tab Screen
 // ============================================================
@@ -175,7 +177,7 @@ export default function ClubScreen() {
             style={styles.searchInput}
             placeholder={t('club.searchPlaceholder')}
             placeholderTextColor="#999"
-            value={searchQuery}
+            defaultValue={searchQuery}
             onChangeText={handleSearchChange}
             autoFocus
             autoCorrect={false}
@@ -204,7 +206,7 @@ export default function ClubScreen() {
               data={searchResults}
               keyExtractor={(item) => item.id}
               renderItem={renderSearchResult}
-              ItemSeparatorComponent={() => <View style={styles.separator} />}
+              ItemSeparatorComponent={Separator}
               contentContainerStyle={styles.listContent}
             />
           ) : searchQuery.length >= 3 ? (
@@ -329,7 +331,7 @@ export default function ClubScreen() {
         data={members}
         keyExtractor={(item) => item.licence}
         renderItem={renderLeaderboardRow}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ItemSeparatorComponent={Separator}
         contentContainerStyle={members.length === 0 ? styles.emptyContainer : styles.listContent}
         refreshControl={
           <RefreshControl

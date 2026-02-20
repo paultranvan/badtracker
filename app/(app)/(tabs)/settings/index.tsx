@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Alert, Pressable } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -59,7 +59,7 @@ export default function SettingsScreen() {
       {/* Language Toggle */}
       <View style={styles.row}>
         <Text style={styles.label}>{t('settings.language')}</Text>
-        <TouchableOpacity style={styles.languageToggle} onPress={toggleLanguage}>
+        <Pressable style={styles.languageToggle} onPress={toggleLanguage}>
           <View
             style={[
               styles.languageOption,
@@ -90,7 +90,7 @@ export default function SettingsScreen() {
               {t('settings.english')}
             </Text>
           </View>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       {/* Bookmarks row */}
@@ -118,9 +118,9 @@ export default function SettingsScreen() {
       </Pressable>
 
       {/* Logout Button — in settings screen per user decision */}
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+      <Pressable style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutText}>{t('common.logout')}</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }

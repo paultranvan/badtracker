@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { usePlayerSearch } from '../../../src/hooks/usePlayerSearch';
 import { useBookmarks } from '../../../src/bookmarks/context';
 import { useConnectivity } from '../../../src/connectivity/context';
+
+const Separator = () => <View style={styles.separator} />;
 
 export default function SearchScreen() {
   const { t } = useTranslation();
@@ -33,6 +35,39 @@ export default function SearchScreen() {
     );
   }
 
+  const renderItem = useCallback(
+    ({ item }: { item: (typeof results)[number] }) => (
+      <Pressable
+        style={({ pressed }) => [
+          styles.resultItem,
+          pressed && styles.resultItemPressed,
+        ]}
+        onPress={() =>
+          router.push({
+            pathname: '/player/[licence]',
+            params: { licence: item.Licence },
+          })
+        }
+      >
+        <View style={styles.resultRow}>
+          <View style={styles.resultInfo}>
+            <Text style={styles.playerName}>
+              {item.Nom} {item.Prenom}
+            </Text>
+            {item.NomClub ? (
+              <Text style={styles.clubName}>{item.NomClub}</Text>
+            ) : null}
+            <Text style={styles.licence}>{item.Licence}</Text>
+          </View>
+          {isBookmarked(item.Licence) && (
+            <Ionicons name="star" size={14} color="#f59e0b" style={styles.starIndicator} />
+          )}
+        </View>
+      </Pressable>
+    ),
+    [isBookmarked],
+  );
+
   return (
     <View style={styles.container}>
       {/* Search input */}
@@ -41,7 +76,7 @@ export default function SearchScreen() {
           style={styles.searchInput}
           placeholder={t('search.placeholder')}
           placeholderTextColor="#999"
-          value={query}
+          defaultValue={query}
           onChangeText={setQuery}
           autoCorrect={false}
           autoCapitalize="none"
@@ -64,36 +99,8 @@ export default function SearchScreen() {
           <FlatList
             data={results}
             keyExtractor={(item) => item.Licence}
-            renderItem={({ item }) => (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.resultItem,
-                  pressed && styles.resultItemPressed,
-                ]}
-                onPress={() =>
-                  router.push({
-                    pathname: '/player/[licence]',
-                    params: { licence: item.Licence },
-                  })
-                }
-              >
-                <View style={styles.resultRow}>
-                  <View style={styles.resultInfo}>
-                    <Text style={styles.playerName}>
-                      {item.Nom} {item.Prenom}
-                    </Text>
-                    {item.NomClub ? (
-                      <Text style={styles.clubName}>{item.NomClub}</Text>
-                    ) : null}
-                    <Text style={styles.licence}>{item.Licence}</Text>
-                  </View>
-                  {isBookmarked(item.Licence) && (
-                    <Ionicons name="star" size={14} color="#f59e0b" style={styles.starIndicator} />
-                  )}
-                </View>
-              </Pressable>
-            )}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            renderItem={renderItem}
+            ItemSeparatorComponent={Separator}
             contentContainerStyle={styles.listContent}
           />
         ) : query.length >= 3 ? (

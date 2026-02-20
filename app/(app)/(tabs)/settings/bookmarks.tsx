@@ -1,7 +1,11 @@
+import { useCallback } from 'react';
 import { FlatList, View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useBookmarks } from '../../../../src/bookmarks/context';
+import type { BookmarkedPlayer } from '../../../../src/bookmarks/storage';
+
+const Separator = () => <View style={styles.separator} />;
 
 export default function BookmarksScreen() {
   const { bookmarks } = useBookmarks();
@@ -22,30 +26,35 @@ export default function BookmarksScreen() {
     );
   }
 
+  const renderItem = useCallback(
+    ({ item }: { item: BookmarkedPlayer }) => (
+      <Pressable
+        onPress={() => router.push({ pathname: '/player/[licence]', params: { licence: item.licence } })}
+        style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+      >
+        <Text style={styles.name}>{item.nom} {item.prenom}</Text>
+        <View style={styles.rankings}>
+          {item.rankings.simple && (
+            <Text style={styles.rank}>{t('player.simple')}: {item.rankings.simple}</Text>
+          )}
+          {item.rankings.double && (
+            <Text style={styles.rank}>{t('player.double')}: {item.rankings.double}</Text>
+          )}
+          {item.rankings.mixte && (
+            <Text style={styles.rank}>{t('player.mixte')}: {item.rankings.mixte}</Text>
+          )}
+        </View>
+      </Pressable>
+    ),
+    [t],
+  );
+
   return (
     <FlatList
       data={sorted}
       keyExtractor={(item) => item.licence}
-      renderItem={({ item }) => (
-        <Pressable
-          onPress={() => router.push({ pathname: '/player/[licence]', params: { licence: item.licence } })}
-          style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-        >
-          <Text style={styles.name}>{item.nom} {item.prenom}</Text>
-          <View style={styles.rankings}>
-            {item.rankings.simple && (
-              <Text style={styles.rank}>{t('player.simple')}: {item.rankings.simple}</Text>
-            )}
-            {item.rankings.double && (
-              <Text style={styles.rank}>{t('player.double')}: {item.rankings.double}</Text>
-            )}
-            {item.rankings.mixte && (
-              <Text style={styles.rank}>{t('player.mixte')}: {item.rankings.mixte}</Text>
-            )}
-          </View>
-        </Pressable>
-      )}
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
+      renderItem={renderItem}
+      ItemSeparatorComponent={Separator}
       style={styles.list}
       contentContainerStyle={styles.listContent}
     />

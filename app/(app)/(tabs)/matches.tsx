@@ -1,4 +1,3 @@
-import { useRef } from 'react';
 import {
   View,
   Text,
@@ -6,9 +5,16 @@ import {
   RefreshControl,
   Pressable,
   ActivityIndicator,
-  Animated,
   StyleSheet,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import {
@@ -41,7 +47,7 @@ const DISCIPLINE_FILTERS: Array<{
 
 export default function MatchHistoryScreen() {
   const { t } = useTranslation();
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const scrollY = useSharedValue(0);
 
   const {
     sections,
@@ -61,18 +67,25 @@ export default function MatchHistoryScreen() {
     refresh,
   } = useMatchHistory();
 
-  // Animated header interpolations
-  const headerHeight = scrollY.interpolate({
-    inputRange: [0, HEADER_COLLAPSE_DISTANCE],
-    outputRange: [HEADER_MAX_HEIGHT, 0],
-    extrapolate: 'clamp',
-  });
+  // Scroll handler — updates shared value for Reanimated UI-thread animation
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    scrollY.value = event.nativeEvent.contentOffset.y;
+  };
 
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, HEADER_COLLAPSE_DISTANCE / 2],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
+  const headerAnimatedStyle = useAnimatedStyle(() => ({
+    height: interpolate(
+      scrollY.value,
+      [0, HEADER_COLLAPSE_DISTANCE],
+      [HEADER_MAX_HEIGHT, 0],
+      Extrapolation.CLAMP,
+    ),
+    opacity: interpolate(
+      scrollY.value,
+      [0, HEADER_COLLAPSE_DISTANCE / 2],
+      [1, 0],
+      Extrapolation.CLAMP,
+    ),
+  }));
 
   // ----------------------------------------------------------
   // Loading state
@@ -120,10 +133,7 @@ export default function MatchHistoryScreen() {
     <View style={styles.container}>
       {/* Collapsible Stats Header */}
       <Animated.View
-        style={[
-          styles.statsHeader,
-          { height: headerHeight, opacity: headerOpacity },
-        ]}
+        style={[styles.statsHeader, headerAnimatedStyle]}
       >
         <StatsHeader stats={stats} t={t} />
       </Animated.View>
@@ -213,10 +223,7 @@ export default function MatchHistoryScreen() {
           <Text style={styles.emptyText}>{emptyMessage}</Text>
         }
         contentContainerStyle={styles.listContent}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
-        )}
+        onScroll={handleScroll}
         scrollEventThrottle={16}
       />
     </View>

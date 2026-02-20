@@ -1,29 +1,43 @@
-import { Stack } from 'expo-router';
+import { Slot, useRouter, useSegments } from 'expo-router';
 import { SessionProvider, useSession } from '../src/auth/context';
 import { BookmarksProvider } from '../src/bookmarks/context';
 import { ConnectivityProvider, OfflineBar } from '../src/connectivity/context';
 import Toast from 'react-native-toast-message';
-import '../src/i18n'; // Initialize i18n as side-effect
+import { useEffect } from 'react';
+import { View, ActivityIndicator } from 'react-native';
+import '../src/i18n';
 
-function RootNavigator() {
+function AuthGate() {
   const { session, isLoading } = useSession();
+  const segments = useSegments();
+  const router = useRouter();
 
-  // Keep splash screen visible during auto-login check
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inApp = segments[0] === '(app)';
+
+    if (!session && inApp) {
+      // Not authenticated but trying to access app — redirect to sign-in
+      router.replace('/sign-in');
+    } else if (session && !inApp) {
+      // Authenticated but on sign-in — redirect to app
+      router.replace('/(app)/(tabs)');
+    }
+  }, [session, isLoading, segments]);
+
   if (isLoading) {
-    return null;
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+        <ActivityIndicator size="large" color="#2563eb" />
+      </View>
+    );
   }
 
   return (
     <>
       {session && <OfflineBar />}
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Protected guard={!!session}>
-          <Stack.Screen name="(app)" />
-        </Stack.Protected>
-        <Stack.Protected guard={!session}>
-          <Stack.Screen name="sign-in" />
-        </Stack.Protected>
-      </Stack>
+      <Slot />
     </>
   );
 }
@@ -33,7 +47,7 @@ export default function RootLayout() {
     <ConnectivityProvider>
       <SessionProvider>
         <BookmarksProvider>
-          <RootNavigator />
+          <AuthGate />
           <Toast />
         </BookmarksProvider>
       </SessionProvider>

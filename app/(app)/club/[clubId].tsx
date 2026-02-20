@@ -14,6 +14,8 @@ import { useClubLeaderboard } from '../../../src/hooks/useClubLeaderboard';
 import { useSession } from '../../../src/auth/context';
 import type { LeaderboardEntry } from '../../../src/utils/clubLeaderboard';
 
+const Separator = () => <View style={styles.separator} />;
+
 // ============================================================
 // Club Leaderboard Stack Screen
 // ============================================================
@@ -128,7 +130,7 @@ export default function ClubLeaderboardScreen() {
         data={members}
         keyExtractor={(item) => item.licence}
         renderItem={renderRow}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ItemSeparatorComponent={Separator}
         contentContainerStyle={
           members.length === 0 ? styles.emptyContainer : styles.listContent
         }

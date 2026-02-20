@@ -3,7 +3,7 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   Switch,
   StyleSheet,
   ActivityIndicator,
@@ -124,21 +124,21 @@ export default function SignIn() {
           )}
 
           {/* Login Button */}
-          <TouchableOpacity
-            style={[
+          <Pressable
+            style={({ pressed }) => [
               styles.loginButton,
               isLoading && styles.loginButtonDisabled,
+              pressed && styles.loginButtonPressed,
             ]}
             onPress={handleLogin}
             disabled={isLoading || !licence.trim() || !password.trim()}
-            activeOpacity={0.8}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.loginButtonText}>{t('auth.login')}</Text>
             )}
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -224,6 +224,9 @@ const styles = StyleSheet.create({
   },
   loginButtonDisabled: {
     backgroundColor: '#93c5fd',
+  },
+  loginButtonPressed: {
+    backgroundColor: '#1d4ed8',
   },
   loginButtonText: {
     color: '#fff',
