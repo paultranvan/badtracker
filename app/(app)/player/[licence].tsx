@@ -9,10 +9,15 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import {
   getPlayerProfile,
   type PlayerProfile,
 } from '../../../src/api/ffbad';
+import { useSession } from '../../../src/auth/context';
+import { useBookmarks } from '../../../src/bookmarks/context';
+import type { BookmarkedPlayer } from '../../../src/bookmarks/storage';
 
 // ============================================================
 // Component
@@ -25,6 +30,34 @@ export default function PlayerProfileScreen() {
   const [player, setPlayer] = useState<PlayerProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { session } = useSession();
+  const { isBookmarked, addBookmark, removeBookmark, updateStoredRankings } = useBookmarks();
+
+  const isOwnProfile = session?.licence === licence;
+  const bookmarked = player ? isBookmarked(player.licence) : false;
+
+  const handleBookmarkToggle = async () => {
+    if (!player) return;
+    if (bookmarked) {
+      await removeBookmark(player.licence);
+      Toast.show({ type: 'info', text1: t('bookmarks.removed'), visibilityTime: 2000 });
+    } else {
+      const bookmark: BookmarkedPlayer = {
+        licence: player.licence,
+        nom: player.nom,
+        prenom: player.prenom,
+        rankings: {
+          simple: player.rankings.simple?.classement,
+          double: player.rankings.double?.classement,
+          mixte: player.rankings.mixte?.classement,
+        },
+        bookmarkedAt: Date.now(),
+      };
+      await addBookmark(bookmark);
+      Toast.show({ type: 'success', text1: t('bookmarks.added'), visibilityTime: 2000 });
+    }
+  };
 
   const fetchProfile = useCallback(async () => {
     if (!licence) return;
@@ -39,6 +72,12 @@ export default function PlayerProfileScreen() {
 
       if (profile) {
         setPlayer(profile);
+        // Passive ranking refresh: update stored bookmark if this player is bookmarked
+        updateStoredRankings(profile.licence, {
+          simple: profile.rankings.simple?.classement,
+          double: profile.rankings.double?.classement,
+          mixte: profile.rankings.mixte?.classement,
+        });
       } else {
         setError(t('player.error'));
       }
@@ -56,7 +95,7 @@ export default function PlayerProfileScreen() {
     return () => {
       cancelled = true;
     };
-  }, [licence, t]);
+  }, [licence, t, updateStoredRankings]);
 
   useEffect(() => {
     let cleanup: (() => void) | undefined;
@@ -111,28 +150,41 @@ export default function PlayerProfileScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Player header */}
       <View style={styles.header}>
-        <Text style={styles.playerName}>
-          {player.nom} {player.prenom}
-        </Text>
-        {player.nomClub && player.club ? (
-          <Pressable
-            onPress={() =>
-              router.push({
-                pathname: '/club/[clubId]',
-                params: { clubId: player.club! },
-              })
-            }
-          >
-            <Text style={[styles.clubName, styles.clubNameLink]}>
-              {player.nomClub}
+        <View style={styles.headerRow}>
+          <View style={styles.headerInfo}>
+            <Text style={styles.playerName}>
+              {player.nom} {player.prenom}
             </Text>
-          </Pressable>
-        ) : player.nomClub ? (
-          <Text style={styles.clubName}>{player.nomClub}</Text>
-        ) : null}
-        <Text style={styles.licence}>
-          {t('player.licence')}: {player.licence}
-        </Text>
+            {player.nomClub && player.club ? (
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    pathname: '/club/[clubId]',
+                    params: { clubId: player.club! },
+                  })
+                }
+              >
+                <Text style={[styles.clubName, styles.clubNameLink]}>
+                  {player.nomClub}
+                </Text>
+              </Pressable>
+            ) : player.nomClub ? (
+              <Text style={styles.clubName}>{player.nomClub}</Text>
+            ) : null}
+            <Text style={styles.licence}>
+              {t('player.licence')}: {player.licence}
+            </Text>
+          </View>
+          {!isOwnProfile && (
+            <Pressable onPress={handleBookmarkToggle} hitSlop={8} style={styles.bookmarkButton}>
+              <Ionicons
+                name={bookmarked ? 'star' : 'star-outline'}
+                size={24}
+                color={bookmarked ? '#f59e0b' : '#9ca3af'}
+              />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {/* Rankings section */}
@@ -227,6 +279,18 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  bookmarkButton: {
+    padding: 4,
+    marginLeft: 12,
   },
   playerName: {
     fontSize: 24,
