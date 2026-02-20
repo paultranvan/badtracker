@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-16)
 ## Current Position
 
 Phase: 6 of 8 (Club Features)
-Plan: 0 of TBD in current phase
-Status: Ready to discuss/plan
-Last activity: 2026-02-20 — Phase 5 Ranking Visualization completed (2/2 plans)
+Plan: 1 of TBD in current phase
+Status: In progress
+Last activity: 2026-02-20 — Phase 6 Plan 1 completed (club data layer)
 
-Progress: [██████░░░░] 63%
+Progress: [██████░░░░] 65%
 
 ## Performance Metrics
 
@@ -32,9 +32,10 @@ Progress: [██████░░░░] 63%
 | 3 - Personal Dashboard | 2/2 | ~10 min | ~5 min |
 | 4 - Match History | 2/2 | ~10 min | ~5 min |
 | 5 - Ranking Visualization | 2/2 | ~10 min | ~5 min |
+| 6 - Club Features | 1/TBD | ~2 min | ~2 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-01, 04-02, 05-01, 05-02
+- Last 5 plans: 04-02, 05-01, 05-02, 06-01
 - Trend: Accelerating
 
 *Updated after each plan completion*
@@ -69,6 +70,8 @@ Recent decisions affecting current work:
 - Milestone detection by comparing consecutive rank values — shown as colored badges on chart (Phase 5)
 - Ranking chart as Stack screen outside tabs — accessible from dashboard ranking card tap (Phase 5)
 - Tappable legend toggles discipline line visibility with useMemo filtering (Phase 5)
+- [Phase 06-club-features]: Club list cached in memory + AsyncStorage (24h TTL) for fetch-once approach to ~3500-entry club list (Phase 6)
+- [Phase 06-club-features]: normalizeToLeaderboard accepts unknown[] to decouple from Zod schema types; bestRank fallback: getBestRanking() -> classement string -> NC (Phase 6)
 
 ### Pending Todos
 
@@ -103,5 +106,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Phase 6 context gathered, ready to plan
-Resume file: .planning/phases/06-club-features/06-CONTEXT.md
+Stopped at: Completed 06-01-PLAN.md (club data layer complete)
+Resume file: .planning/phases/06-club-features/06-01-SUMMARY.md
