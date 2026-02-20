@@ -20,9 +20,9 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **PLYR-02**: User can search for players by license number
 - [ ] **PLYR-03**: User can view a player's profile showing name, club, and current rankings by discipline
 - [ ] **PLYR-04**: User can tap an opponent name in match history to navigate to their profile
-- [ ] **PLYR-05**: User can bookmark other players for quick access
-- [ ] **PLYR-06**: User can view a list of all their bookmarked players
-- [ ] **PLYR-07**: User can remove a player from their bookmarks
+- [x] **PLYR-05**: User can bookmark other players for quick access
+- [x] **PLYR-06**: User can view a list of all their bookmarked players
+- [x] **PLYR-07**: User can remove a player from their bookmarks
 
 ### Match History
 
@@ -102,9 +102,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PLYR-02 | Phase 2 | Pending |
 | PLYR-03 | Phase 2 | Pending |
 | PLYR-04 | Phase 2 | Pending |
-| PLYR-05 | Phase 7 | Pending |
-| PLYR-06 | Phase 7 | Pending |
-| PLYR-07 | Phase 7 | Pending |
+| PLYR-05 | Phase 7 | Complete |
+| PLYR-06 | Phase 7 | Complete |
+| PLYR-07 | Phase 7 | Complete |
 | MTCH-01 | Phase 4 | Complete |
 | MTCH-02 | Phase 4 | Complete |
 | MTCH-03 | Phase 4 | Complete |
