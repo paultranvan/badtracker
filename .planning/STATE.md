@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** French badminton players can instantly see their ranking evolution and match stats in a native mobile experience that makes myffbad.fr data actually useful.
-**Current focus:** Phase 8 - Offline Support
+**Current focus:** All phases complete - Milestone v1 ready
 
 ## Current Position
 
-Phase: 8 of 8 (Offline Support)
-Plan: 0 of TBD in current phase
-Status: Ready to discuss/plan
-Last activity: 2026-02-20 — Phase 7 Player Bookmarks completed (2/2 plans)
+Phase: 8 of 8 (Offline Support) - COMPLETE
+Plan: 2 of 2 in current phase
+Status: All phases complete
+Last activity: 2026-02-20 — Phase 8 Offline Support completed (2/2 plans)
 
-Progress: [█████████░] 88%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 16
 - Average duration: ~7 min/plan
-- Total execution time: ~1h 50min
+- Total execution time: ~2h
 
 **By Phase:**
 
@@ -35,7 +35,7 @@ Progress: [█████████░] 88%
 | 6 - Club Features | 2/2 | ~5 min | ~2.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 06-01, 06-02, 07-01, 07-02
+- Last 5 plans: 07-01, 07-02, 08-01, 08-02
 - Trend: Accelerating
 
 *Updated after each plan completion*
@@ -43,6 +43,7 @@ Progress: [█████████░] 88%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 7 - Player Bookmarks | 2/2 | ~4 min | ~2 min |
+| 8 - Offline Support | 2/2 | ~6 min | ~3 min |
 
 ## Accumulated Context
 
@@ -82,6 +83,14 @@ Recent decisions affecting current work:
 - [Phase 07]: Bookmarks tied to device not account — BookmarksProvider wraps outside of auth state awareness, loads on app mount regardless of login state
 - [Phase 07-player-bookmarks]: @expo/vector-icons needs explicit install via expo install even when Expo SDK is used
 - [Phase 07-player-bookmarks]: Settings tab folder pattern: settings/_layout.tsx + index.tsx maps to same tab route as settings.tsx
+- [Phase 08]: @react-native-community/netinfo installed with --legacy-peer-deps (same peer dep pattern as Phase 7)
+- [Phase 08]: ConnectivityProvider outermost in root layout, before SessionProvider
+- [Phase 08]: NetInfo null state treated as connected to prevent false offline flash on startup
+- [Phase 08]: Cache prefix 'badtracker_cache:' avoids collision with bookmarks and language keys
+- [Phase 08]: Cache-first-then-fetch pattern: cacheGet before API, cacheSet after success, hasCachedData ref to suppress errors
+- [Phase 08]: Auto-refresh on reconnection via useRef tracking prevConnected + useEffect watching isConnected
+- [Phase 08]: Player profile caching only for bookmarked players
+- [Phase 08]: Sign-out clears cache before clearing credentials
 
 ### Pending Todos
 
@@ -113,8 +122,22 @@ None.
 - Date format handling: parser tries ISO then DD/MM/YYYY then fallback
 - NC disciplines rendered as flat line at value 0 with "NC" label in legend
 
+**Phase 6 (Club Features) — RESOLVED:**
+- Club list caching uses memory + AsyncStorage with 24h TTL
+- normalizeToLeaderboard decoupled from Zod types with unknown[]
+
+**Phase 7 (Player Bookmarks) — RESOLVED:**
+- Bookmarks persist across logout (tied to device, not account)
+- Settings tab folder pattern works with same route
+
+**Phase 8 (Offline Support) — RESOLVED:**
+- @react-native-community/netinfo peer dep conflict resolved with --legacy-peer-deps
+- Cache-first pattern applied consistently across all 4 data hooks
+- Player profile caching scoped to bookmarked players only
+- OfflineBar only visible when session exists (not on login screen)
+
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Phase 8 context gathered, ready to plan
-Resume file: .planning/phases/08-offline-support/08-CONTEXT.md
+Stopped at: All phases complete, milestone v1 ready
+Resume file: .planning/STATE.md
