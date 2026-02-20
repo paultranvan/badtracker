@@ -23,6 +23,14 @@ export default function AppLayout() {
           headerBackTitle: '',
         }}
       />
+      <Stack.Screen
+        name="club/[clubId]"
+        options={{
+          headerShown: true,
+          headerTitle: t('club.title'),
+          headerBackTitle: '',
+        }}
+      />
     </Stack>
   );
 }

@@ -32,6 +32,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="club"
+        options={{
+          title: t('club.tab'),
+          tabBarLabel: t('club.tab'),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: t('common.settings'),

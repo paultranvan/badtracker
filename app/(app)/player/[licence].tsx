@@ -7,7 +7,7 @@ import {
   Pressable,
   StyleSheet,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import {
   getPlayerProfile,
@@ -21,6 +21,7 @@ import {
 export default function PlayerProfileScreen() {
   const { licence } = useLocalSearchParams<{ licence: string }>();
   const { t } = useTranslation();
+  const router = useRouter();
   const [player, setPlayer] = useState<PlayerProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -113,7 +114,20 @@ export default function PlayerProfileScreen() {
         <Text style={styles.playerName}>
           {player.nom} {player.prenom}
         </Text>
-        {player.nomClub ? (
+        {player.nomClub && player.club ? (
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: '/club/[clubId]',
+                params: { clubId: player.club! },
+              })
+            }
+          >
+            <Text style={[styles.clubName, styles.clubNameLink]}>
+              {player.nomClub}
+            </Text>
+          </Pressable>
+        ) : player.nomClub ? (
           <Text style={styles.clubName}>{player.nomClub}</Text>
         ) : null}
         <Text style={styles.licence}>
@@ -223,6 +237,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6b7280',
     marginTop: 4,
+  },
+  clubNameLink: {
+    color: '#2563eb',
+    textDecorationLine: 'underline',
   },
   licence: {
     fontSize: 14,
