@@ -108,5 +108,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Phase 6 complete, ready to discuss/plan Phase 7
-Resume file: .planning/STATE.md
+Stopped at: Phase 7 context gathered, ready to plan
+Resume file: .planning/phases/07-player-bookmarks/07-CONTEXT.md
