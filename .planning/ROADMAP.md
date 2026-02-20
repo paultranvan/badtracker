@@ -116,10 +116,11 @@ Plans:
   2. User can view a list of all their bookmarked players
   3. User can remove a player from their bookmarks
   4. Bookmarks persist across app restarts
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] TBD (plans created during /gsd:plan-phase 7)
+- [ ] 07-01-PLAN.md — Bookmark data layer: storage utility, context provider, toast setup, i18n strings
+- [ ] 07-02-PLAN.md — Bookmark UI: star toggle on profile, bookmarks list in Settings, search star indicator
 
 ### Phase 8: Offline Support
 **Goal**: Local caching for performance and offline access to previously loaded data
@@ -145,7 +146,7 @@ Plans:
 | 4. Match History | 2/2 | Complete | 2026-02-19 |
 | 5. Ranking Visualization | 2/2 | Complete | 2026-02-20 |
 | 6. Club Features | 2/2 | Complete | 2026-02-20 |
-| 7. Player Bookmarks | 0/TBD | Not started | - |
+| 7. Player Bookmarks | 0/2 | Planned | - |
 | 8. Offline Support | 0/TBD | Not started | - |
 
 ---
