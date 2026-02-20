@@ -1,6 +1,8 @@
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Pressable } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useSession } from '../../../src/auth/context';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useSession } from '../../../../src/auth/context';
 
 export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
@@ -71,6 +73,18 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Bookmarks row */}
+      <Pressable
+        style={({ pressed }) => [styles.bookmarksRow, pressed && styles.rowPressed]}
+        onPress={() => router.push('/settings/bookmarks')}
+      >
+        <View style={styles.rowContent}>
+          <Ionicons name="star" size={20} color="#f59e0b" style={styles.rowIcon} />
+          <Text style={styles.label}>{t('bookmarks.settingsRow')}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+      </Pressable>
+
       {/* Logout Button — in settings screen per user decision */}
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutText}>{t('common.logout')}</Text>
@@ -126,6 +140,25 @@ const styles = StyleSheet.create({
   languageTextActive: {
     color: '#fff',
     fontWeight: '600',
+  },
+  bookmarksRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    marginBottom: 20,
+  },
+  rowPressed: {
+    backgroundColor: '#f3f4f6',
+  },
+  rowContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rowIcon: {
+    marginRight: 12,
   },
   logoutButton: {
     marginTop: 'auto',
