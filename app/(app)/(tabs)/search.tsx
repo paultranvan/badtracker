@@ -10,11 +10,14 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { usePlayerSearch } from '../../../src/hooks/usePlayerSearch';
+import { useBookmarks } from '../../../src/bookmarks/context';
 
 export default function SearchScreen() {
   const { t } = useTranslation();
   const { query, setQuery, results, isLoading, error } = usePlayerSearch();
+  const { isBookmarked } = useBookmarks();
 
   return (
     <View style={styles.container}>
@@ -60,13 +63,20 @@ export default function SearchScreen() {
                   })
                 }
               >
-                <Text style={styles.playerName}>
-                  {item.Nom} {item.Prenom}
-                </Text>
-                {item.NomClub ? (
-                  <Text style={styles.clubName}>{item.NomClub}</Text>
-                ) : null}
-                <Text style={styles.licence}>{item.Licence}</Text>
+                <View style={styles.resultRow}>
+                  <View style={styles.resultInfo}>
+                    <Text style={styles.playerName}>
+                      {item.Nom} {item.Prenom}
+                    </Text>
+                    {item.NomClub ? (
+                      <Text style={styles.clubName}>{item.NomClub}</Text>
+                    ) : null}
+                    <Text style={styles.licence}>{item.Licence}</Text>
+                  </View>
+                  {isBookmarked(item.Licence) && (
+                    <Ionicons name="star" size={14} color="#f59e0b" style={styles.starIndicator} />
+                  )}
+                </View>
               </Pressable>
             )}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -131,6 +141,17 @@ const styles = StyleSheet.create({
   },
   resultItemPressed: {
     backgroundColor: '#f3f4f6',
+  },
+  resultRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  resultInfo: {
+    flex: 1,
+  },
+  starIndicator: {
+    marginLeft: 8,
   },
   playerName: {
     fontSize: 16,
