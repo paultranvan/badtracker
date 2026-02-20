@@ -27,7 +27,12 @@
     "logoutConfirm": "Do you want to log out?",
     "logoutTitle": "Log out",
     "logoutCancel": "Cancel",
-    "logoutOk": "Log out"
+    "logoutOk": "Log out",
+    "clearCache": "Clear cache",
+    "clearCacheTitle": "Clear cache",
+    "clearCacheConfirm": "This will remove offline data. Bookmarks will not be affected.",
+    "clearCacheOk": "Clear",
+    "cacheCleared": "Cache cleared"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -132,6 +137,12 @@
     "loadError": "Unable to load club leaderboard",
     "networkError": "No internet connection",
     "pullToRefresh": "Pull to refresh"
+  },
+  "offline": {
+    "noConnection": "No connection",
+    "unavailable": "You're offline and this data isn't available",
+    "retry": "Retry",
+    "searchDisabled": "Search requires an internet connection"
   },
   "bookmarks": {
     "title": "Bookmarks",
