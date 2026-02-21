@@ -1,3 +1,4 @@
+import '../global.css';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { SessionProvider, useSession } from '../src/auth/context';
 import { BookmarksProvider } from '../src/bookmarks/context';
