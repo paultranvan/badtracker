@@ -47,8 +47,6 @@
     "bestRanking": "Best ranking",
     "matchesPlayed": "Matches played",
     "winRate": "Win rate",
-    "pointsToNext": "+{{points}} pts to {{rank}}",
-    "pointsAbovePrev": "{{points}} pts above {{rank}}",
     "unranked": "NC",
     "noMatches": "No recent matches",
     "loadError": "Unable to load dashboard",
@@ -103,10 +101,6 @@
     "simple": "Singles",
     "double": "Doubles",
     "mixte": "Mixed",
-    "points": "{{value}} pts",
-    "milestoneReached": "{{rank}} reached",
-    "dateRange": "{{start}} — {{end}}",
-    "cpphAxis": "CPPH",
     "legend": "Tap a discipline to hide/show"
   },
   "player": {

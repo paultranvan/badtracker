@@ -47,8 +47,6 @@
     "bestRanking": "Meilleur classement",
     "matchesPlayed": "Matchs jou\u00e9s",
     "winRate": "Taux de victoire",
-    "pointsToNext": "+{{points}} pts vers {{rank}}",
-    "pointsAbovePrev": "{{points}} pts au-dessus de {{rank}}",
     "unranked": "NC",
     "noMatches": "Aucun match r\u00e9cent",
     "loadError": "Impossible de charger le tableau de bord",
@@ -103,10 +101,6 @@
     "simple": "Simple",
     "double": "Double",
     "mixte": "Mixte",
-    "points": "{{value}} pts",
-    "milestoneReached": "{{rank}} atteint",
-    "dateRange": "{{start}} — {{end}}",
-    "cpphAxis": "CPPH",
     "legend": "Appuyez sur une discipline pour masquer/afficher"
   },
   "player": {

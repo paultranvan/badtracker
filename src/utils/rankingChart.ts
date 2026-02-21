@@ -311,8 +311,9 @@ export function transformEvolutionData(
 
   // Compute value bounds
   const allValues = disciplineData.flatMap((d) => d.points.map((p) => p.value));
+  const positiveValues = allValues.filter((v) => v > 0);
   const dataMax = allValues.length > 0 ? Math.max(...allValues) : 0;
-  const dataMin = allValues.length > 0 ? Math.min(...allValues.filter((v) => v > 0)) : 0;
+  const dataMin = positiveValues.length > 0 ? Math.min(...positiveValues) : 0;
   const maxValue = Math.min(dataMax + 1, 12);
   const minValue = Math.max((dataMin > 0 ? dataMin : 0) - 1, 0);
 

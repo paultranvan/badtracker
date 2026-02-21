@@ -4,18 +4,6 @@ import type { PlayerProfile } from '../api/ffbad';
 // Types
 // ============================================================
 
-export interface RankBoundary {
-  rank: string;
-  minCpph: number;
-}
-
-export interface RankGaps {
-  toNext: number | null;
-  toPrev: number | null;
-  nextRank: string | null;
-  prevRank: string | null;
-}
-
 export interface BestRanking {
   discipline: 'simple' | 'double' | 'mixte';
   classement: string;
@@ -32,7 +20,7 @@ export interface BestRanking {
  * points-to-next-rank — the 2025-2026 FFBaD system uses percentile-based
  * rank assignment, so there are no fixed CPPH thresholds.
  */
-export const RANK_BOUNDARIES: RankBoundary[] = [
+export const RANK_BOUNDARIES: Array<{ rank: string; minCpph: number }> = [
   { rank: 'N1', minCpph: 2000 },
   { rank: 'N2', minCpph: 1500 },
   { rank: 'N3', minCpph: 1000 },
@@ -47,50 +35,6 @@ export const RANK_BOUNDARIES: RankBoundary[] = [
   { rank: 'P12', minCpph: 1 },
   { rank: 'NC', minCpph: 0 },
 ];
-
-// ============================================================
-// Rank Gap Computation
-// ============================================================
-
-/**
- * Compute the CPPH gap to the next higher rank and the margin above the rank below.
- *
- * @param cpph - Current CPPH points (undefined if unranked with no data)
- * @param currentRank - Current rank label (e.g., "P11", "D8", "NC")
- * @returns toNext: points needed to reach next rank, toPrev: margin above lower rank
- */
-export function getRankGaps(
-  cpph: number | undefined,
-  currentRank: string
-): RankGaps {
-  if (cpph == null) {
-    return { toNext: null, toPrev: null, nextRank: null, prevRank: null };
-  }
-
-  const currentIdx = RANK_BOUNDARIES.findIndex(
-    (b) => b.rank.toUpperCase() === currentRank.toUpperCase()
-  );
-
-  // Rank not found in boundaries — graceful degradation
-  if (currentIdx === -1) {
-    return { toNext: null, toPrev: null, nextRank: null, prevRank: null };
-  }
-
-  // Next higher rank (lower index in array)
-  const nextBoundary = currentIdx > 0 ? RANK_BOUNDARIES[currentIdx - 1] : null;
-  // Previous lower rank (higher index in array)
-  const prevBoundary =
-    currentIdx < RANK_BOUNDARIES.length - 1
-      ? RANK_BOUNDARIES[currentIdx + 1]
-      : null;
-
-  return {
-    toNext: nextBoundary ? Math.max(0, nextBoundary.minCpph - cpph) : null,
-    toPrev: prevBoundary ? Math.max(0, cpph - prevBoundary.minCpph) : null,
-    nextRank: nextBoundary?.rank ?? null,
-    prevRank: prevBoundary?.rank ?? null,
-  };
-}
 
 // ============================================================
 // Best Ranking Selection

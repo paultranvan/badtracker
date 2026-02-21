@@ -351,19 +351,21 @@ function MatchCard({ match, t }: MatchCardProps) {
         {match.opponent ? (
           <View style={styles.vsRow}>
             <Text style={styles.vsText}>{t('matchHistory.vs')} </Text>
-            <Pressable
-              onPress={() => {
-                if (match.opponentLicence) router.push(`/player/${match.opponentLicence}`);
-              }}
-            >
-              <Text
-                style={match.opponentLicence ? styles.opponentLink : styles.opponentText}
-                numberOfLines={1}
+            {match.opponentLicence ? (
+              <Pressable
+                onPress={() => router.push(`/player/${match.opponentLicence}`)}
               >
+                <Text style={styles.opponentLink} numberOfLines={1}>
+                  {match.opponent}
+                  {match.opponent2 ? ` / ${match.opponent2}` : ''}
+                </Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.opponentText} numberOfLines={1}>
                 {match.opponent}
                 {match.opponent2 ? ` / ${match.opponent2}` : ''}
               </Text>
-            </Pressable>
+            )}
           </View>
         ) : null}
       </View>
