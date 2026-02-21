@@ -99,8 +99,8 @@ export function useClubLeaderboard(clubId: string | null): ClubLeaderboardData {
           setClubName(info.name);
         }
 
-        // Try to fetch members
-        const response = await getClubLeaderboard(clubId);
+        // Fetch members via player search using club initials
+        const response = await getClubLeaderboard(clubId, info?.initials);
 
         if (Array.isArray(response.Retour)) {
           const normalized = normalizeToLeaderboard(response.Retour);

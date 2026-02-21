@@ -668,73 +668,78 @@ export async function getClubInfo(
  * Returns empty array if no members endpoint is found.
  */
 export async function getClubLeaderboard(
-  clubId: string
+  clubId: string,
+  clubInitials?: string
 ): Promise<ClubRankingResponse> {
   const session = requireSession();
 
   try {
-    // Try to get club members from various endpoints
-    // Non-existent endpoints return HTML (the SPA shell) instead of 404
-    const memberEndpoints = [
-      `/api/club/${clubId}/ranking/`,
-      `/api/club/${clubId}/members/`,
-      `/api/club/${clubId}/players/`,
-    ];
-
-    let membersData: unknown = null;
-    for (const endpoint of memberEndpoints) {
-      try {
-        const result = await bridgeGet(endpoint, session.accessToken, session.personId);
-        if (typeof result === 'string') continue;
-        if (result && typeof result === 'object') {
-          membersData = result;
-          break;
-        }
-      } catch {
-        // Try next
-      }
+    // Get club initials if not provided (needed for player search)
+    let initials = clubInitials;
+    if (!initials) {
+      const info = await getClubInfo(clubId);
+      initials = info?.initials || '';
     }
 
-    if (!membersData) {
+    if (!initials) {
       return { Retour: [] };
     }
 
-    // Handle both array and object-with-numeric-keys responses
-    let members: Array<Record<string, unknown>>;
-    if (Array.isArray(membersData)) {
-      members = membersData as Array<Record<string, unknown>>;
-    } else if (typeof membersData === 'object') {
-      const obj = membersData as Record<string, unknown>;
-      const arr = obj.members ?? obj.players ?? obj.joueurs ?? obj.results ?? obj.data;
-      if (Array.isArray(arr)) {
-        members = arr as Array<Record<string, unknown>>;
-      } else {
-        const keys = Object.keys(obj).filter((k) => /^\d+$/.test(k));
-        if (keys.length > 0) {
-          members = keys.sort((a, b) => parseInt(a) - parseInt(b))
-            .map((k) => obj[k] as Record<string, unknown>);
-        } else {
-          return { Retour: [] };
-        }
-      }
-    } else {
+    // Search for players by club initials using the same search endpoint
+    // that searchPlayersByKeywords uses (POST /api/search/). The club's
+    // initials (e.g., "CALB94") match only players from that club.
+    const result = await bridgePost(
+      '/api/search/',
+      { type: 'PERSON', text: initials },
+      session.accessToken,
+      session.personId
+    );
+
+    if (!result || typeof result === 'string') {
       return { Retour: [] };
     }
 
-    const items = members.map((raw) => ({
-      Licence: String(raw.licence ?? raw.licenceNumber ?? raw.id ?? ''),
-      Nom: String(raw.lastName ?? raw.nom ?? raw.name ?? ''),
-      Prenom: String(raw.firstName ?? raw.prenom ?? ''),
-      Club: clubId,
-      NomClub: '',
-      ClassementSimple: String(raw.simpleSubLevel ?? raw.ClassementSimple ?? ''),
-      ClassementDouble: String(raw.doubleSubLevel ?? raw.ClassementDouble ?? ''),
-      ClassementMixte: String(raw.mixteSubLevel ?? raw.ClassementMixte ?? ''),
-      CPPHSimple: raw.simpleRate ?? raw.CPPHSimple,
-      CPPHDouble: raw.doubleRate ?? raw.CPPHDouble,
-      CPPHMixte: raw.mixteRate ?? raw.CPPHMixte,
-      ...raw,
-    }));
+    const data = result as Record<string, unknown>;
+    const persons = (data.persons ?? data.results ?? data.data ?? []) as Array<Record<string, unknown>>;
+
+    if (!Array.isArray(persons) || persons.length === 0) {
+      return { Retour: [] };
+    }
+
+    // The search by club initials already returns only members of this club,
+    // so no additional filtering by clubId is needed.
+    const allPersons = persons;
+
+    if (allPersons.length === 0) {
+      return { Retour: [] };
+    }
+
+    // Map player search results to the expected leaderboard format.
+    // The search API returns nested objects:
+    //   { name, licence, rank: { simpleSubLevel, doubleSubLevel, mixteSubLevel },
+    //     club: { id, name, acronym }, ... }
+    const items = allPersons.map((raw) => {
+      const rank = (raw.rank as Record<string, unknown>) ?? {};
+      const club = (raw.club as Record<string, unknown>) ?? {};
+      const fullName = String(raw.name ?? '');
+      // Name format is "Firstname LASTNAME" or "LASTNAME Firstname"
+      const nameParts = fullName.split(' ');
+      const prenom = nameParts[0] || '';
+      const nom = nameParts.slice(1).join(' ') || fullName;
+
+      return {
+        Licence: String(raw.licence ?? ''),
+        Nom: nom,
+        Prenom: prenom,
+        Club: String(club.id ?? clubId),
+        NomClub: String(club.name ?? ''),
+        ClassementSimple: String(rank.simpleSubLevel ?? ''),
+        ClassementDouble: String(rank.doubleSubLevel ?? ''),
+        ClassementMixte: String(rank.mixteSubLevel ?? ''),
+        // CPPH not available from search endpoint
+        ...raw,
+      };
+    });
 
     return { Retour: items } as ClubRankingResponse;
   } catch (err) {
