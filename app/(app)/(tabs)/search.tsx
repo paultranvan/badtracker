@@ -6,7 +6,6 @@ import {
   FlatList,
   Pressable,
   ActivityIndicator,
-  StyleSheet,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
@@ -14,8 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { usePlayerSearch } from '../../../src/hooks/usePlayerSearch';
 import { useBookmarks } from '../../../src/bookmarks/context';
 import { useConnectivity } from '../../../src/connectivity/context';
-
-const Separator = () => <View style={styles.separator} />;
+import { PlayerRow } from '../../../src/components';
 
 export default function SearchScreen() {
   const { t } = useTranslation();
@@ -26,10 +24,10 @@ export default function SearchScreen() {
   // When offline, show disabled state per user decision
   if (!isConnected) {
     return (
-      <View style={styles.container}>
-        <View style={styles.centered}>
-          <Ionicons name="cloud-offline-outline" size={48} color="#9ca3af" />
-          <Text style={styles.offlineText}>{t('offline.searchDisabled')}</Text>
+      <View className="flex-1 bg-white">
+        <View className="flex-1 items-center justify-center px-6">
+          <Ionicons name="cloud-offline-outline" size={48} color="#d1d5db" style={{ marginBottom: 12 }} />
+          <Text className="text-body text-muted text-center">{t('offline.searchDisabled')}</Text>
         </View>
       </View>
     );
@@ -37,11 +35,11 @@ export default function SearchScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: (typeof results)[number] }) => (
-      <Pressable
-        style={({ pressed }) => [
-          styles.resultItem,
-          pressed && styles.resultItemPressed,
-        ]}
+      <PlayerRow
+        name={`${item.Nom} ${item.Prenom}`}
+        club={item.NomClub || undefined}
+        licence={item.Licence}
+        isBookmarked={isBookmarked(item.Licence)}
         onPress={() =>
           router.push({
             pathname: '/player/[licence]',
@@ -55,171 +53,64 @@ export default function SearchScreen() {
             },
           })
         }
-      >
-        <View style={styles.resultRow}>
-          <View style={styles.resultInfo}>
-            <Text style={styles.playerName}>
-              {item.Nom} {item.Prenom}
-            </Text>
-            {item.NomClub ? (
-              <Text style={styles.clubName}>{item.NomClub}</Text>
-            ) : null}
-            <Text style={styles.licence}>{item.Licence}</Text>
-          </View>
-          {isBookmarked(item.Licence) && (
-            <Ionicons name="star" size={14} color="#f59e0b" style={styles.starIndicator} />
-          )}
-        </View>
-      </Pressable>
+      />
     ),
     [isBookmarked],
   );
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-white">
       {/* Search input */}
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder={t('search.placeholder')}
-          placeholderTextColor="#999"
-          value={query}
-          onChangeText={setQuery}
-          autoCorrect={false}
-          autoCapitalize="none"
-          returnKeyType="search"
-          clearButtonMode="while-editing"
-        />
+      <View className="px-4 pt-4 pb-2 bg-white border-b border-gray-200">
+        <View className="flex-row items-center bg-gray-50 rounded-full px-4 py-2 border border-gray-200">
+          <Ionicons name="search" size={18} color="#9ca3af" />
+          <TextInput
+            className="flex-1 ml-2 text-body text-gray-900"
+            placeholder={t('search.placeholder')}
+            placeholderTextColor="#9ca3af"
+            value={query}
+            onChangeText={setQuery}
+            autoCorrect={false}
+            autoCapitalize="none"
+            returnKeyType="search"
+          />
+          {query.length > 0 && (
+            <Pressable onPress={() => setQuery('')} hitSlop={8}>
+              <Ionicons name="close-circle" size={18} color="#d1d5db" />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {/* Results area */}
-      <View style={styles.content}>
+      <View className="flex-1">
         {isLoading ? (
-          <View style={styles.centered}>
+          <View className="flex-1 items-center justify-center">
             <ActivityIndicator size="large" color="#2563eb" />
           </View>
         ) : error ? (
-          <View style={styles.centered}>
-            <Text style={styles.errorText}>{error}</Text>
+          <View className="flex-1 items-center justify-center px-6">
+            <Text className="text-body text-loss text-center">{error}</Text>
           </View>
         ) : results.length > 0 ? (
           <FlatList
             data={results}
             keyExtractor={(item) => item.Licence}
             renderItem={renderItem}
-            ItemSeparatorComponent={Separator}
-            contentContainerStyle={styles.listContent}
+            ItemSeparatorComponent={() => <View className="h-px bg-gray-100 mx-4" />}
+            contentContainerStyle={{ paddingVertical: 8 }}
           />
         ) : query.length >= 3 ? (
-          <View style={styles.centered}>
-            <Text style={styles.emptyText}>{t('search.noResults')}</Text>
+          <View className="flex-1 items-center justify-center px-6">
+            <Ionicons name="search-outline" size={48} color="#d1d5db" style={{ marginBottom: 12 }} />
+            <Text className="text-body text-muted text-center">{t('search.noResults')}</Text>
           </View>
         ) : (
-          <View style={styles.centered}>
-            <Text style={styles.hintText}>{t('search.minChars')}</Text>
+          <View className="flex-1 items-center justify-center px-6">
+            <Text className="text-body text-gray-400 text-center">{t('search.minChars')}</Text>
           </View>
         )}
       </View>
     </View>
   );
 }
-
-// ============================================================
-// Styles
-// ============================================================
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  searchContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  searchInput: {
-    height: 44,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    backgroundColor: '#f9fafb',
-    color: '#111',
-  },
-  content: {
-    flex: 1,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-  },
-  listContent: {
-    paddingVertical: 8,
-  },
-  resultItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  resultItemPressed: {
-    backgroundColor: '#f3f4f6',
-  },
-  resultRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  resultInfo: {
-    flex: 1,
-  },
-  starIndicator: {
-    marginLeft: 8,
-  },
-  playerName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111',
-  },
-  clubName: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  licence: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 2,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#f3f4f6',
-    marginHorizontal: 16,
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#dc2626',
-    textAlign: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#6b7280',
-    textAlign: 'center',
-  },
-  hintText: {
-    fontSize: 14,
-    color: '#9ca3af',
-    textAlign: 'center',
-  },
-  offlineText: {
-    fontSize: 16,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginTop: 12,
-  },
-});

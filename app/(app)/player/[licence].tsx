@@ -5,7 +5,6 @@ import {
   ScrollView,
   ActivityIndicator,
   Pressable,
-  StyleSheet,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -19,7 +18,53 @@ import { useSession } from '../../../src/auth/context';
 import { useBookmarks } from '../../../src/bookmarks/context';
 import { useConnectivity } from '../../../src/connectivity/context';
 import { cacheGet, cacheSet } from '../../../src/cache/storage';
+import { Card } from '../../../src/components';
 import type { BookmarkedPlayer } from '../../../src/bookmarks/storage';
+
+// ============================================================
+// Discipline colors (matches dashboard)
+// ============================================================
+
+const disciplineColors: Record<string, string> = {
+  simple: '#3b82f6',
+  double: '#10b981',
+  mixte: '#f59e0b',
+};
+
+// ============================================================
+// Ranking Card Sub-component
+// ============================================================
+
+function RankingCardItem({
+  disciplineKey,
+  discipline,
+  classement,
+  cpph,
+  cpphLabel,
+}: {
+  disciplineKey: string;
+  discipline: string;
+  classement: string;
+  cpph?: number;
+  cpphLabel: string;
+}) {
+  return (
+    <Card
+      className="p-4 mb-2 border-t-[3px]"
+      style={{ borderTopColor: disciplineColors[disciplineKey] || '#e5e7eb' }}
+    >
+      <View className="flex-row justify-between items-center">
+        <Text className="text-body font-medium text-gray-700">{discipline}</Text>
+        <Text className="text-[18px] font-bold text-primary">{classement}</Text>
+      </View>
+      {cpph != null && (
+        <Text className="text-caption text-muted mt-1">
+          {cpphLabel}: {cpph.toFixed(1)}
+        </Text>
+      )}
+    </Card>
+  );
+}
 
 // ============================================================
 // Component
@@ -186,7 +231,7 @@ export default function PlayerProfileScreen() {
   // ----------------------------------------------------------
   if (isLoading && !player) {
     return (
-      <View style={styles.centered}>
+      <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#2563eb" />
       </View>
     );
@@ -198,19 +243,16 @@ export default function PlayerProfileScreen() {
   if (error || !player) {
     const isOfflineError = !isConnected;
     return (
-      <View style={styles.centered}>
+      <View className="flex-1 items-center justify-center bg-white px-6">
         {isOfflineError && (
-          <Ionicons name="cloud-offline-outline" size={48} color="#9ca3af" style={styles.offlineIcon} />
+          <Ionicons name="cloud-offline-outline" size={48} color="#d1d5db" style={{ marginBottom: 12 }} />
         )}
-        <Text style={styles.errorText}>{error ?? t('player.error')}</Text>
+        <Text className="text-body text-loss text-center mb-4">{error ?? t('player.error')}</Text>
         <Pressable
-          style={({ pressed }) => [
-            styles.retryButton,
-            pressed && styles.retryButtonPressed,
-          ]}
+          className="bg-primary px-6 py-2.5 rounded-lg active:bg-primary-dark"
           onPress={() => fetchProfile()}
         >
-          <Text style={styles.retryText}>{t('offline.retry')}</Text>
+          <Text className="text-white text-body font-semibold">{t('offline.retry')}</Text>
         </Pressable>
       </View>
     );
@@ -223,12 +265,12 @@ export default function PlayerProfileScreen() {
   const hasRankings = simple || double || mixte;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView className="flex-1 bg-white" contentContainerStyle={{ padding: 16 }}>
       {/* Player header */}
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerInfo}>
-            <Text style={styles.playerName}>
+      <View className="mb-6 pb-4 border-b border-gray-200">
+        <View className="flex-row justify-between items-start">
+          <View className="flex-1">
+            <Text className="text-[24px] font-bold text-gray-900">
               {player.nom} {player.prenom}
             </Text>
             {player.nomClub && player.club ? (
@@ -240,19 +282,17 @@ export default function PlayerProfileScreen() {
                   })
                 }
               >
-                <Text style={[styles.clubName, styles.clubNameLink]}>
-                  {player.nomClub}
-                </Text>
+                <Text className="text-body text-primary underline mt-1">{player.nomClub}</Text>
               </Pressable>
             ) : player.nomClub ? (
-              <Text style={styles.clubName}>{player.nomClub}</Text>
+              <Text className="text-body text-muted mt-1">{player.nomClub}</Text>
             ) : null}
-            <Text style={styles.licence}>
+            <Text className="text-caption text-gray-400 mt-1">
               {t('player.licence')}: {player.licence}
             </Text>
           </View>
           {!isOwnProfile && (
-            <Pressable onPress={handleBookmarkToggle} hitSlop={8} style={styles.bookmarkButton}>
+            <Pressable onPress={handleBookmarkToggle} hitSlop={8} className="p-1 ml-3">
               <Ionicons
                 name={bookmarked ? 'star' : 'star-outline'}
                 size={24}
@@ -264,13 +304,14 @@ export default function PlayerProfileScreen() {
       </View>
 
       {/* Rankings section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('player.rankings')}</Text>
+      <View className="mb-6">
+        <Text className="text-[18px] font-semibold text-gray-900 mb-3">{t('player.rankings')}</Text>
 
         {hasRankings ? (
           <>
             {simple ? (
-              <RankingCard
+              <RankingCardItem
+                disciplineKey="simple"
                 discipline={t('player.simple')}
                 classement={simple.classement}
                 cpph={simple.cpph}
@@ -278,7 +319,8 @@ export default function PlayerProfileScreen() {
               />
             ) : null}
             {double ? (
-              <RankingCard
+              <RankingCardItem
+                disciplineKey="double"
                 discipline={t('player.double')}
                 classement={double.classement}
                 cpph={double.cpph}
@@ -286,7 +328,8 @@ export default function PlayerProfileScreen() {
               />
             ) : null}
             {mixte ? (
-              <RankingCard
+              <RankingCardItem
+                disciplineKey="mixte"
                 discipline={t('player.mixte')}
                 classement={mixte.classement}
                 cpph={mixte.cpph}
@@ -295,169 +338,20 @@ export default function PlayerProfileScreen() {
             ) : null}
           </>
         ) : (
-          <Text style={styles.noRankings}>{t('player.noRankings')}</Text>
+          <Text className="text-body text-muted italic">{t('player.noRankings')}</Text>
         )}
       </View>
+
+      {/* Ranking evolution link */}
+      {hasRankings && (
+        <Pressable
+          className="flex-row items-center justify-center py-3 mt-2 active:opacity-60"
+          onPress={() => router.push('/ranking-chart')}
+        >
+          <Ionicons name="trending-up" size={18} color="#2563eb" />
+          <Text className="text-body font-medium text-primary ml-2">Ranking evolution</Text>
+        </Pressable>
+      )}
     </ScrollView>
   );
 }
-
-// ============================================================
-// Ranking Card Sub-component
-// ============================================================
-
-interface RankingCardProps {
-  discipline: string;
-  classement: string;
-  cpph?: number;
-  cpphLabel: string;
-}
-
-function RankingCard({ discipline, classement, cpph, cpphLabel }: RankingCardProps) {
-  return (
-    <View style={styles.rankingCard}>
-      <View style={styles.rankingHeader}>
-        <Text style={styles.discipline}>{discipline}</Text>
-        <Text style={styles.classement}>{classement}</Text>
-      </View>
-      {cpph != null ? (
-        <Text style={styles.cpph}>
-          {cpphLabel}: {cpph.toFixed(1)}
-        </Text>
-      ) : null}
-    </View>
-  );
-}
-
-// ============================================================
-// Styles
-// ============================================================
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  content: {
-    padding: 16,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 24,
-  },
-
-  // Header
-  header: {
-    marginBottom: 24,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  headerInfo: {
-    flex: 1,
-  },
-  bookmarkButton: {
-    padding: 4,
-    marginLeft: 12,
-  },
-  playerName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111',
-  },
-  clubName: {
-    fontSize: 16,
-    color: '#6b7280',
-    marginTop: 4,
-  },
-  clubNameLink: {
-    color: '#2563eb',
-    textDecorationLine: 'underline',
-  },
-  licence: {
-    fontSize: 14,
-    color: '#9ca3af',
-    marginTop: 4,
-  },
-
-  // Section
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111',
-    marginBottom: 12,
-  },
-
-  // Ranking card
-  rankingCard: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
-    padding: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  rankingHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  discipline: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#374151',
-  },
-  classement: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2563eb',
-  },
-  cpph: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginTop: 4,
-  },
-
-  // No rankings
-  noRankings: {
-    fontSize: 15,
-    color: '#9ca3af',
-    fontStyle: 'italic',
-  },
-
-  // Error / Offline
-  offlineIcon: {
-    marginBottom: 12,
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#dc2626',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  retryButton: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonPressed: {
-    backgroundColor: '#1d4ed8',
-  },
-  retryText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
