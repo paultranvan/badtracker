@@ -27,10 +27,10 @@ export interface BestRanking {
 // ============================================================
 
 /**
- * French badminton CPPH ranking boundaries, ordered highest to lowest.
- * These are approximate values from FFBaD classification rules.
- *
- * Ranking hierarchy: N1 > N2 > N3 > R4 > R5 > R6 > D7 > D8 > D9 > P10 > P11 > P12 > NC
+ * French badminton ranking hierarchy, ordered highest to lowest.
+ * Used ONLY for sort order (e.g., club leaderboard). NOT for computing
+ * points-to-next-rank — the 2025-2026 FFBaD system uses percentile-based
+ * rank assignment, so there are no fixed CPPH thresholds.
  */
 export const RANK_BOUNDARIES: RankBoundary[] = [
   { rank: 'N1', minCpph: 2000 },

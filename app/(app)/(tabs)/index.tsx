@@ -11,7 +11,7 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useDashboardData } from '../../../src/hooks/useDashboardData';
 import type { MatchPreview } from '../../../src/hooks/useDashboardData';
-import { getRankGaps, getRankLabel } from '../../../src/utils/rankings';
+import { getRankLabel } from '../../../src/utils/rankings';
 import { useSession } from '../../../src/auth/context';
 
 // ============================================================
@@ -133,7 +133,6 @@ export default function DashboardScreen() {
           const ranking = profile?.rankings[key];
           const classement = getRankLabel(ranking?.classement);
           const cpph = ranking?.cpph;
-          const gaps = getRankGaps(cpph, classement);
           const isBest = key === bestDiscipline;
 
           return (
@@ -159,22 +158,6 @@ export default function DashboardScreen() {
               </Text>
               {cpph != null ? (
                 <Text style={styles.rankingCpph}>{cpph.toFixed(1)} pts</Text>
-              ) : null}
-              {gaps.toNext != null && gaps.nextRank ? (
-                <Text style={styles.rankingGap}>
-                  {t('dashboard.pointsToNext', {
-                    points: Math.ceil(gaps.toNext),
-                    rank: gaps.nextRank,
-                  })}
-                </Text>
-              ) : null}
-              {gaps.toPrev != null && gaps.prevRank ? (
-                <Text style={styles.rankingGapDown}>
-                  {t('dashboard.pointsAbovePrev', {
-                    points: Math.floor(gaps.toPrev),
-                    rank: gaps.prevRank,
-                  })}
-                </Text>
               ) : null}
             </Pressable>
           );
@@ -357,16 +340,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6b7280',
     marginBottom: 4,
-  },
-  rankingGap: {
-    fontSize: 10,
-    color: '#16a34a',
-    textAlign: 'center',
-  },
-  rankingGapDown: {
-    fontSize: 10,
-    color: '#9ca3af',
-    textAlign: 'center',
   },
 
   // Matches
