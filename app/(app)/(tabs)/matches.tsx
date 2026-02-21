@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -5,6 +6,7 @@ import {
   RefreshControl,
   Pressable,
   ActivityIndicator,
+  LayoutAnimation,
   type NativeSyntheticEvent,
   type NativeScrollEvent,
 } from 'react-native';
@@ -16,6 +18,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 import {
   useMatchHistory,
   type MatchItem,
@@ -47,6 +50,17 @@ const DISCIPLINE_FILTERS: Array<{
 export default function MatchHistoryScreen() {
   const { t } = useTranslation();
   const scrollY = useSharedValue(0);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+
+  const toggleSection = (title: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(title)) next.delete(title);
+      else next.add(title);
+      return next;
+    });
+  };
 
   const {
     sections,
@@ -187,10 +201,22 @@ export default function MatchHistoryScreen() {
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.id}
-        renderSectionHeader={({ section }) => (
-          <TournamentHeader section={section} t={t} />
-        )}
-        renderItem={({ item }) => <MatchCardItem match={item} t={t} />}
+        renderSectionHeader={({ section }) => {
+          const sectionKey = section.title || t('matchHistory.tournamentUnknown');
+          return (
+            <TournamentHeader
+              section={section}
+              t={t}
+              isExpanded={expandedSections.has(sectionKey)}
+              onToggle={() => toggleSection(sectionKey)}
+            />
+          );
+        }}
+        renderItem={({ item, section }) => {
+          const sectionKey = section.title || t('matchHistory.tournamentUnknown');
+          const isExpanded = expandedSections.has(sectionKey);
+          return <MatchCardItem match={item} t={t} expanded={isExpanded} />;
+        }}
         stickySectionHeadersEnabled={true}
         refreshControl={
           <RefreshControl
@@ -255,19 +281,31 @@ function StatsHeader({ stats, t }: StatsHeaderProps) {
 interface TournamentHeaderProps {
   section: MatchSection;
   t: (key: string) => string;
+  isExpanded: boolean;
+  onToggle: () => void;
 }
 
-function TournamentHeader({ section, t }: TournamentHeaderProps) {
+function TournamentHeader({ section, t, isExpanded, onToggle }: TournamentHeaderProps) {
   const title = section.title || t('matchHistory.tournamentUnknown');
   return (
-    <View className="flex-row justify-between items-center px-4 py-2.5 bg-slate-50 border-l-[3px] border-l-primary border-b border-b-gray-200">
+    <Pressable
+      className="flex-row justify-between items-center px-4 py-2.5 bg-slate-50 border-l-[3px] border-l-primary border-b border-b-gray-200 active:bg-slate-100"
+      onPress={onToggle}
+    >
       <Text className="text-body font-semibold text-gray-900 flex-1 mr-2" numberOfLines={1}>
         {title}
       </Text>
-      {section.date ? (
-        <Text className="text-caption text-muted">{section.date}</Text>
-      ) : null}
-    </View>
+      <View className="flex-row items-center gap-2">
+        {section.date ? (
+          <Text className="text-caption text-muted">{section.date}</Text>
+        ) : null}
+        <Ionicons
+          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+          size={16}
+          color="#64748b"
+        />
+      </View>
+    </Pressable>
   );
 }
 
@@ -278,9 +316,10 @@ function TournamentHeader({ section, t }: TournamentHeaderProps) {
 interface MatchCardItemProps {
   match: MatchItem;
   t: (key: string, opts?: Record<string, unknown>) => string;
+  expanded?: boolean;
 }
 
-function MatchCardItem({ match, t }: MatchCardItemProps) {
+function MatchCardItem({ match, t, expanded = false }: MatchCardItemProps) {
   const disciplineLetter =
     match.discipline === 'simple' ? 'S'
       : match.discipline === 'double' ? 'D'
@@ -305,14 +344,51 @@ function MatchCardItem({ match, t }: MatchCardItemProps) {
   const discBg = discColors[match.discipline ?? ''] || 'bg-gray-200';
   const discText = discTextColors[match.discipline ?? ''] || 'text-gray-500';
 
+  if (!expanded) {
+    // Collapsed: compact single-line summary
+    return (
+      <View className={`px-4 py-2 border-l-[3px] ${borderClass} border-b border-b-gray-50`}>
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center gap-2 flex-1">
+            {disciplineLetter ? (
+              <View className={`w-5 h-5 rounded-full items-center justify-center ${discBg}`}>
+                <Text className={`text-[10px] font-bold ${discText}`}>{disciplineLetter}</Text>
+              </View>
+            ) : null}
+            <Text className="text-[14px] text-gray-700 flex-1" numberOfLines={1}>
+              {match.opponent
+                ? `${match.opponent}${match.opponent2 ? ` / ${match.opponent2}` : ''}`
+                : '-'}
+            </Text>
+          </View>
+          <View className="flex-row items-center gap-2">
+            {match.setScores && match.setScores.length > 0 ? (
+              <Text className="text-[13px] text-gray-500" style={{ fontVariant: ['tabular-nums'] }}>
+                {match.setScores.join(' ')}
+              </Text>
+            ) : match.score ? (
+              <Text className="text-[13px] text-gray-500" style={{ fontVariant: ['tabular-nums'] }}>
+                {match.score}
+              </Text>
+            ) : null}
+            <View className={`w-6 h-6 rounded-full items-center justify-center ${badgeBg}`}>
+              <Text className="text-[10px] font-bold text-white">{badgeText}</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // Expanded: full detail card
   return (
-    <View className={`px-4 py-2.5 border-l-[3px] ${borderClass} border-b border-b-gray-50`}>
+    <View className={`px-4 py-3 border-l-[3px] ${borderClass} border-b border-b-gray-100 bg-white`}>
       {/* Row 1: discipline badge + round + result badge */}
-      <View className="flex-row justify-between items-center mb-1">
+      <View className="flex-row justify-between items-center mb-2">
         <View className="flex-row items-center gap-2 flex-1">
           {disciplineLetter ? (
-            <View className={`w-5 h-5 rounded-full items-center justify-center ${discBg}`}>
-              <Text className={`text-[10px] font-bold ${discText}`}>{disciplineLetter}</Text>
+            <View className={`w-6 h-6 rounded-full items-center justify-center ${discBg}`}>
+              <Text className={`text-[11px] font-bold ${discText}`}>{disciplineLetter}</Text>
             </View>
           ) : null}
           {match.round ? (
@@ -324,46 +400,60 @@ function MatchCardItem({ match, t }: MatchCardItemProps) {
         </View>
       </View>
 
-      {/* Row 2: Players */}
-      <View className="mb-1">
-        {match.partner ? (
-          <Text className="text-[14px] font-medium text-gray-700 mb-0.5" numberOfLines={1}>
-            {t('matchHistory.partner', { name: match.partner })}
+      {/* Row 2: Partner (doubles/mixed) */}
+      {match.partner ? (
+        <View className="flex-row items-center mb-1">
+          <Ionicons name="people-outline" size={14} color="#64748b" style={{ marginRight: 6 }} />
+          <Text className="text-[14px] font-medium text-gray-700" numberOfLines={1}>
+            {match.partner}
           </Text>
-        ) : null}
-        {match.opponent ? (
-          <View className="flex-row items-center">
-            <Text className="text-[13px] text-gray-400">{t('matchHistory.vs')} </Text>
-            {match.opponentLicence ? (
-              <Pressable onPress={() => router.push(`/player/${match.opponentLicence}`)}>
-                <Text className="text-[14px] font-medium text-primary" numberOfLines={1}>
-                  {match.opponent}{match.opponent2 ? ` / ${match.opponent2}` : ''}
-                </Text>
-              </Pressable>
-            ) : (
-              <Text className="text-[14px] text-gray-700" numberOfLines={1}>
+        </View>
+      ) : null}
+
+      {/* Row 3: Opponent */}
+      {match.opponent ? (
+        <View className="flex-row items-center mb-2">
+          <Text className="text-[13px] text-gray-400 mr-1">{t('matchHistory.vs')}</Text>
+          {match.opponentLicence ? (
+            <Pressable onPress={() => router.push(`/player/${match.opponentLicence}`)}>
+              <Text className="text-[14px] font-medium text-primary" numberOfLines={1}>
                 {match.opponent}{match.opponent2 ? ` / ${match.opponent2}` : ''}
               </Text>
-            )}
-          </View>
-        ) : null}
-      </View>
+            </Pressable>
+          ) : (
+            <Text className="text-[14px] font-medium text-gray-700" numberOfLines={1}>
+              {match.opponent}{match.opponent2 ? ` / ${match.opponent2}` : ''}
+            </Text>
+          )}
+        </View>
+      ) : null}
 
-      {/* Row 3: Scores + points */}
-      <View className="flex-row justify-between items-center mt-0.5">
-        {match.setScores && match.setScores.length > 0 ? (
-          <Text className="text-[14px] font-semibold text-gray-900" style={{ fontVariant: ['tabular-nums'] }}>
-            {match.setScores.join('  ')}
-          </Text>
-        ) : match.score ? (
-          <Text className="text-[14px] font-semibold text-gray-900" style={{ fontVariant: ['tabular-nums'] }}>
+      {/* Row 4: Set scores displayed prominently */}
+      {match.setScores && match.setScores.length > 0 ? (
+        <View className="flex-row gap-3 mb-2">
+          {match.setScores.map((setScore, i) => (
+            <View key={i} className="bg-gray-50 px-3 py-1.5 rounded-lg">
+              <Text className="text-[10px] text-muted text-center mb-0.5">Set {i + 1}</Text>
+              <Text className="text-[15px] font-bold text-gray-900 text-center" style={{ fontVariant: ['tabular-nums'] }}>
+                {setScore}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : match.score ? (
+        <View className="mb-2">
+          <Text className="text-[15px] font-bold text-gray-900" style={{ fontVariant: ['tabular-nums'] }}>
             {match.score}
           </Text>
-        ) : <View />}
-        {pointsText ? (
+        </View>
+      ) : null}
+
+      {/* Row 5: Points impact */}
+      {pointsText ? (
+        <View className="flex-row justify-end">
           <Text className={`text-[13px] font-semibold ${pointsClass}`}>{pointsText}</Text>
-        ) : null}
-      </View>
+        </View>
+      ) : null}
     </View>
   );
 }
