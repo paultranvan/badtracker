@@ -119,7 +119,7 @@
     "tab": "Club",
     "title": "Club Leaderboard",
     "leaderboard": "Leaderboard",
-    "members": "{{count}} ranked members",
+    "members": "{{count}} members ({{ranked}} ranked)",
     "position": "#{{position}}",
     "searchPlaceholder": "Search for a club",
     "searchMinChars": "Type at least 3 characters",

@@ -359,7 +359,7 @@ export default function ClubScreen() {
             </Text>
             {hasMembers ? (
               <Text className="text-caption text-muted mt-0.5">
-                {t('club.members', { count: rankedCount })}
+                {t('club.members', { count: members.length, ranked: rankedCount })}
               </Text>
             ) : null}
           </View>
