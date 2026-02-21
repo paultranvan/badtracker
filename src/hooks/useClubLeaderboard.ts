@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getClubLeaderboard, getClubInfo, getLicenceInfo, type ClubInfo } from '../api/ffbad';
+import { getClubLeaderboard, getClubInfo, type ClubInfo } from '../api/ffbad';
 import { NetworkError } from '../api/errors';
 import { cacheGet, cacheSet } from '../cache/storage';
 import { useConnectivity } from '../connectivity/context';
-import { useSession } from '../auth/context';
 import { normalizeToLeaderboard, type LeaderboardEntry } from '../utils/clubLeaderboard';
 
 // ============================================================
@@ -45,7 +44,6 @@ interface CachedClubLeaderboard {
 export function useClubLeaderboard(clubId: string | null): ClubLeaderboardData {
   const { t } = useTranslation();
   const { isConnected } = useConnectivity();
-  const { session } = useSession();
 
   const [members, setMembers] = useState<LeaderboardEntry[]>([]);
   const [clubName, setClubName] = useState<string>('');
@@ -105,25 +103,7 @@ export function useClubLeaderboard(clubId: string | null): ClubLeaderboardData {
         const response = await getClubLeaderboard(clubId, info?.initials);
 
         if (Array.isArray(response.Retour)) {
-          let normalized = normalizeToLeaderboard(response.Retour);
-
-          // Inject current user if they belong to this club but aren't in search results
-          if (session?.licence && !normalized.some((m) => m.licence === session.licence)) {
-            try {
-              const userInfo = await getLicenceInfo(session.licence);
-              if (Array.isArray(userInfo.Retour) && userInfo.Retour.length > 0) {
-                const raw = userInfo.Retour[0] as Record<string, unknown>;
-                // Re-normalize including the current user
-                normalized = normalizeToLeaderboard([
-                  ...response.Retour,
-                  { ...raw, Nom: session.nom, Prenom: session.prenom },
-                ]);
-              }
-            } catch {
-              // Non-critical — continue without injecting user
-            }
-          }
-
+          const normalized = normalizeToLeaderboard(response.Retour);
           setMembers(normalized);
 
           // Use club name from info or from first member

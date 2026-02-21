@@ -136,9 +136,11 @@ export default function ClubScreen() {
 
     async function loadUserClub() {
       if (!session?.licence) {
-        setUserClubLoading(false);
+        // Don't clear loading if session not yet available — auth may still be resolving
         return;
       }
+
+      setUserClubLoading(true);
 
       try {
         const profile = await getPlayerProfile(session.licence);

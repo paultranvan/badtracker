@@ -728,6 +728,30 @@ export async function getClubLeaderboard(
       return true;
     });
 
+    // Inject current user if missing from search results
+    if (!seen.has(session.licence)) {
+      try {
+        const userResult = await bridgePost(
+          '/api/search/',
+          { type: 'PERSON', text: session.licence },
+          session.accessToken,
+          session.personId
+        );
+        if (userResult && typeof userResult !== 'string') {
+          const userData = userResult as Record<string, unknown>;
+          const userPersons = (userData.persons ?? userData.results ?? []) as Array<Record<string, unknown>>;
+          const userMatch = userPersons.find(
+            (p) => String(p.personLicence ?? p.licence ?? '') === session.licence
+          );
+          if (userMatch) {
+            allPersons.push(userMatch);
+          }
+        }
+      } catch {
+        // Silently ignore — user just won't appear in leaderboard
+      }
+    }
+
     // Map player search results to the expected leaderboard format.
     // The search API returns nested objects:
     //   { name, licence, rank: { simpleSubLevel, doubleSubLevel, mixteSubLevel },
@@ -751,8 +775,6 @@ export async function getClubLeaderboard(
         ClassementSimple: String(rank.simpleSubLevel ?? ''),
         ClassementDouble: String(rank.doubleSubLevel ?? ''),
         ClassementMixte: String(rank.mixteSubLevel ?? ''),
-        // CPPH not available from search endpoint
-        ...raw,
       };
     });
 

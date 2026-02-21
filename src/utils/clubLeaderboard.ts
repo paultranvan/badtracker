@@ -105,13 +105,24 @@ export function normalizeToLeaderboard(rawItems: unknown[]): LeaderboardEntry[] 
       };
 
       const best = getBestRanking(rankings);
-      // Fallback to the classement string if cpph is 0/missing, then NC
-      const bestRank =
-        best?.classement ??
-        (item.ClassementSimple as string | undefined) ??
-        (item.ClassementDouble as string | undefined) ??
-        (item.ClassementMixte as string | undefined) ??
-        'NC';
+      // If CPPH data is available, use it. Otherwise compare rank levels directly.
+      let bestRank: string;
+      if (best?.classement) {
+        bestRank = best.classement;
+      } else {
+        const candidates = [
+          item.ClassementSimple as string | undefined,
+          item.ClassementDouble as string | undefined,
+          item.ClassementMixte as string | undefined,
+        ].filter((c): c is string => !!c);
+        if (candidates.length === 0) {
+          bestRank = 'NC';
+        } else {
+          bestRank = candidates.reduce((a, b) =>
+            getRankSortIndex(a) <= getRankSortIndex(b) ? a : b
+          );
+        }
+      }
 
       return {
         licence: item.Licence as string,
