@@ -138,26 +138,28 @@ export default function MatchHistoryScreen() {
         <StatsHeader stats={stats} t={t} />
       </Animated.View>
 
-      {/* Discipline Filter Chips */}
-      <View style={styles.filtersRow}>
-        {DISCIPLINE_FILTERS.map(({ key, labelKey }) => {
-          const count = disciplineCounts[key];
-          const isActive = activeDiscipline === key;
-          return (
-            <Pressable
-              key={key}
-              style={[styles.chip, isActive && styles.chipActive]}
-              onPress={() => setDiscipline(key)}
-            >
-              <Text
-                style={[styles.chipText, isActive && styles.chipTextActive]}
+      {/* Discipline Filter Chips — only show when discipline data is available */}
+      {(disciplineCounts.simple > 0 || disciplineCounts.double > 0 || disciplineCounts.mixte > 0) && (
+        <View style={styles.filtersRow}>
+          {DISCIPLINE_FILTERS.map(({ key, labelKey }) => {
+            const count = disciplineCounts[key];
+            const isActive = activeDiscipline === key;
+            return (
+              <Pressable
+                key={key}
+                style={[styles.chip, isActive && styles.chipActive]}
+                onPress={() => setDiscipline(key)}
               >
-                {t(labelKey)} ({count})
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+                <Text
+                  style={[styles.chipText, isActive && styles.chipTextActive]}
+                >
+                  {t(labelKey)} ({count})
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
 
       {/* Season Picker */}
       {availableSeasons.length > 0 && (

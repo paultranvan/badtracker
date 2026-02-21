@@ -7,10 +7,12 @@ import {
   Pressable,
   ActivityIndicator,
   RefreshControl,
+  Linking,
   StyleSheet,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 import { useClubLeaderboard } from '../../../src/hooks/useClubLeaderboard';
 import { useClubSearch } from '../../../src/hooks/useClubSearch';
 import { useSession } from '../../../src/auth/context';
@@ -19,6 +21,63 @@ import type { LeaderboardEntry } from '../../../src/utils/clubLeaderboard';
 import type { ClubSearchResult } from '../../../src/hooks/useClubSearch';
 
 const Separator = () => <View style={styles.separator} />;
+
+// ============================================================
+// Club Info Card Component
+// ============================================================
+
+function ClubInfoCard({ info }: { info: NonNullable<ReturnType<typeof useClubLeaderboard>['clubInfo']> }) {
+  const { t } = useTranslation();
+
+  const openLink = (url: string) => {
+    if (!url) return;
+    const fullUrl = url.startsWith('http') ? url : `https://${url}`;
+    Linking.openURL(fullUrl);
+  };
+
+  return (
+    <View style={styles.infoCard}>
+      <Text style={styles.infoCardTitle}>{info.name}</Text>
+
+      {info.city ? (
+        <View style={styles.infoRow}>
+          <Ionicons name="location-outline" size={16} color="#6b7280" />
+          <Text style={styles.infoText}>
+            {info.address ? `${info.address}, ` : ''}{info.city}
+          </Text>
+        </View>
+      ) : null}
+
+      {info.mail ? (
+        <Pressable style={styles.infoRow} onPress={() => Linking.openURL(`mailto:${info.mail}`)}>
+          <Ionicons name="mail-outline" size={16} color="#6b7280" />
+          <Text style={[styles.infoText, styles.infoLink]}>{info.mail}</Text>
+        </Pressable>
+      ) : null}
+
+      {info.phone ? (
+        <Pressable style={styles.infoRow} onPress={() => Linking.openURL(`tel:${info.phone}`)}>
+          <Ionicons name="call-outline" size={16} color="#6b7280" />
+          <Text style={[styles.infoText, styles.infoLink]}>{info.phone}</Text>
+        </Pressable>
+      ) : null}
+
+      {info.website ? (
+        <Pressable style={styles.infoRow} onPress={() => openLink(info.website)}>
+          <Ionicons name="globe-outline" size={16} color="#6b7280" />
+          <Text style={[styles.infoText, styles.infoLink]} numberOfLines={1}>{info.website}</Text>
+        </Pressable>
+      ) : null}
+
+      {info.initials ? (
+        <View style={styles.infoRow}>
+          <Ionicons name="id-card-outline" size={16} color="#6b7280" />
+          <Text style={styles.infoText}>{info.initials}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 // ============================================================
 // Main Club Tab Screen
@@ -43,6 +102,7 @@ export default function ClubScreen() {
   const {
     members,
     clubName,
+    clubInfo,
     rankedCount,
     isLoading,
     isRefreshing,
@@ -177,7 +237,7 @@ export default function ClubScreen() {
             style={styles.searchInput}
             placeholder={t('club.searchPlaceholder')}
             placeholderTextColor="#999"
-            defaultValue={searchQuery}
+            value={searchQuery}
             onChangeText={handleSearchChange}
             autoFocus
             autoCorrect={false}
@@ -286,9 +346,10 @@ export default function ClubScreen() {
   }
 
   // ----------------------------------------------------------
-  // Leaderboard view
+  // Club view
   // ----------------------------------------------------------
   const isViewingOtherClub = targetClubId !== null && targetClubId !== userClubId;
+  const hasMembers = members.length > 0;
 
   return (
     <View style={styles.container}>
@@ -298,9 +359,11 @@ export default function ClubScreen() {
           <Text style={styles.clubHeaderName} numberOfLines={2}>
             {clubName || t('club.title')}
           </Text>
-          <Text style={styles.clubHeaderCount}>
-            {t('club.members', { count: rankedCount })}
-          </Text>
+          {hasMembers ? (
+            <Text style={styles.clubHeaderCount}>
+              {t('club.members', { count: rankedCount })}
+            </Text>
+          ) : null}
         </View>
         <Pressable
           style={({ pressed }) => [
@@ -309,7 +372,7 @@ export default function ClubScreen() {
           ]}
           onPress={handleOpenSearch}
         >
-          <Text style={styles.searchIconText}>&#128269;</Text>
+          <Ionicons name="search" size={20} color="#6b7280" />
         </Pressable>
       </View>
 
@@ -326,27 +389,46 @@ export default function ClubScreen() {
         </Pressable>
       ) : null}
 
-      {/* Leaderboard */}
-      <FlatList
-        data={members}
-        keyExtractor={(item) => item.licence}
-        renderItem={renderLeaderboardRow}
-        ItemSeparatorComponent={Separator}
-        contentContainerStyle={members.length === 0 ? styles.emptyContainer : styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={refresh}
-            colors={['#2563eb']}
-            tintColor="#2563eb"
-          />
-        }
-        ListEmptyComponent={
-          <View style={styles.centered}>
-            <Text style={styles.emptyText}>{t('club.noMembers')}</Text>
-          </View>
-        }
-      />
+      {/* Club info + Members */}
+      {hasMembers ? (
+        <FlatList
+          data={members}
+          keyExtractor={(item) => item.licence}
+          renderItem={renderLeaderboardRow}
+          ItemSeparatorComponent={Separator}
+          contentContainerStyle={styles.listContent}
+          ListHeaderComponent={clubInfo ? <ClubInfoCard info={clubInfo} /> : null}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={refresh}
+              colors={['#2563eb']}
+              tintColor="#2563eb"
+            />
+          }
+        />
+      ) : (
+        <FlatList
+          data={[]}
+          renderItem={() => null}
+          ListHeaderComponent={clubInfo ? <ClubInfoCard info={clubInfo} /> : null}
+          ListEmptyComponent={
+            <View style={styles.emptyMembersContainer}>
+              <Ionicons name="people-outline" size={36} color="#d1d5db" />
+              <Text style={styles.emptyText}>{t('club.membersUnavailable')}</Text>
+            </View>
+          }
+          contentContainerStyle={styles.infoListContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={refresh}
+              colors={['#2563eb']}
+              tintColor="#2563eb"
+            />
+          }
+        />
+      )}
     </View>
   );
 }
@@ -398,8 +480,35 @@ const styles = StyleSheet.create({
   searchIconButtonPressed: {
     opacity: 0.6,
   },
-  searchIconText: {
-    fontSize: 20,
+
+  // Club info card
+  infoCard: {
+    margin: 16,
+    padding: 16,
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  infoCardTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#111',
+    marginBottom: 12,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#374151',
+    flex: 1,
+  },
+  infoLink: {
+    color: '#2563eb',
   },
 
   // "My Club" button
@@ -427,11 +536,14 @@ const styles = StyleSheet.create({
   listContent: {
     paddingVertical: 4,
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  infoListContent: {
+    paddingBottom: 24,
+  },
+  emptyMembersContainer: {
     alignItems: 'center',
+    paddingVertical: 32,
     paddingHorizontal: 24,
+    gap: 8,
   },
   row: {
     flexDirection: 'row',
@@ -554,7 +666,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 15,
     color: '#9ca3af',
-    fontStyle: 'italic',
+    textAlign: 'center',
   },
   hintText: {
     fontSize: 14,

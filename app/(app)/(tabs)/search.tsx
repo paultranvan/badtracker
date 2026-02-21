@@ -45,7 +45,14 @@ export default function SearchScreen() {
         onPress={() =>
           router.push({
             pathname: '/player/[licence]',
-            params: { licence: item.Licence },
+            params: {
+              licence: item.Licence,
+              personId: item.personId ?? '',
+              nom: item.Nom ?? '',
+              prenom: item.Prenom ?? '',
+              club: item.Club ?? '',
+              nomClub: item.NomClub ?? '',
+            },
           })
         }
       >
@@ -76,7 +83,7 @@ export default function SearchScreen() {
           style={styles.searchInput}
           placeholder={t('search.placeholder')}
           placeholderTextColor="#999"
-          defaultValue={query}
+          value={query}
           onChangeText={setQuery}
           autoCorrect={false}
           autoCapitalize="none"

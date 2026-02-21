@@ -131,6 +131,7 @@
     "searchMinChars": "Tapez au moins 3 caract\u00e8res",
     "noResults": "Aucun club trouv\u00e9",
     "noMembers": "Aucun membre dans ce club",
+    "membersUnavailable": "La liste des membres n'est pas disponible pour ce club",
     "noClub": "Vous n'\u00eates affili\u00e9 \u00e0 aucun club",
     "browseClubs": "Parcourir les clubs",
     "myClub": "Mon club",

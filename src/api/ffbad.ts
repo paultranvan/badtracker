@@ -87,7 +87,8 @@ export async function validateCredentials(
  * For other players, uses the search API to find them first.
  */
 export async function getLicenceInfo(
-  licence: string
+  licence: string,
+  knownPersonId?: string
 ): Promise<LicenceInfoResponse> {
   const session = requireSession();
 
@@ -96,8 +97,21 @@ export async function getLicenceInfo(
     return fetchPlayerRankings(session.personId, session.accessToken, licence);
   }
 
-  // For other players, search by licence to get their info
+  // If we have a personId (e.g. from search results), use it directly
+  if (knownPersonId) {
+    return fetchPlayerRankings(knownPersonId, session.accessToken, licence);
+  }
+
+  // For other players without personId, search to find them
   const searchResponse = await searchPlayersByKeywords(licence);
+  if (typeof searchResponse.Retour !== 'string' && searchResponse.Retour.length > 0) {
+    const found = searchResponse.Retour[0] as Record<string, unknown>;
+    const foundPersonId = found.personId as string | undefined;
+    if (foundPersonId) {
+      return fetchPlayerRankings(foundPersonId, session.accessToken, licence);
+    }
+  }
+
   return searchResponse as LicenceInfoResponse;
 }
 
@@ -109,11 +123,12 @@ async function fetchPlayerRankings(
   accessToken: string,
   licence: string
 ): Promise<LicenceInfoResponse> {
+  const session = requireSession();
   try {
     const data = (await bridgeGet(
       `/api/person/${personId}/rankings`,
       accessToken,
-      personId
+      session.personId
     )) as Record<string, unknown>;
 
     if (!data) {
@@ -168,7 +183,13 @@ function transformRankingsToLicenceInfo(
 
 /**
  * Search for players by keywords (name, licence number, etc.).
- * Uses myffbad.fr /api/search/autocomplete endpoint.
+ * Uses myffbad.fr /api/search/ endpoint (POST with filter body).
+ *
+ * The myffbad.fr site sends: POST /api/search/ with body:
+ *   { type: "PERSON", text: "...", page: 0 }
+ *
+ * Response contains: { persons: [...], currentPage, totalPage }
+ * Each person: { personId, personName, clubName, clubId, personLicence }.
  */
 export async function searchPlayersByKeywords(
   keywords: string
@@ -176,33 +197,46 @@ export async function searchPlayersByKeywords(
   const session = requireSession();
 
   try {
-    const data = await bridgeGet(
-      `/api/search/autocomplete?value=${encodeURIComponent(keywords)}`,
+    const data = await bridgePost(
+      '/api/search/',
+      { type: 'PERSON', text: keywords },
       session.accessToken,
       session.personId
     );
 
-    if (!data) {
+    if (!data || typeof data === 'string') {
       return { Retour: 'No results' };
     }
 
-    const results = Array.isArray(data) ? data : ((data as Record<string, unknown>).results ?? []);
+    const obj = data as Record<string, unknown>;
+
+    // Response shape: { persons: [...], currentPage, totalPage }
+    const results = Array.isArray(data)
+      ? data
+      : (obj.persons ?? obj.results ?? obj.data ?? []);
 
     if (!Array.isArray(results) || results.length === 0) {
       return { Retour: 'No results' };
     }
 
-    // Transform each result to LicenceInfoItem format
-    const items = (results as Array<Record<string, unknown>>)
-      .filter((r) => r.type === 'player' || r.type === 'joueur' || !r.type)
-      .map((r) => ({
-        Licence: String(r.licence ?? r.licenceNumber ?? r.id ?? ''),
-        Nom: String(r.lastName ?? r.nom ?? r.name ?? ''),
-        Prenom: String(r.firstName ?? r.prenom ?? ''),
+    // Transform myffbad.fr response to LicenceInfoItem format
+    // Response fields: personId, personName, clubName, clubId, personLicence
+    const items = (results as Array<Record<string, unknown>>).map((r) => {
+      // personName is "LastName FirstName" — split it
+      const fullName = String(r.personName ?? r.name ?? '');
+      const parts = fullName.split(' ');
+      const nom = parts[0] ?? '';
+      const prenom = parts.slice(1).join(' ') ?? '';
+
+      return {
+        Licence: String(r.personLicence ?? r.licence ?? r.licenceNumber ?? ''),
+        Nom: r.lastName ? String(r.lastName) : nom,
+        Prenom: r.firstName ? String(r.firstName) : prenom,
         Club: String(r.clubId ?? r.club ?? ''),
         NomClub: String(r.clubName ?? r.nomClub ?? ''),
         personId: String(r.personId ?? r.id ?? ''),
-      }));
+      };
+    });
 
     return { Retour: items.length > 0 ? items : 'No results' };
   } catch (err) {
@@ -263,9 +297,10 @@ function buildRanking(
  * @returns null if player not found
  */
 export async function getPlayerProfile(
-  licence: string
+  licence: string,
+  knownPersonId?: string
 ): Promise<PlayerProfile | null> {
-  const response = await getLicenceInfo(licence);
+  const response = await getLicenceInfo(licence, knownPersonId);
 
   if (typeof response.Retour === 'string') {
     return null;
@@ -362,6 +397,34 @@ export async function getResultsByLicence(
 }
 
 /**
+ * Format an ISO date string to a readable French format: "DD/MM/YYYY".
+ */
+function formatDateFR(dateStr: string | null | undefined): string | undefined {
+  if (!dateStr) return undefined;
+  const d = new Date(dateStr as string);
+  if (isNaN(d.getTime())) return dateStr as string;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+/**
+ * Infer discipline from the event name when the API returns discipline: null.
+ *
+ * myffbad.fr event names often contain discipline keywords or use naming patterns
+ * like "SH" (Simple Homme), "DD" (Double Dame), "MX" (Mixte), etc.
+ */
+function inferDisciplineFromName(name: string | undefined, subName: string | undefined): string | undefined {
+  const text = `${name ?? ''} ${subName ?? ''}`.toUpperCase();
+  // Check for common discipline indicators in tournament/matchup names
+  if (/\bSIMPLE\b|\bSH\b|\bSD\b/.test(text)) return 'S';
+  if (/\bDOUBLE\b|\bDH\b|\bDD\b/.test(text)) return 'D';
+  if (/\bMIXTE\b|\bMX\b|\bDMX\b/.test(text)) return 'M';
+  return undefined;
+}
+
+/**
  * Transform a myffbad.fr result item to the existing ResultItem format.
  *
  * myffbad.fr result items have:
@@ -377,15 +440,46 @@ function transformResultItem(raw: Record<string, unknown>): Record<string, unkno
     resultat = 'D';
   }
 
+  // Format the date for display (ISO → DD/MM/YYYY)
+  const formattedDate = formatDateFR(raw.date as string | null | undefined);
+
+  // Try to get discipline from API field, or infer from event name
+  const discipline = (raw.discipline as string | null) ??
+    inferDisciplineFromName(raw.name as string | undefined, raw.subName as string | undefined);
+
+  // Show winPoint as score indicator (e.g. "+43 pts" or "-7 pts")
+  let score: string | undefined;
+  if (winPoint != null && winPoint !== 0) {
+    const sign = winPoint > 0 ? '+' : '';
+    score = `${sign}${winPoint} pts`;
+  }
+
+  // Extract score from brackets if available (detailed match data)
+  const brackets = raw.brackets as Array<Record<string, unknown>> | undefined;
+  if (brackets && brackets.length > 0) {
+    const setScores = brackets.map((b) => {
+      const s1 = b.score1 ?? b.playerScore ?? b.scoreA;
+      const s2 = b.score2 ?? b.opponentScore ?? b.scoreB;
+      if (s1 != null && s2 != null) return `${s1}-${s2}`;
+      return null;
+    }).filter(Boolean);
+    if (setScores.length > 0) {
+      score = setScores.join(' ');
+    }
+  }
+
   return {
-    Date: raw.date,
+    Date: formattedDate,
     Epreuve: raw.name,
     Competition: raw.name,
-    Discipline: raw.discipline,
+    Discipline: discipline,
     Points: winPoint,
     Resultat: resultat,
+    Score: score,
     // subName often contains the matchup (e.g. "94-CALB-2 contre 94-VSSM-6")
     Adversaire: raw.subName,
+    // Keep original date for season computation
+    _rawDate: raw.date,
     // Pass through all original fields
     ...raw,
   };
@@ -422,23 +516,82 @@ export async function getRankingEvolution(
       return { Retour: 'No data' };
     }
 
-    const results = Array.isArray(data) ? data : ((data as Record<string, unknown>).results ?? data);
-
-    if (!Array.isArray(results)) {
+    // myffbad.fr returns an object keyed by index: {"0": {...}, "1": {...}, ...}
+    // Convert to array if needed
+    let results: Array<Record<string, unknown>>;
+    if (Array.isArray(data)) {
+      results = data as Array<Record<string, unknown>>;
+    } else if (data && typeof data === 'object') {
+      // Object with numeric keys — convert to array
+      const obj = data as Record<string, unknown>;
+      if (obj.results && Array.isArray(obj.results)) {
+        results = obj.results as Array<Record<string, unknown>>;
+      } else {
+        // Try converting numeric-keyed object to array
+        const keys = Object.keys(obj).filter((k) => /^\d+$/.test(k));
+        if (keys.length > 0) {
+          results = keys
+            .sort((a, b) => parseInt(a) - parseInt(b))
+            .map((k) => obj[k] as Record<string, unknown>);
+        } else {
+          return { Retour: 'No data' };
+        }
+      }
+    } else {
       return { Retour: 'No data' };
     }
 
-    // Transform to RankingEvolutionItem format
-    const items = (results as Array<Record<string, unknown>>).map((raw) => ({
-      Date: String(raw.date ?? raw.Date ?? raw.period ?? ''),
-      Classement: String(raw.ranking ?? raw.classement ?? raw.Classement ?? raw.level ?? ''),
-      Points: raw.points ?? raw.Points ?? raw.cpph ?? raw.CPPH,
-      Discipline: String(raw.discipline ?? raw.Discipline ?? raw.type ?? ''),
-      CPPH: raw.cpph ?? raw.CPPH ?? raw.points,
-      Saison: String(raw.season ?? raw.Saison ?? raw.saison ?? ''),
-      Semaine: raw.week ?? raw.Semaine ?? raw.semaine,
-      ...raw,
-    }));
+    if (results.length === 0) {
+      return { Retour: 'No data' };
+    }
+
+    // myffbad.fr evolution items have PascalCase fields:
+    //   RankingDate, SimpleSubLevel, SimpleRate, DoubleSubLevel, DoubleRate,
+    //   MixteSubLevel, MixteRate, SimpleRank, DoubleRank, MixteRank
+    // We need to expand each item into 3 discipline-specific entries
+    const items: Array<Record<string, unknown>> = [];
+    for (const raw of results) {
+      const date = String(raw.RankingDate ?? raw.rankingDate ?? raw.Date ?? raw.date ?? '');
+
+      // Simple
+      const simpleRate = raw.SimpleRate ?? raw.simpleRate;
+      const simpleLevel = raw.SimpleSubLevel ?? raw.simpleSubLevel;
+      if (simpleRate != null || simpleLevel) {
+        items.push({
+          Date: date,
+          Classement: String(simpleLevel ?? 'NC'),
+          Points: simpleRate,
+          CPPH: simpleRate,
+          Discipline: 'S',
+        });
+      }
+
+      // Double
+      const doubleRate = raw.DoubleRate ?? raw.doubleRate;
+      const doubleLevel = raw.DoubleSubLevel ?? raw.doubleSubLevel;
+      if (doubleRate != null || doubleLevel) {
+        items.push({
+          Date: date,
+          Classement: String(doubleLevel ?? 'NC'),
+          Points: doubleRate,
+          CPPH: doubleRate,
+          Discipline: 'D',
+        });
+      }
+
+      // Mixte
+      const mixteRate = raw.MixteRate ?? raw.mixteRate;
+      const mixteLevel = raw.MixteSubLevel ?? raw.mixteSubLevel;
+      if (mixteRate != null || mixteLevel) {
+        items.push({
+          Date: date,
+          Classement: String(mixteLevel ?? 'NC'),
+          Points: mixteRate,
+          CPPH: mixteRate,
+          Discipline: 'M',
+        });
+      }
+    }
 
     return { Retour: items } as RankingEvolutionResponse;
   } catch (err) {
@@ -452,12 +605,28 @@ export async function getRankingEvolution(
 // ============================================================
 
 /**
- * Get rankings for all members of a club.
+ * Club information returned by the API.
+ */
+export interface ClubInfo {
+  id: string;
+  name: string;
+  initials: string;
+  city: string;
+  department: number;
+  address: string;
+  mail: string;
+  phone: string;
+  website: string;
+  logo: string;
+}
+
+/**
+ * Get club information.
  * Uses myffbad.fr /api/club/{clubId}/informations/ endpoint.
  */
-export async function getClubLeaderboard(
+export async function getClubInfo(
   clubId: string
-): Promise<ClubRankingResponse> {
+): Promise<ClubInfo | null> {
   const session = requireSession();
 
   try {
@@ -467,30 +636,103 @@ export async function getClubLeaderboard(
       session.personId
     )) as Record<string, unknown>;
 
-    if (!data) {
-      return { Retour: 'No data' };
+    if (!data || typeof data === 'string') {
+      return null;
     }
 
-    // Club info endpoint may return members in various shapes
-    const members = (data.members ?? data.players ?? data.joueurs ?? data) as unknown;
+    const addr = data.address as Record<string, unknown> | undefined;
 
-    if (!Array.isArray(members)) {
-      // If it returns club info without member list, try alternative
+    return {
+      id: clubId,
+      name: String(data.name ?? ''),
+      initials: String(data.initials ?? ''),
+      city: String(data.city ?? ''),
+      department: (data.department as number) ?? 0,
+      address: addr ? String(addr.address ?? '') : '',
+      mail: String(data.mail ?? ''),
+      phone: String(data.contact ?? data.mobile ?? ''),
+      website: String(data.website ?? ''),
+      logo: String(data.logo ?? ''),
+    };
+  } catch (err) {
+    if (err instanceof AuthError || err instanceof NetworkError) throw err;
+    return null;
+  }
+}
+
+/**
+ * Get rankings for all members of a club.
+ * Uses myffbad.fr /api/club/{clubId} endpoints.
+ *
+ * Note: The myffbad.fr API may not expose a club members endpoint.
+ * Returns empty array if no members endpoint is found.
+ */
+export async function getClubLeaderboard(
+  clubId: string
+): Promise<ClubRankingResponse> {
+  const session = requireSession();
+
+  try {
+    // Try to get club members from various endpoints
+    // Non-existent endpoints return HTML (the SPA shell) instead of 404
+    const memberEndpoints = [
+      `/api/club/${clubId}/ranking/`,
+      `/api/club/${clubId}/members/`,
+      `/api/club/${clubId}/players/`,
+    ];
+
+    let membersData: unknown = null;
+    for (const endpoint of memberEndpoints) {
+      try {
+        const result = await bridgeGet(endpoint, session.accessToken, session.personId);
+        if (typeof result === 'string') continue;
+        if (result && typeof result === 'object') {
+          membersData = result;
+          break;
+        }
+      } catch {
+        // Try next
+      }
+    }
+
+    if (!membersData) {
       return { Retour: [] };
     }
 
-    const items = (members as Array<Record<string, unknown>>).map((raw) => ({
+    // Handle both array and object-with-numeric-keys responses
+    let members: Array<Record<string, unknown>>;
+    if (Array.isArray(membersData)) {
+      members = membersData as Array<Record<string, unknown>>;
+    } else if (typeof membersData === 'object') {
+      const obj = membersData as Record<string, unknown>;
+      const arr = obj.members ?? obj.players ?? obj.joueurs ?? obj.results ?? obj.data;
+      if (Array.isArray(arr)) {
+        members = arr as Array<Record<string, unknown>>;
+      } else {
+        const keys = Object.keys(obj).filter((k) => /^\d+$/.test(k));
+        if (keys.length > 0) {
+          members = keys.sort((a, b) => parseInt(a) - parseInt(b))
+            .map((k) => obj[k] as Record<string, unknown>);
+        } else {
+          return { Retour: [] };
+        }
+      }
+    } else {
+      return { Retour: [] };
+    }
+
+    const items = members.map((raw) => ({
       Licence: String(raw.licence ?? raw.licenceNumber ?? raw.id ?? ''),
       Nom: String(raw.lastName ?? raw.nom ?? raw.name ?? ''),
       Prenom: String(raw.firstName ?? raw.prenom ?? ''),
       Club: clubId,
-      NomClub: String(data.clubName ?? data.name ?? ''),
-      ClassementSimple: String(raw.rankingSimple ?? raw.classementSimple ?? raw.ClassementSimple ?? ''),
-      ClassementDouble: String(raw.rankingDouble ?? raw.classementDouble ?? raw.ClassementDouble ?? ''),
-      ClassementMixte: String(raw.rankingMixte ?? raw.classementMixte ?? raw.ClassementMixte ?? ''),
-      CPPHSimple: raw.cpphSimple ?? raw.CPPHSimple,
-      CPPHDouble: raw.cpphDouble ?? raw.CPPHDouble,
-      CPPHMixte: raw.cpphMixte ?? raw.CPPHMixte,
+      NomClub: '',
+      ClassementSimple: String(raw.simpleSubLevel ?? raw.ClassementSimple ?? ''),
+      ClassementDouble: String(raw.doubleSubLevel ?? raw.ClassementDouble ?? ''),
+      ClassementMixte: String(raw.mixteSubLevel ?? raw.ClassementMixte ?? ''),
+      CPPHSimple: raw.simpleRate ?? raw.CPPHSimple,
+      CPPHDouble: raw.doubleRate ?? raw.CPPHDouble,
+      CPPHMixte: raw.mixteRate ?? raw.CPPHMixte,
       ...raw,
     }));
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getClubLeaderboard } from '../api/ffbad';
+import { getClubLeaderboard, getClubInfo, type ClubInfo } from '../api/ffbad';
 import { NetworkError } from '../api/errors';
 import { cacheGet, cacheSet } from '../cache/storage';
 import { useConnectivity } from '../connectivity/context';
@@ -13,6 +13,7 @@ import { normalizeToLeaderboard, type LeaderboardEntry } from '../utils/clubLead
 export interface ClubLeaderboardData {
   members: LeaderboardEntry[];
   clubName: string;
+  clubInfo: ClubInfo | null;
   rankedCount: number;
   isLoading: boolean;
   isRefreshing: boolean;
@@ -24,6 +25,7 @@ export interface ClubLeaderboardData {
 interface CachedClubLeaderboard {
   members: LeaderboardEntry[];
   clubName: string;
+  clubInfo: ClubInfo | null;
   rankedCount: number;
 }
 
@@ -45,6 +47,7 @@ export function useClubLeaderboard(clubId: string | null): ClubLeaderboardData {
 
   const [members, setMembers] = useState<LeaderboardEntry[]>([]);
   const [clubName, setClubName] = useState<string>('');
+  const [clubInfo, setClubInfo] = useState<ClubInfo | null>(null);
   const [rankedCount, setRankedCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -73,6 +76,7 @@ export function useClubLeaderboard(clubId: string | null): ClubLeaderboardData {
         if (cached) {
           setMembers(cached.members);
           setClubName(cached.clubName);
+          setClubInfo(cached.clubInfo ?? null);
           setRankedCount(cached.rankedCount);
           hasCachedData.current = true;
           if (!isConnected) {
@@ -86,20 +90,26 @@ export function useClubLeaderboard(clubId: string | null): ClubLeaderboardData {
         }
       }
 
-      // Step 2: Fetch from API
+      // Step 2: Fetch club info and members from API
       try {
+        // Fetch club info (name, address, contact, etc.)
+        const info = await getClubInfo(clubId);
+        if (info) {
+          setClubInfo(info);
+          setClubName(info.name);
+        }
+
+        // Try to fetch members
         const response = await getClubLeaderboard(clubId);
 
         if (Array.isArray(response.Retour)) {
           const normalized = normalizeToLeaderboard(response.Retour);
           setMembers(normalized);
 
-          // Extract club name from first raw item's NomClub field
-          const firstItem = response.Retour[0] as Record<string, unknown> | undefined;
-          const name = (firstItem?.NomClub as string | undefined) ?? '';
-          setClubName(name);
+          // Use club name from info or from first member
+          const name = info?.name ?? '';
+          if (name) setClubName(name);
 
-          // Count members with a real rank (anything other than NC)
           const ranked = normalized.filter((m) => m.bestRank !== 'NC').length;
           setRankedCount(ranked);
 
@@ -107,13 +117,23 @@ export function useClubLeaderboard(clubId: string | null): ClubLeaderboardData {
           cacheSet(`club:${clubId}`, {
             members: normalized,
             clubName: name,
+            clubInfo: info,
             rankedCount: ranked,
           });
           hasCachedData.current = true;
         } else {
+          // No members available — still cache club info
           setMembers([]);
-          setClubName('');
           setRankedCount(0);
+          if (info) {
+            cacheSet(`club:${clubId}`, {
+              members: [],
+              clubName: info.name,
+              clubInfo: info,
+              rankedCount: 0,
+            });
+            hasCachedData.current = true;
+          }
         }
       } catch (err) {
         if (hasCachedData.current) {
@@ -150,6 +170,7 @@ export function useClubLeaderboard(clubId: string | null): ClubLeaderboardData {
       // No club ID — ensure clean state, no loading spinner
       setMembers([]);
       setClubName('');
+      setClubInfo(null);
       setRankedCount(0);
       setIsLoading(false);
       setError(null);
@@ -175,6 +196,7 @@ export function useClubLeaderboard(clubId: string | null): ClubLeaderboardData {
   return {
     members,
     clubName,
+    clubInfo,
     rankedCount,
     isLoading,
     isRefreshing,

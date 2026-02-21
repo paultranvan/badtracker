@@ -26,10 +26,30 @@ import type { BookmarkedPlayer } from '../../../src/bookmarks/storage';
 // ============================================================
 
 export default function PlayerProfileScreen() {
-  const { licence } = useLocalSearchParams<{ licence: string }>();
+  const { licence, personId, nom, prenom, club, nomClub } = useLocalSearchParams<{
+    licence: string;
+    personId?: string;
+    nom?: string;
+    prenom?: string;
+    club?: string;
+    nomClub?: string;
+  }>();
   const { t } = useTranslation();
   const router = useRouter();
-  const [player, setPlayer] = useState<PlayerProfile | null>(null);
+  const [player, setPlayer] = useState<PlayerProfile | null>(() => {
+    // If we have basic info from search params, show it immediately
+    if (nom || prenom) {
+      return {
+        licence: licence ?? '',
+        nom: nom ?? '',
+        prenom: prenom ?? '',
+        club: club,
+        nomClub: nomClub,
+        rankings: {},
+      };
+    }
+    return null;
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,7 +88,15 @@ export default function PlayerProfileScreen() {
     if (!licence) return;
 
     let cancelled = false;
-    setIsLoading(true);
+    const hasSearchParams = !!(nom || prenom);
+
+    // If we have search param data, show it right away (don't block on loading)
+    if (hasSearchParams) {
+      hasCachedData.current = true;
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
     setError(null);
 
     // Step 1: Read from cache
@@ -76,34 +104,46 @@ export default function PlayerProfileScreen() {
     if (cached) {
       setPlayer(cached);
       hasCachedData.current = true;
+      setIsLoading(false);
       if (!isConnected) {
-        setIsLoading(false);
         return;
       }
     } else if (!isConnected) {
-      // No cache and offline
-      setError(t('offline.unavailable'));
-      setIsLoading(false);
+      if (!hasSearchParams) {
+        setError(t('offline.unavailable'));
+        setIsLoading(false);
+      }
       return;
     }
 
-    // Step 2: Fetch from API
+    // Step 2: Fetch from API with timeout to avoid hanging
     try {
-      const profile = await getPlayerProfile(licence);
+      const profilePromise = getPlayerProfile(licence, personId);
+      const timeoutPromise = new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 8000)
+      );
+
+      const profile = await Promise.race([profilePromise, timeoutPromise]);
       if (cancelled) return;
 
       if (profile) {
-        setPlayer(profile);
+        // Merge with search params: API may not return name/club
+        const merged: PlayerProfile = {
+          ...profile,
+          nom: profile.nom || nom || '',
+          prenom: profile.prenom || prenom || '',
+          club: profile.club || club,
+          nomClub: profile.nomClub || nomClub,
+        };
+        setPlayer(merged);
         hasCachedData.current = true;
-        // Passive ranking refresh: update stored bookmark if this player is bookmarked
-        updateStoredRankings(profile.licence, {
-          simple: profile.rankings.simple?.classement,
-          double: profile.rankings.double?.classement,
-          mixte: profile.rankings.mixte?.classement,
+        updateStoredRankings(merged.licence, {
+          simple: merged.rankings.simple?.classement,
+          double: merged.rankings.double?.classement,
+          mixte: merged.rankings.mixte?.classement,
         });
-        // Step 3: Cache profile if bookmarked
         if (isBookmarked(licence)) {
-          cacheSet(`player:${licence}`, profile);
+          cacheSet(`player:${licence}`, merged);
         }
       } else {
         if (!hasCachedData.current) {
@@ -113,8 +153,7 @@ export default function PlayerProfileScreen() {
     } catch {
       if (!cancelled) {
         if (hasCachedData.current) {
-          // Silently use cached data
-          setIsLoading(false);
+          // Silently use basic/cached data
           return;
         }
         setError(t('player.error'));
@@ -125,11 +164,10 @@ export default function PlayerProfileScreen() {
       }
     }
 
-    // Return cleanup function
     return () => {
       cancelled = true;
     };
-  }, [licence, t, updateStoredRankings, isConnected, isBookmarked]);
+  }, [licence, personId, nom, prenom, t, updateStoredRankings, isConnected, isBookmarked]);
 
   useEffect(() => {
     let cleanup: (() => void) | undefined;
@@ -144,9 +182,9 @@ export default function PlayerProfileScreen() {
   }, [fetchProfile]);
 
   // ----------------------------------------------------------
-  // Loading state
+  // Loading state (only show spinner if we have no player data at all)
   // ----------------------------------------------------------
-  if (isLoading) {
+  if (isLoading && !player) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#2563eb" />

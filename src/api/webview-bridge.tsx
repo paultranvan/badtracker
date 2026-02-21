@@ -117,7 +117,8 @@ const INJECTED_JS = `
 
   function getServiceBaseURL(path) {
     var match = path.match(/^\\/api\\/[^\\/]+\\//);
-    return match ? match[0] : '/api/auth/';
+    var relative = match ? match[0] : '/api/auth/';
+    return window.location.origin + relative;
   }
 
   function sendResponse(id, data) {
@@ -135,6 +136,20 @@ const INJECTED_JS = `
   async function handleRequest(msg) {
     var id = msg.id;
     try {
+      // Special "exec" type: evaluate JS and return result
+      if (msg.method === 'EXEC') {
+        try {
+          var execResult = eval(msg.path);
+          if (execResult && typeof execResult.then === 'function') {
+            execResult = await execResult;
+          }
+          sendResponse(id, execResult);
+        } catch(e) {
+          sendError(id, 'Exec error: ' + e.message, 0);
+        }
+        return;
+      }
+
       if (!cryptoReady) { await loadCryptoJS(); }
 
       var baseURL = getServiceBaseURL(msg.path);
@@ -256,12 +271,9 @@ true;
 function handleMessage(event: WebViewMessageEvent) {
   try {
     const raw = event.nativeEvent.data;
-    console.warn('[Bridge] onMessage:', raw.substring(0, 200));
-
     const msg: BridgeMessage = JSON.parse(raw);
 
     if (msg.type === 'ready') {
-      console.warn('[Bridge] WebView ready');
       bridgeReady = true;
       if (readyPromiseResolve) {
         readyPromiseResolve();
@@ -272,7 +284,6 @@ function handleMessage(event: WebViewMessageEvent) {
 
     const pending = pendingRequests.get(msg.id);
     if (!pending) {
-      console.warn('[Bridge] No pending request for id:', msg.id);
       return;
     }
 
@@ -281,7 +292,6 @@ function handleMessage(event: WebViewMessageEvent) {
 
     if (msg.type === 'error') {
       const status = msg.status ?? 0;
-      console.warn('[Bridge] Error response:', status, msg.error?.substring(0, 200));
       if (status === 400 || status === 401 || status === 403) {
         pending.reject(new AuthError(msg.error ?? 'Authentication failed'));
       } else if (status >= 500) {
@@ -292,7 +302,6 @@ function handleMessage(event: WebViewMessageEvent) {
         pending.reject(new ServerError(status, msg.error));
       }
     } else {
-      console.warn('[Bridge] Success response:', JSON.stringify(msg.data).substring(0, 200));
       pending.resolve(msg.data);
     }
   } catch {
@@ -311,12 +320,8 @@ async function sendRequest(
   accessToken?: string,
   personId?: string
 ): Promise<unknown> {
-  console.warn('[Bridge] sendRequest:', method, path, 'ready:', bridgeReady);
-
   if (!bridgeReady) {
-    console.warn('[Bridge] Waiting for bridge to be ready...');
     await readyPromise;
-    console.warn('[Bridge] Bridge is now ready');
   }
 
   if (!webViewRef) {
@@ -328,7 +333,6 @@ async function sendRequest(
   return new Promise<unknown>((resolve, reject) => {
     const timer = setTimeout(() => {
       pendingRequests.delete(id);
-      console.warn('[Bridge] Request timed out:', id, path);
       reject(new NetworkError('Request timed out'));
     }, REQUEST_TIMEOUT_MS);
 
@@ -378,26 +382,19 @@ export async function bridgeLogin(
   prenom: string;
   licence: string;
 }> {
-  console.warn('[Bridge] bridgeLogin called for licence:', licence);
-
   const data = (await sendRequest('POST', '/api/auth/login', {
     login: licence,
     password: password,
     isEncrypted: false,
   })) as Record<string, unknown>;
 
-  console.warn('[Bridge] bridgeLogin response:', JSON.stringify(data).substring(0, 300));
-
   if (!data || !data.personId) {
     const message =
       typeof data === 'object' && data?.message
         ? String(data.message)
         : 'Login failed';
-    console.warn('[Bridge] bridgeLogin failed:', message);
     throw new AuthError(message);
   }
-
-  console.warn('[Bridge] bridgeLogin success, personId:', data.personId);
 
   return {
     personId: data.personId as number,

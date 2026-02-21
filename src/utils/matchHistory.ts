@@ -24,6 +24,8 @@ export interface MatchItem {
   pointsImpact?: number;
   setScores?: string[];
   duration?: string;
+  /** Raw ISO date string for season computation (display date may be formatted) */
+  _rawDate?: string;
 }
 
 /**
@@ -125,12 +127,15 @@ export function toFullMatchItem(
   raw: Record<string, unknown>,
   index: number
 ): MatchItem {
+  // Use formatted date for display, raw date for season computation
   const date = (raw.Date as string) ?? undefined;
+  // _rawDate is the ISO date string preserved by the API transform
+  const rawDate = (raw._rawDate as string) ?? (raw.date as string) ?? date;
   const tournament =
     (raw.Epreuve as string) ?? (raw.Competition as string) ?? undefined;
 
   return {
-    id: `${date ?? 'unknown'}-${index}`,
+    id: `${rawDate ?? 'unknown'}-${index}`,
     date,
     opponent: (raw.Adversaire as string) ?? undefined,
     opponentLicence: (raw.AdversaireLicence as string) ?? undefined,
@@ -147,6 +152,8 @@ export function toFullMatchItem(
     pointsImpact: parsePoints(raw.Points),
     setScores: parseSetScores(raw.Sets),
     duration: (raw.Duree as string) ?? undefined,
+    // Store raw ISO date for season computation
+    _rawDate: rawDate,
   };
 }
 
@@ -221,8 +228,9 @@ export function filterBySeason(
   season: string
 ): MatchItem[] {
   return matches.filter((m) => {
-    if (!m.date) return false;
-    return getSeasonFromDate(m.date) === season;
+    const dateStr = m._rawDate ?? m.date;
+    if (!dateStr) return false;
+    return getSeasonFromDate(dateStr) === season;
   });
 }
 
@@ -259,7 +267,16 @@ export function computeWinLossStats(matches: MatchItem[]): WinLossStats {
  * - January through August → previous year to current year (e.g., "2024-2025")
  */
 export function getSeasonFromDate(dateStr: string): string {
-  const date = new Date(dateStr);
+  let date = new Date(dateStr);
+
+  // Try parsing French format DD/MM/YYYY if ISO fails
+  if (isNaN(date.getTime())) {
+    const frMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (frMatch) {
+      date = new Date(parseInt(frMatch[3]), parseInt(frMatch[2]) - 1, parseInt(frMatch[1]));
+    }
+  }
+
   if (isNaN(date.getTime())) return '';
 
   const year = date.getFullYear();
@@ -280,8 +297,9 @@ export function getAvailableSeasons(matches: MatchItem[]): string[] {
   const seasons = new Set<string>();
 
   for (const match of matches) {
-    if (match.date) {
-      const season = getSeasonFromDate(match.date);
+    const dateStr = match._rawDate ?? match.date;
+    if (dateStr) {
+      const season = getSeasonFromDate(dateStr);
       if (season) {
         seasons.add(season);
       }

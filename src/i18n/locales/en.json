@@ -131,6 +131,7 @@
     "searchMinChars": "Type at least 3 characters",
     "noResults": "No clubs found",
     "noMembers": "No members in this club",
+    "membersUnavailable": "Member listing is not available for this club",
     "noClub": "You are not affiliated with a club",
     "browseClubs": "Browse clubs",
     "myClub": "My club",
