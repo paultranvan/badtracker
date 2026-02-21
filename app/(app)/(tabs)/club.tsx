@@ -119,6 +119,7 @@ export default function ClubScreen() {
 
   const { clubs: searchResults, isLoading: searchLoading, search } = useClubSearch();
 
+  const [showClubInfo, setShowClubInfo] = useState(false);
   const [disciplineFilter, setDisciplineFilter] = useState<ClubDisciplineFilter>('all');
   const [genderFilter, setGenderFilter] = useState<ClubGenderFilter>('all');
 
@@ -348,16 +349,28 @@ export default function ClubScreen() {
     <View className="flex-1 bg-white">
       {/* Club header */}
       <View className="flex-row items-center px-4 pt-4 pb-2 border-b border-gray-200 bg-white">
-        <View className="flex-1">
-          <Text className="text-title text-gray-900" numberOfLines={2}>
-            {clubName || t('club.title')}
-          </Text>
-          {hasMembers ? (
-            <Text className="text-caption text-muted mt-0.5">
-              {t('club.members', { count: rankedCount })}
+        <Pressable
+          className="flex-1 flex-row items-center gap-1"
+          onPress={() => clubInfo && setShowClubInfo((v) => !v)}
+        >
+          <View className="flex-1">
+            <Text className="text-title text-gray-900" numberOfLines={2}>
+              {clubName || t('club.title')}
             </Text>
+            {hasMembers ? (
+              <Text className="text-caption text-muted mt-0.5">
+                {t('club.members', { count: rankedCount })}
+              </Text>
+            ) : null}
+          </View>
+          {clubInfo ? (
+            <Ionicons
+              name={showClubInfo ? 'chevron-up' : 'information-circle-outline'}
+              size={20}
+              color="#6b7280"
+            />
           ) : null}
-        </View>
+        </Pressable>
         <Pressable
           className="p-2 active:opacity-60"
           onPress={handleOpenSearch}
@@ -426,7 +439,7 @@ export default function ClubScreen() {
           renderItem={renderLeaderboardRow}
           ItemSeparatorComponent={() => <View className="h-px bg-gray-100 mx-4" />}
           contentContainerStyle={{ paddingVertical: 4 }}
-          ListHeaderComponent={clubInfo ? <ClubInfoCard info={clubInfo} /> : null}
+          ListHeaderComponent={showClubInfo && clubInfo ? <ClubInfoCard info={clubInfo} /> : null}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
@@ -440,7 +453,7 @@ export default function ClubScreen() {
         <FlatList
           data={[]}
           renderItem={() => null}
-          ListHeaderComponent={clubInfo ? <ClubInfoCard info={clubInfo} /> : null}
+          ListHeaderComponent={showClubInfo && clubInfo ? <ClubInfoCard info={clubInfo} /> : null}
           ListEmptyComponent={
             <View className="items-center py-8 px-6 gap-2">
               <Ionicons name="people-outline" size={36} color="#d1d5db" />
