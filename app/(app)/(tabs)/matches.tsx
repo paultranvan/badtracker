@@ -287,6 +287,8 @@ interface TournamentHeaderProps {
 
 function TournamentHeader({ section, t, isExpanded, onToggle }: TournamentHeaderProps) {
   const title = section.title || t('matchHistory.tournamentUnknown');
+  const wins = section.data.filter((m) => m.isWin === true).length;
+  const losses = section.data.filter((m) => m.isWin === false).length;
   return (
     <Pressable
       className="flex-row justify-between items-center px-4 py-2.5 bg-slate-50 border-l-[3px] border-l-primary border-b border-b-gray-200 active:bg-slate-100"
@@ -299,6 +301,16 @@ function TournamentHeader({ section, t, isExpanded, onToggle }: TournamentHeader
         {section.date ? (
           <Text className="text-caption text-muted">{section.date}</Text>
         ) : null}
+        {wins > 0 && (
+          <View className="bg-win/20 px-1.5 py-0.5 rounded">
+            <Text className="text-[11px] font-semibold text-win">{wins}W</Text>
+          </View>
+        )}
+        {losses > 0 && (
+          <View className="bg-loss/20 px-1.5 py-0.5 rounded">
+            <Text className="text-[11px] font-semibold text-loss">{losses}L</Text>
+          </View>
+        )}
         <Ionicons
           name={isExpanded ? 'chevron-up' : 'chevron-down'}
           size={16}
