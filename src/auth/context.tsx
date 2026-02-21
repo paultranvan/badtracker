@@ -6,8 +6,7 @@ import React, {
   useCallback,
   type PropsWithChildren,
 } from 'react';
-import { validateCredentials } from '../api/ffbad';
-import { setCredentials } from '../api/client';
+import { validateCredentials, setSessionInfo } from '../api/ffbad';
 import {
   storeCredentials,
   getStoredCredentials,
@@ -15,6 +14,7 @@ import {
 } from './storage';
 import { AuthError, NetworkError, FFBaDError } from '../api/errors';
 import { cacheClear } from '../cache/storage';
+import { resetBridge, waitForBridge } from '../api/webview-bridge';
 import type { UserSession } from '../types/ffbad';
 
 // ============================================================
@@ -57,7 +57,7 @@ export function useSession(): SessionContextType {
 // Provider
 // ============================================================
 
-const AUTO_LOGIN_TIMEOUT_MS = 5000;
+const AUTO_LOGIN_TIMEOUT_MS = 10000;
 
 export function SessionProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<UserSession | null>(null);
@@ -77,34 +77,93 @@ export function SessionProvider({ children }: PropsWithChildren) {
           return;
         }
 
-        // Inject credentials into API client immediately
-        setCredentials(stored);
+        // If we have stored personId/accessToken, set session info immediately
+        if (stored.personId && stored.accessToken) {
+          setSessionInfo({
+            personId: stored.personId,
+            accessToken: stored.accessToken,
+            licence: stored.licence,
+          });
+        }
 
-        // Try to validate credentials with a timeout
+        // Wait for WebView bridge to be ready before attempting login
+        const bridgeWait = waitForBridge();
+        const timeoutPromise = new Promise<'timeout'>((resolve) =>
+          setTimeout(() => resolve('timeout'), AUTO_LOGIN_TIMEOUT_MS)
+        );
+
+        const bridgeResult = await Promise.race([bridgeWait, timeoutPromise]);
+
+        if (cancelled) return;
+
+        if (bridgeResult === 'timeout') {
+          // Bridge not ready in time — use stored data if available
+          if (stored.personId && stored.accessToken) {
+            setSession({
+              licence: stored.licence,
+              nom: '',
+              prenom: '',
+              personId: stored.personId,
+              accessToken: stored.accessToken,
+            });
+          } else {
+            setSession(null);
+          }
+          setIsLoading(false);
+          return;
+        }
+
+        // Bridge is ready — try to validate credentials
         const validationPromise = validateCredentials(
           stored.licence,
           stored.password
         );
 
-        const timeoutPromise = new Promise<'timeout'>((resolve) =>
+        const validationTimeout = new Promise<'timeout'>((resolve) =>
           setTimeout(() => resolve('timeout'), AUTO_LOGIN_TIMEOUT_MS)
         );
 
-        const result = await Promise.race([validationPromise, timeoutPromise]);
+        const result = await Promise.race([validationPromise, validationTimeout]);
 
         if (cancelled) return;
 
         if (result === 'timeout') {
-          // Timeout: proceed with stored credentials anyway
-          // (offline tolerance — per Pitfall #5 from research)
-          setSession({
-            licence: stored.licence,
-            nom: '',
-            prenom: '',
-          });
+          // Timeout: use stored session data if available
+          if (stored.personId && stored.accessToken) {
+            setSession({
+              licence: stored.licence,
+              nom: '',
+              prenom: '',
+              personId: stored.personId,
+              accessToken: stored.accessToken,
+            });
+          } else {
+            setSession({
+              licence: stored.licence,
+              nom: '',
+              prenom: '',
+              personId: '',
+              accessToken: '',
+            });
+          }
         } else {
-          // Validation succeeded
+          // Validation succeeded — update session info
+          setSessionInfo({
+            personId: result.personId,
+            accessToken: result.accessToken,
+            licence: result.licence,
+          });
+
           setSession(result);
+
+          // Update stored credentials with fresh personId/accessToken
+          await storeCredentials(
+            stored.licence,
+            stored.password,
+            true,
+            result.personId,
+            result.accessToken
+          );
         }
       } catch (error) {
         if (cancelled) return;
@@ -112,23 +171,30 @@ export function SessionProvider({ children }: PropsWithChildren) {
         if (error instanceof AuthError) {
           // Credentials no longer valid — clear and show login
           await clearCredentials();
-          setCredentials(null);
+          setSessionInfo(null);
           setSession(null);
         } else if (error instanceof NetworkError) {
-          // Network error: proceed with stored credentials (offline tolerance)
+          // Network error: use stored session data if available
           const stored = await getStoredCredentials();
-          if (stored) {
+          if (stored?.personId && stored?.accessToken) {
+            setSessionInfo({
+              personId: stored.personId,
+              accessToken: stored.accessToken,
+              licence: stored.licence,
+            });
             setSession({
               licence: stored.licence,
               nom: '',
               prenom: '',
+              personId: stored.personId,
+              accessToken: stored.accessToken,
             });
           } else {
             setSession(null);
           }
         } else {
           // Unknown error — show login
-          setCredentials(null);
+          setSessionInfo(null);
           setSession(null);
         }
       } finally {
@@ -150,14 +216,27 @@ export function SessionProvider({ children }: PropsWithChildren) {
   // ----------------------------------------------------------
   const signIn = useCallback(
     async (licence: string, password: string, remember: boolean) => {
-      // Validate credentials against FFBaD API
+      // Wait for bridge to be ready
+      await waitForBridge();
+
+      // Validate credentials via myffbad.fr
       const userInfo = await validateCredentials(licence, password);
 
-      // Persist credentials in SecureStore
-      await storeCredentials(licence, password, remember);
+      // Set session info for API calls
+      setSessionInfo({
+        personId: userInfo.personId,
+        accessToken: userInfo.accessToken,
+        licence: userInfo.licence,
+      });
 
-      // Keep credentials in API client
-      setCredentials({ licence, password });
+      // Persist credentials in SecureStore
+      await storeCredentials(
+        licence,
+        password,
+        remember,
+        userInfo.personId,
+        userInfo.accessToken
+      );
 
       // Set session
       setSession(userInfo);
@@ -175,8 +254,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
     // Clear stored credentials
     await clearCredentials();
 
-    // Clear API client credentials
-    setCredentials(null);
+    // Clear API session info
+    setSessionInfo(null);
+
+    // Reset WebView bridge (clears cookies/session)
+    resetBridge();
 
     // Clear session — triggers route guard → login screen
     setSession(null);

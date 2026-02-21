@@ -16,6 +16,8 @@ const REMEMBER_KEY = 'ffbad_remember';
 interface StoredCredentials {
   licence: string;
   password: string;
+  personId?: string;
+  accessToken?: string;
 }
 
 /**
@@ -24,16 +26,20 @@ interface StoredCredentials {
  * @param licence - FFBaD licence number
  * @param password - Account password
  * @param remember - Whether to persist across app restarts
+ * @param personId - myffbad.fr person ID (from login response)
+ * @param accessToken - myffbad.fr access token (from login response)
  */
 export async function storeCredentials(
   licence: string,
   password: string,
-  remember: boolean
+  remember: boolean,
+  personId?: string,
+  accessToken?: string
 ): Promise<void> {
   if (remember) {
     await SecureStore.setItemAsync(
       CREDENTIALS_KEY,
-      JSON.stringify({ licence, password }),
+      JSON.stringify({ licence, password, personId, accessToken }),
       {
         keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
       }

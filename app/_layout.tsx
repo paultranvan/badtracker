@@ -2,6 +2,7 @@ import { Slot, useRouter, useSegments } from 'expo-router';
 import { SessionProvider, useSession } from '../src/auth/context';
 import { BookmarksProvider } from '../src/bookmarks/context';
 import { ConnectivityProvider, OfflineBar } from '../src/connectivity/context';
+import { WebViewBridgeProvider } from '../src/api/webview-bridge';
 import Toast from 'react-native-toast-message';
 import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
@@ -45,12 +46,14 @@ function AuthGate() {
 export default function RootLayout() {
   return (
     <ConnectivityProvider>
-      <SessionProvider>
-        <BookmarksProvider>
-          <AuthGate />
-          <Toast />
-        </BookmarksProvider>
-      </SessionProvider>
+      <WebViewBridgeProvider>
+        <SessionProvider>
+          <BookmarksProvider>
+            <AuthGate />
+            <Toast />
+          </BookmarksProvider>
+        </SessionProvider>
+      </WebViewBridgeProvider>
     </ConnectivityProvider>
   );
 }

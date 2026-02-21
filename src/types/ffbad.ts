@@ -36,10 +36,12 @@ export interface FFBaDCallParams {
 
 /**
  * Authenticated user session data.
- * Extracted from ws_getaccountpoona or ws_getlicenceinfobylicence response.
+ * personId and accessToken come from myffbad.fr login response.
  */
 export interface UserSession {
   licence: string;
   nom: string;
   prenom: string;
+  personId: string;
+  accessToken: string;
 }

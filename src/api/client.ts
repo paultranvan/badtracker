@@ -166,7 +166,7 @@ export async function callFFBaD<T extends z.ZodType>(
   return withRetry(async () => {
     const params: Record<string, string> = {
       QueryJson: JSON.stringify({
-        Fonction: call.fonction,
+        Function: call.fonction,
         Param: call.params,
       }),
     };
