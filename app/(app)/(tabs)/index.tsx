@@ -5,14 +5,32 @@ import {
   RefreshControl,
   Pressable,
   ActivityIndicator,
-  StyleSheet,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useDashboardData } from '../../../src/hooks/useDashboardData';
-import type { MatchPreview } from '../../../src/hooks/useDashboardData';
 import { getRankLabel } from '../../../src/utils/rankings';
 import { useSession } from '../../../src/auth/context';
+import { StatCard, SectionHeader, MatchCard, Card } from '../../../src/components';
+
+// ============================================================
+// Discipline config
+// ============================================================
+
+const disciplineColors: Record<string, string> = {
+  simple: '#3b82f6',
+  double: '#10b981',
+  mixte: '#f59e0b',
+};
+
+const disciplines: Array<{
+  key: 'simple' | 'double' | 'mixte';
+  translationKey: string;
+}> = [
+  { key: 'simple', translationKey: 'player.simple' },
+  { key: 'double', translationKey: 'player.double' },
+  { key: 'mixte', translationKey: 'player.mixte' },
+];
 
 // ============================================================
 // Main Dashboard Screen
@@ -36,7 +54,7 @@ export default function DashboardScreen() {
   // ----------------------------------------------------------
   if (isLoading) {
     return (
-      <View style={styles.centered}>
+      <View className="flex-1 items-center justify-center bg-white px-6">
         <ActivityIndicator size="large" color="#2563eb" />
       </View>
     );
@@ -47,16 +65,13 @@ export default function DashboardScreen() {
   // ----------------------------------------------------------
   if (error && !profile) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{t(error)}</Text>
+      <View className="flex-1 items-center justify-center bg-white px-6">
+        <Text className="text-[16px] text-loss text-center mb-4">{t(error)}</Text>
         <Pressable
-          style={({ pressed }) => [
-            styles.retryButton,
-            pressed && styles.retryButtonPressed,
-          ]}
+          className="bg-primary px-6 py-2.5 rounded-lg active:bg-primary-dark"
           onPress={() => refresh()}
         >
-          <Text style={styles.retryText}>{t('common.retry')}</Text>
+          <Text className="text-white text-[16px] font-semibold">{t('common.retry')}</Text>
         </Pressable>
       </View>
     );
@@ -70,17 +85,8 @@ export default function DashboardScreen() {
   const greetingKey = hasRecentWin ? 'dashboard.greetingWin' : 'dashboard.greeting';
 
   // ----------------------------------------------------------
-  // Ranking data for cards
+  // Ranking data
   // ----------------------------------------------------------
-  const disciplines: Array<{
-    key: 'simple' | 'double' | 'mixte';
-    translationKey: string;
-  }> = [
-    { key: 'simple', translationKey: 'player.simple' },
-    { key: 'double', translationKey: 'player.double' },
-    { key: 'mixte', translationKey: 'player.mixte' },
-  ];
-
   const bestDiscipline = quickStats?.bestRanking?.discipline ?? null;
 
   // ----------------------------------------------------------
@@ -88,8 +94,8 @@ export default function DashboardScreen() {
   // ----------------------------------------------------------
   return (
     <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
+      className="flex-1 bg-white"
+      contentContainerClassName="p-4 pb-8"
       refreshControl={
         <RefreshControl
           refreshing={isRefreshing}
@@ -100,35 +106,36 @@ export default function DashboardScreen() {
       }
     >
       {/* Greeting */}
-      <Text style={styles.greeting}>
+      <Text className="text-title text-gray-700 mb-4">
         {t(greetingKey, { name: displayName })}
       </Text>
 
       {/* Quick Stats Row */}
       {quickStats ? (
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>
-              {quickStats.bestRanking
-                ? quickStats.bestRanking.classement
-                : t('dashboard.unranked')}
-            </Text>
-            <Text style={styles.statLabel}>{t('dashboard.bestRanking')}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{quickStats.matchCount}</Text>
-            <Text style={styles.statLabel}>{t('dashboard.matchesPlayed')}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{quickStats.winRate}%</Text>
-            <Text style={styles.statLabel}>{t('dashboard.winRate')}</Text>
-          </View>
+        <View className="flex-row gap-2 mb-5">
+          <StatCard
+            value={quickStats.bestRanking ? quickStats.bestRanking.classement : t('dashboard.unranked')}
+            label={t('dashboard.bestRanking')}
+            icon="trophy-outline"
+            iconColor="#d97706"
+            highlight
+          />
+          <StatCard
+            value={String(quickStats.matchCount)}
+            label={t('dashboard.matchesPlayed')}
+            icon="fitness-outline"
+          />
+          <StatCard
+            value={`${quickStats.winRate}%`}
+            label={t('dashboard.winRate')}
+            icon="analytics-outline"
+          />
         </View>
       ) : null}
 
       {/* Rankings Section */}
-      <Text style={styles.sectionTitle}>{t('dashboard.rankings')}</Text>
-      <View style={styles.rankingRow}>
+      <SectionHeader title={t('dashboard.rankings')} />
+      <View className="flex-row gap-2 mb-5">
         {disciplines.map(({ key, translationKey }) => {
           const ranking = profile?.rankings[key];
           const classement = getRankLabel(ranking?.classement);
@@ -138,304 +145,57 @@ export default function DashboardScreen() {
           return (
             <Pressable
               key={key}
-              style={({ pressed }) => [
-                styles.rankingCard,
-                isBest && styles.rankingCardBest,
-                pressed && styles.rankingCardPressed,
-              ]}
-              onPress={() => {
-                router.push('/ranking-chart');
-              }}
+              className="flex-1"
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+              onPress={() => router.push('/ranking-chart')}
             >
-              <Text style={styles.rankingDiscipline}>{t(translationKey)}</Text>
-              <Text
-                style={[
-                  styles.rankingClassement,
-                  isBest && styles.rankingClassementBest,
-                ]}
+              <Card
+                className={`items-center p-3 border-t-[3px] ${isBest ? 'shadow-md' : ''}`}
+                style={{ borderTopColor: disciplineColors[key] }}
               >
-                {classement}
-              </Text>
-              {cpph != null ? (
-                <Text style={styles.rankingCpph}>{cpph.toFixed(1)} pts</Text>
-              ) : null}
+                <Text className="text-caption text-muted mb-1 uppercase">{t(translationKey)}</Text>
+                <Text className={`text-[22px] font-bold mb-0.5 ${isBest ? 'text-primary' : 'text-gray-700'}`}>
+                  {classement}
+                </Text>
+                {cpph != null && (
+                  <Text className="text-caption text-muted">{cpph.toFixed(1)} pts</Text>
+                )}
+              </Card>
             </Pressable>
           );
         })}
       </View>
 
       {/* Recent Matches Section */}
-      <Text style={styles.sectionTitle}>{t('dashboard.recentMatches')}</Text>
+      <SectionHeader title={t('dashboard.recentMatches')} />
       {recentMatches.length === 0 ? (
-        <Text style={styles.noMatches}>{t('dashboard.noMatches')}</Text>
+        <Text className="text-body text-gray-400 italic mb-4">{t('dashboard.noMatches')}</Text>
       ) : (
-        <View style={styles.matchesContainer}>
-          {recentMatches.map((match, index) => (
-            <MatchRow key={index} match={match} t={t} />
-          ))}
+        <View className="mb-3">
+          {recentMatches.map((match, index) => {
+            let badgeLabel = '?';
+            if (match.isWin === true) badgeLabel = t('dashboard.victory');
+            else if (match.isWin === false) badgeLabel = t('dashboard.defeat');
+
+            return (
+              <MatchCard
+                key={index}
+                isWin={match.isWin}
+                badgeLabel={badgeLabel}
+                opponent={match.opponent ?? '-'}
+                event={match.event}
+                score={match.score}
+              />
+            );
+          })}
           <Pressable
-            style={({ pressed }) => [
-              styles.viewAllLink,
-              pressed && styles.viewAllLinkPressed,
-            ]}
-            onPress={() => {
-              router.push('/(app)/(tabs)/matches');
-            }}
+            className="py-3 items-center mt-1 active:opacity-60"
+            onPress={() => router.push('/(app)/(tabs)/matches')}
           >
-            <Text style={styles.viewAllText}>
-              {t('dashboard.viewAllMatches')} {'\u203A'}
-            </Text>
+            <Text className="text-body font-medium text-primary">{t('dashboard.viewAllMatches')} {'\u203A'}</Text>
           </Pressable>
         </View>
       )}
     </ScrollView>
   );
 }
-
-// ============================================================
-// Match Row Sub-component
-// ============================================================
-
-interface MatchRowProps {
-  match: MatchPreview;
-  t: (key: string) => string;
-}
-
-function MatchRow({ match, t }: MatchRowProps) {
-  // Determine badge style based on win/loss/unknown
-  let badgeStyle = styles.badgeUnknown;
-  let badgeText = '?';
-
-  if (match.isWin === true) {
-    badgeStyle = styles.badgeWin;
-    badgeText = t('dashboard.victory');
-  } else if (match.isWin === false) {
-    badgeStyle = styles.badgeLoss;
-    badgeText = t('dashboard.defeat');
-  }
-
-  return (
-    <View style={styles.matchRow}>
-      <View style={[styles.badge, badgeStyle]}>
-        <Text style={styles.badgeText}>{badgeText}</Text>
-      </View>
-      <View style={styles.matchInfo}>
-        <Text style={styles.matchOpponent} numberOfLines={1}>
-          {match.opponent ?? '-'}
-        </Text>
-        {match.event ? (
-          <Text style={styles.matchEvent} numberOfLines={1}>
-            {match.event}
-          </Text>
-        ) : null}
-      </View>
-      <Text style={styles.matchScore}>{match.score ?? '-'}</Text>
-    </View>
-  );
-}
-
-// ============================================================
-// Styles
-// ============================================================
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 24,
-  },
-
-  // Greeting
-  greeting: {
-    fontSize: 20,
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: 16,
-  },
-
-  // Stats Row
-  statsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 20,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#eff6ff',
-    borderRadius: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1e40af',
-  },
-  statLabel: {
-    fontSize: 11,
-    color: '#6b7280',
-    marginTop: 4,
-    textAlign: 'center',
-  },
-
-  // Section
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111',
-    marginBottom: 12,
-    marginTop: 4,
-  },
-
-  // Ranking Cards
-  rankingRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 20,
-  },
-  rankingCard: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-    borderRadius: 10,
-    padding: 12,
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    alignItems: 'center',
-  },
-  rankingCardBest: {
-    borderColor: '#2563eb',
-    backgroundColor: '#f0f7ff',
-  },
-  rankingCardPressed: {
-    opacity: 0.7,
-  },
-  rankingDiscipline: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#6b7280',
-    marginBottom: 4,
-    textTransform: 'uppercase',
-  },
-  rankingClassement: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#374151',
-    marginBottom: 2,
-  },
-  rankingClassementBest: {
-    color: '#2563eb',
-  },
-  rankingCpph: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginBottom: 4,
-  },
-
-  // Matches
-  matchesContainer: {
-    marginBottom: 12,
-  },
-  matchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  badge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  badgeWin: {
-    backgroundColor: '#dcfce7',
-  },
-  badgeLoss: {
-    backgroundColor: '#fee2e2',
-  },
-  badgeUnknown: {
-    backgroundColor: '#f3f4f6',
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#374151',
-  },
-  matchInfo: {
-    flex: 1,
-  },
-  matchOpponent: {
-    fontSize: 15,
-    color: '#111',
-    fontWeight: '500',
-  },
-  matchEvent: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 2,
-  },
-  matchScore: {
-    fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
-    marginLeft: 8,
-  },
-
-  // No matches
-  noMatches: {
-    fontSize: 15,
-    color: '#9ca3af',
-    fontStyle: 'italic',
-    marginBottom: 16,
-  },
-
-  // View all link
-  viewAllLink: {
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  viewAllLinkPressed: {
-    opacity: 0.6,
-  },
-  viewAllText: {
-    fontSize: 15,
-    color: '#2563eb',
-    fontWeight: '500',
-  },
-
-  // Error
-  errorText: {
-    fontSize: 16,
-    color: '#dc2626',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  retryButton: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonPressed: {
-    backgroundColor: '#1d4ed8',
-  },
-  retryText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
