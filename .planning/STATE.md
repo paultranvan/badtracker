@@ -2,142 +2,21 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-16)
+See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** French badminton players can instantly see their ranking evolution and match stats in a native mobile experience that makes myffbad.fr data actually useful.
-**Current focus:** All phases complete - Milestone v1 ready
+**Current focus:** v1.0 shipped — planning next milestone
 
 ## Current Position
 
-Phase: 8 of 8 (Offline Support) - COMPLETE
-Plan: 2 of 2 in current phase
-Status: All phases complete
-Last activity: 2026-02-20 — Phase 8 Offline Support completed (2/2 plans)
+Phase: v1.0 complete (8 phases, 18 plans)
+Status: Milestone shipped
+Last activity: 2026-02-21 — v1.0 MVP milestone completed and archived
 
-Progress: [██████████] 100%
-
-## Performance Metrics
-
-**Velocity:**
-- Total plans completed: 16
-- Average duration: ~7 min/plan
-- Total execution time: ~2h
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 1 - Foundation & Security | 4/4 | ~1 hr | ~15 min |
-| 2 - Player Discovery | 2/2 | ~18 min | ~9 min |
-| 3 - Personal Dashboard | 2/2 | ~10 min | ~5 min |
-| 4 - Match History | 2/2 | ~10 min | ~5 min |
-| 5 - Ranking Visualization | 2/2 | ~10 min | ~5 min |
-| 6 - Club Features | 2/2 | ~5 min | ~2.5 min |
-
-**Recent Trend:**
-- Last 5 plans: 07-01, 07-02, 08-01, 08-02
-- Trend: Accelerating
-
-*Updated after each plan completion*
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 7 - Player Bookmarks | 2/2 | ~4 min | ~2 min |
-| 8 - Offline Support | 2/2 | ~6 min | ~3 min |
-
-## Accumulated Context
-
-### Decisions
-
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- React Native + Expo: Cross-platform with JS/TS, large ecosystem, quick setup
-- No backend for v1: Keep architecture simple, direct FFBaD API + local cache
-- Android-first: User's primary platform, iOS trivial to add later with RN
-- FFBaD API direct access: Existing third-party apps confirm this works
-- FFBaD API is RPC-over-REST: single endpoint, function name + params as JSON
-- Credentials stored in SecureStore with AFTER_FIRST_UNLOCK accessibility
-- i18n: French default, English alternative, via i18next + react-i18next
-- Expo Router Stack.Protected for auth-gated navigation
-- Single search bar auto-detects name vs licence number (Phase 2)
-- Player profile route /player/[licence] outside tabs for universal access (Phase 2)
-- 300ms debounce for search, minimum 3 characters (Phase 2)
-- Promise.allSettled for parallel dashboard data fetching (Phase 3)
-- CPPH boundaries as static lookup table — approximate values, easily updatable (Phase 3)
-- Dashboard ranking cards: flex row, 3 equal-width cards with gap indicators (Phase 3)
-- SectionList with stickySectionHeadersEnabled for tournament-grouped match display (Phase 4)
-- Client-side filtering with useMemo chain for discipline and season filters (Phase 4)
-- LayoutAnimation for accordion expand/collapse in match detail (Phase 4)
-- Matches tab between Home and Search in bottom navigation (Phase 4)
-- react-native-gifted-charts for ranking visualization — no Skia/Reanimated deps needed (Phase 5)
-- dataSet prop for multi-line chart rendering with per-discipline colors (Phase 5)
-- Milestone detection by comparing consecutive rank values — shown as colored badges on chart (Phase 5)
-- Ranking chart as Stack screen outside tabs — accessible from dashboard ranking card tap (Phase 5)
-- Tappable legend toggles discipline line visibility with useMemo filtering (Phase 5)
-- [Phase 06-club-features]: Club list cached in memory + AsyncStorage (24h TTL) for fetch-once approach to ~3500-entry club list (Phase 6)
-- [Phase 06-club-features]: normalizeToLeaderboard accepts unknown[] to decouple from Zod schema types; bestRank fallback: getBestRanking() -> classement string -> NC (Phase 6)
-- [Phase 06-club-features]: Club tab fetches user's club via getPlayerProfile in useEffect — no new hook needed
-- [Phase 06-club-features]: Dual-mode screen pattern for Club tab: leaderboard and search mode in single component with boolean flag
-- [Phase 07]: react-native-toast-message installed with --legacy-peer-deps to resolve peer dependency conflicts
-- [Phase 07]: Bookmarks tied to device not account — BookmarksProvider wraps outside of auth state awareness, loads on app mount regardless of login state
-- [Phase 07-player-bookmarks]: @expo/vector-icons needs explicit install via expo install even when Expo SDK is used
-- [Phase 07-player-bookmarks]: Settings tab folder pattern: settings/_layout.tsx + index.tsx maps to same tab route as settings.tsx
-- [Phase 08]: @react-native-community/netinfo installed with --legacy-peer-deps (same peer dep pattern as Phase 7)
-- [Phase 08]: ConnectivityProvider outermost in root layout, before SessionProvider
-- [Phase 08]: NetInfo null state treated as connected to prevent false offline flash on startup
-- [Phase 08]: Cache prefix 'badtracker_cache:' avoids collision with bookmarks and language keys
-- [Phase 08]: Cache-first-then-fetch pattern: cacheGet before API, cacheSet after success, hasCachedData ref to suppress errors
-- [Phase 08]: Auto-refresh on reconnection via useRef tracking prevConnected + useEffect watching isConnected
-- [Phase 08]: Player profile caching only for bookmarked players
-- [Phase 08]: Sign-out clears cache before clearing credentials
-
-### Pending Todos
-
-None.
-
-### Blockers/Concerns
-
-**Phase 1 (Foundation) — RESOLVED:**
-- FFBaD API uses Login+Password in AuthJson param (not token-based) — validated
-- FFBaD API rate limits still undocumented — exponential backoff implemented
-- UTF-8 handling tested — axios defaults handle French characters correctly
-
-**Phase 2 (Player Discovery) — RESOLVED:**
-- Ranking fields in getLicenceInfo response may use different field names — .passthrough() + optional fields handle gracefully
-- Profile shows "No ranking data" if fields aren't present — acceptable degradation
-
-**Phase 3 (Personal Dashboard) — RESOLVED:**
-- CPPH rank boundary values are approximate — will verify with real FFBaD data
-- Match result API response shape uncertain — win/loss detection tries multiple field names
-- Dashboard renders correctly with partial data (profile loads even if matches fail)
-
-**Phase 4 (Match History) — RESOLVED:**
-- FFBaD API response fields for match detail are uncertain — .passthrough() + optional fields with graceful fallbacks
-- Season detection uses month >= 8 (September) threshold for French badminton calendar
-- LayoutAnimation enabled experimentally on Android for accordion
-
-**Phase 5 (Ranking Visualization) — RESOLVED:**
-- FFBaD ranking evolution API response shape uncertain — expanded schema with .passthrough() + optional fields
-- Date format handling: parser tries ISO then DD/MM/YYYY then fallback
-- NC disciplines rendered as flat line at value 0 with "NC" label in legend
-
-**Phase 6 (Club Features) — RESOLVED:**
-- Club list caching uses memory + AsyncStorage with 24h TTL
-- normalizeToLeaderboard decoupled from Zod types with unknown[]
-
-**Phase 7 (Player Bookmarks) — RESOLVED:**
-- Bookmarks persist across logout (tied to device, not account)
-- Settings tab folder pattern works with same route
-
-**Phase 8 (Offline Support) — RESOLVED:**
-- @react-native-community/netinfo peer dep conflict resolved with --legacy-peer-deps
-- Cache-first pattern applied consistently across all 4 data hooks
-- Player profile caching scoped to bookmarked players only
-- OfflineBar only visible when session exists (not on login screen)
+Progress: [##########] 100% (v1.0)
 
 ## Session Continuity
 
-Last session: 2026-02-20
-Stopped at: All phases complete, milestone v1 ready
-Resume file: .planning/STATE.md
+Last session: 2026-02-21
+Stopped at: v1.0 milestone archived and tagged
+Resume with: /gsd:new-milestone
