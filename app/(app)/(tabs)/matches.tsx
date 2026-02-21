@@ -57,13 +57,11 @@ export default function MatchHistoryScreen() {
     availableSeasons,
     activeDiscipline,
     activeSeason,
-    expandedMatchId,
     isLoading,
     isRefreshing,
     error,
     setDiscipline,
     setSeason,
-    toggleMatchExpand,
     refresh,
   } = useMatchHistory();
 
@@ -204,14 +202,7 @@ export default function MatchHistoryScreen() {
         renderSectionHeader={({ section }) => (
           <TournamentHeader section={section} t={t} />
         )}
-        renderItem={({ item }) => (
-          <MatchRow
-            match={item}
-            isExpanded={expandedMatchId === item.id}
-            onToggle={() => toggleMatchExpand(item.id)}
-            t={t}
-          />
-        )}
+        renderItem={({ item }) => <MatchCard match={item} t={t} />}
         stickySectionHeadersEnabled={true}
         refreshControl={
           <RefreshControl
@@ -303,154 +294,92 @@ function TournamentHeader({ section, t }: TournamentHeaderProps) {
 }
 
 // ============================================================
-// Match Row Sub-component
+// Match Card Sub-component (inline details, no accordion)
 // ============================================================
 
-interface MatchRowProps {
+interface MatchCardProps {
   match: MatchItem;
-  isExpanded: boolean;
-  onToggle: () => void;
   t: (key: string, opts?: Record<string, unknown>) => string;
 }
 
-function MatchRow({ match, isExpanded, onToggle, t }: MatchRowProps) {
-  // Badge
-  let badgeStyle = styles.badgeUnknown;
-  let badgeText = '?';
-  if (match.isWin === true) {
-    badgeStyle = styles.badgeWin;
-    badgeText = t('matchHistory.victory');
-  } else if (match.isWin === false) {
-    badgeStyle = styles.badgeLoss;
-    badgeText = t('matchHistory.defeat');
-  }
-
-  // Discipline letter
+function MatchCard({ match, t }: MatchCardProps) {
   const disciplineLetter =
-    match.discipline === 'simple'
-      ? 'S'
-      : match.discipline === 'double'
-        ? 'D'
-        : match.discipline === 'mixte'
-          ? 'M'
+    match.discipline === 'simple' ? 'S'
+      : match.discipline === 'double' ? 'D'
+        : match.discipline === 'mixte' ? 'M'
           : '';
 
-  // Opponent display
-  const opponentName = match.opponent ?? '-';
-  const hasOpponentLink = !!match.opponentLicence;
+  const resultBadge = match.isWin === true
+    ? { style: styles.badgeWin, text: t('matchHistory.victory') }
+    : match.isWin === false
+      ? { style: styles.badgeLoss, text: t('matchHistory.defeat') }
+      : { style: styles.badgeUnknown, text: '?' };
 
-  // Second opponent for doubles
-  const opponent2 = match.opponent2;
+  const pointsText = match.pointsImpact != null
+    ? (match.pointsImpact >= 0 ? `+${match.pointsImpact.toFixed(1)}` : match.pointsImpact.toFixed(1)) + ' pts'
+    : null;
+  const pointsStyle = match.pointsImpact != null && match.pointsImpact >= 0
+    ? styles.pointsPositive
+    : styles.pointsNegative;
 
   return (
-    <Pressable onPress={onToggle} style={styles.matchRowContainer}>
-      <View style={styles.matchRow}>
-        {/* W/L Badge */}
-        <View style={[styles.badge, badgeStyle]}>
-          <Text style={styles.badgeText}>{badgeText}</Text>
-        </View>
-
-        {/* Center: opponent, partner, round */}
-        <View style={styles.matchInfo}>
-          {/* Opponent name (tappable if licence available) */}
-          {hasOpponentLink ? (
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation?.();
-                router.push(`/player/${match.opponentLicence}`);
-              }}
-            >
-              <Text style={styles.matchOpponentLink} numberOfLines={1}>
-                {opponentName}
-                {opponent2 ? ` / ${opponent2}` : ''}
-              </Text>
-            </Pressable>
-          ) : (
-            <Text style={styles.matchOpponent} numberOfLines={1}>
-              {opponentName}
-              {opponent2 ? ` / ${opponent2}` : ''}
-            </Text>
-          )}
-
-          {/* Partner for doubles/mixed */}
-          {match.partner ? (
-            <Text style={styles.matchPartner} numberOfLines={1}>
-              {t('matchHistory.partner', { name: match.partner })}
-            </Text>
-          ) : null}
-
-          {/* Round */}
-          {match.round ? (
-            <Text style={styles.matchRound} numberOfLines={1}>
-              {match.round}
-            </Text>
-          ) : null}
-        </View>
-
-        {/* Right: score + discipline badge */}
-        <View style={styles.matchRight}>
-          <Text style={styles.matchScore}>{match.score ?? '-'}</Text>
+    <View style={styles.matchCard}>
+      {/* Row 1: discipline badge + round + result badge */}
+      <View style={styles.matchCardHeader}>
+        <View style={styles.matchCardHeaderLeft}>
           {disciplineLetter ? (
             <View style={styles.disciplineBadge}>
-              <Text style={styles.disciplineBadgeText}>
-                {disciplineLetter}
-              </Text>
+              <Text style={styles.disciplineBadgeText}>{disciplineLetter}</Text>
             </View>
           ) : null}
+          {match.round ? (
+            <Text style={styles.matchRound} numberOfLines={1}>{match.round}</Text>
+          ) : null}
+        </View>
+        <View style={[styles.badge, resultBadge.style]}>
+          <Text style={styles.badgeText}>{resultBadge.text}</Text>
         </View>
       </View>
 
-      {/* Accordion Expanded Detail */}
-      {isExpanded && (
-        <View style={styles.expandedDetail}>
-          {/* Set scores */}
-          {match.setScores && match.setScores.length > 0 ? (
-            <Text style={styles.detailText}>
-              {t('matchHistory.setScores', {
-                scores: match.setScores.join(', '),
-              })}
-            </Text>
-          ) : null}
-
-          {/* Points impact */}
-          {match.pointsImpact != null ? (
-            <Text
-              style={[
-                styles.detailText,
-                match.pointsImpact >= 0
-                  ? styles.detailPositive
-                  : styles.detailNegative,
-              ]}
+      {/* Row 2: Players */}
+      <View style={styles.matchCardPlayers}>
+        {match.partner ? (
+          <Text style={styles.playerText} numberOfLines={1}>
+            {t('matchHistory.partner', { name: match.partner })}
+          </Text>
+        ) : null}
+        {match.opponent ? (
+          <View style={styles.vsRow}>
+            <Text style={styles.vsText}>{t('matchHistory.vs')} </Text>
+            <Pressable
+              onPress={() => {
+                if (match.opponentLicence) router.push(`/player/${match.opponentLicence}`);
+              }}
             >
-              {match.pointsImpact >= 0
-                ? t('matchHistory.pointsGained', {
-                    points: match.pointsImpact.toFixed(1),
-                  })
-                : t('matchHistory.pointsLost', {
-                    points: match.pointsImpact.toFixed(1),
-                  })}
-            </Text>
-          ) : null}
+              <Text
+                style={match.opponentLicence ? styles.opponentLink : styles.opponentText}
+                numberOfLines={1}
+              >
+                {match.opponent}
+                {match.opponent2 ? ` / ${match.opponent2}` : ''}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+      </View>
 
-          {/* Tournament name */}
-          {match.tournament ? (
-            <Text style={styles.detailTournament}>{match.tournament}</Text>
-          ) : null}
-
-          {/* Duration */}
-          {match.duration ? (
-            <Text style={styles.detailText}>
-              {t('matchHistory.duration', { duration: match.duration })}
-            </Text>
-          ) : null}
-
-          {/* Date */}
-          {match.date ? (
-            <Text style={styles.detailDate}>{match.date}</Text>
-          ) : null}
-        </View>
-      )}
-    </Pressable>
+      {/* Row 3: Scores + points */}
+      <View style={styles.matchCardFooter}>
+        {match.setScores && match.setScores.length > 0 ? (
+          <Text style={styles.setScoresText}>{match.setScores.join('  ')}</Text>
+        ) : match.score ? (
+          <Text style={styles.setScoresText}>{match.score}</Text>
+        ) : null}
+        {pointsText ? (
+          <Text style={pointsStyle}>{pointsText}</Text>
+        ) : null}
+      </View>
+    </View>
   );
 }
 
@@ -591,16 +520,72 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
   },
 
-  // Match Row
-  matchRowContainer: {
+  // Match Card
+  matchCard: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
   },
-  matchRow: {
+  matchCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  matchCardHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    gap: 8,
+    flex: 1,
+  },
+  matchCardPlayers: {
+    marginBottom: 4,
+  },
+  playerText: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  vsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  vsText: {
+    fontSize: 13,
+    color: '#9ca3af',
+  },
+  opponentText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  opponentLink: {
+    fontSize: 14,
+    color: '#2563eb',
+    fontWeight: '500',
+  },
+  matchCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  setScoresText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111',
+    fontVariant: ['tabular-nums'],
+  },
+  pointsPositive: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#16a34a',
+  },
+  pointsNegative: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#dc2626',
   },
 
   // Badge
@@ -610,7 +595,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
   },
   badgeWin: {
     backgroundColor: '#dcfce7',
@@ -627,44 +611,8 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
 
-  // Match Info (center)
-  matchInfo: {
-    flex: 1,
-  },
-  matchOpponent: {
-    fontSize: 15,
-    color: '#111',
-    fontWeight: '500',
-  },
-  matchOpponentLink: {
-    fontSize: 15,
-    color: '#2563eb',
-    fontWeight: '500',
-  },
-  matchPartner: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 2,
-    fontStyle: 'italic',
-  },
-  matchRound: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 2,
-  },
-
-  // Match Right (score + discipline)
-  matchRight: {
-    alignItems: 'flex-end',
-    marginLeft: 8,
-  },
-  matchScore: {
-    fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
+  // Discipline badge
   disciplineBadge: {
-    marginTop: 4,
     width: 20,
     height: 20,
     borderRadius: 10,
@@ -678,41 +626,10 @@ const styles = StyleSheet.create({
     color: '#6b7280',
   },
 
-  // Expanded Detail (Accordion)
-  expandedDetail: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    paddingLeft: 54, // Align with text after badge (28 badge + 10 margin + 16 padding)
-    backgroundColor: '#f9fafb',
-    borderLeftWidth: 3,
-    borderLeftColor: '#2563eb',
-    marginLeft: 16,
-    marginRight: 16,
-    marginBottom: 4,
-    borderRadius: 4,
-  },
-  detailText: {
-    fontSize: 13,
-    color: '#374151',
-    marginBottom: 4,
-  },
-  detailPositive: {
-    color: '#16a34a',
-    fontWeight: '600',
-  },
-  detailNegative: {
-    color: '#dc2626',
-    fontWeight: '600',
-  },
-  detailTournament: {
-    fontSize: 13,
-    color: '#2563eb',
-    marginBottom: 4,
-  },
-  detailDate: {
+  // Match round
+  matchRound: {
     fontSize: 12,
     color: '#9ca3af',
-    marginTop: 2,
   },
 
   // Empty state

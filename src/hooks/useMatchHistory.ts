@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Platform, UIManager, LayoutAnimation } from 'react-native';
 import { getResultsByLicence } from '../api/ffbad';
 import { NetworkError, ServerError } from '../api/errors';
 import { useSession } from '../auth/context';
@@ -20,17 +19,6 @@ import {
 } from '../utils/matchHistory';
 
 // ============================================================
-// Enable LayoutAnimation on Android
-// ============================================================
-
-if (
-  Platform.OS === 'android' &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
-
-// ============================================================
 // Types
 // ============================================================
 
@@ -42,13 +30,11 @@ export interface MatchHistoryData {
   availableSeasons: string[];
   activeDiscipline: DisciplineFilter;
   activeSeason: string | null;
-  expandedMatchId: string | null;
   isLoading: boolean;
   isRefreshing: boolean;
   error: string | null;
   setDiscipline: (d: DisciplineFilter) => void;
   setSeason: (s: string | null) => void;
-  toggleMatchExpand: (id: string) => void;
   refresh: () => Promise<void>;
 }
 
@@ -74,7 +60,6 @@ export function useMatchHistory(): MatchHistoryData {
   const [activeDiscipline, setActiveDiscipline] =
     useState<DisciplineFilter>('all');
   const [activeSeason, setActiveSeason] = useState<string | null>(null);
-  const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
 
   // Loading state
   const [isLoading, setIsLoading] = useState(true);
@@ -221,19 +206,10 @@ export function useMatchHistory(): MatchHistoryData {
 
   const setDiscipline = useCallback((d: DisciplineFilter) => {
     setActiveDiscipline(d);
-    // Collapse any expanded match when filter changes
-    setExpandedMatchId(null);
   }, []);
 
   const setSeason = useCallback((s: string | null) => {
     setActiveSeason(s);
-    // Collapse any expanded match when season changes
-    setExpandedMatchId(null);
-  }, []);
-
-  const toggleMatchExpand = useCallback((id: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpandedMatchId((prev) => (prev === id ? null : id));
   }, []);
 
   const refresh = useCallback(async () => {
@@ -252,13 +228,11 @@ export function useMatchHistory(): MatchHistoryData {
     availableSeasons,
     activeDiscipline,
     activeSeason,
-    expandedMatchId,
     isLoading,
     isRefreshing,
     error,
     setDiscipline,
     setSeason,
-    toggleMatchExpand,
     refresh,
   };
 }
