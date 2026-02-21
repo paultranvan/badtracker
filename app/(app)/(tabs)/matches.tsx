@@ -5,7 +5,6 @@ import {
   RefreshControl,
   Pressable,
   ActivityIndicator,
-  StyleSheet,
   type NativeSyntheticEvent,
   type NativeScrollEvent,
 } from 'react-native';
@@ -90,7 +89,7 @@ export default function MatchHistoryScreen() {
   // ----------------------------------------------------------
   if (isLoading) {
     return (
-      <View style={styles.centered}>
+      <View className="flex-1 items-center justify-center bg-white px-6">
         <ActivityIndicator size="large" color="#2563eb" />
       </View>
     );
@@ -101,16 +100,13 @@ export default function MatchHistoryScreen() {
   // ----------------------------------------------------------
   if (error && allMatches.length === 0) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{t(error)}</Text>
+      <View className="flex-1 items-center justify-center bg-white px-6">
+        <Text className="text-body text-loss text-center mb-4">{t(error)}</Text>
         <Pressable
-          style={({ pressed }) => [
-            styles.retryButton,
-            pressed && styles.retryButtonPressed,
-          ]}
+          className="bg-primary px-6 py-2.5 rounded-lg active:bg-primary-dark"
           onPress={() => refresh()}
         >
-          <Text style={styles.retryText}>{t('common.retry')}</Text>
+          <Text className="text-white text-body font-semibold">{t('common.retry')}</Text>
         </Pressable>
       </View>
     );
@@ -128,29 +124,28 @@ export default function MatchHistoryScreen() {
   // Render
   // ----------------------------------------------------------
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-white">
       {/* Collapsible Stats Header */}
       <Animated.View
-        style={[styles.statsHeader, headerAnimatedStyle]}
+        className="overflow-hidden bg-primary-bg"
+        style={headerAnimatedStyle}
       >
         <StatsHeader stats={stats} t={t} />
       </Animated.View>
 
       {/* Discipline Filter Chips — only show when discipline data is available */}
       {(disciplineCounts.simple > 0 || disciplineCounts.double > 0 || disciplineCounts.mixte > 0) && (
-        <View style={styles.filtersRow}>
+        <View className="flex-row gap-2 px-4 py-2.5 border-b border-gray-100">
           {DISCIPLINE_FILTERS.map(({ key, labelKey }) => {
             const count = disciplineCounts[key];
             const isActive = activeDiscipline === key;
             return (
               <Pressable
                 key={key}
-                style={[styles.chip, isActive && styles.chipActive]}
+                className={`px-3 py-1.5 rounded-full border ${isActive ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}
                 onPress={() => setDiscipline(key)}
               >
-                <Text
-                  style={[styles.chipText, isActive && styles.chipTextActive]}
-                >
+                <Text className={`text-[13px] font-medium ${isActive ? 'text-white' : 'text-gray-700'}`}>
                   {t(labelKey)} ({count})
                 </Text>
               </Pressable>
@@ -161,18 +156,13 @@ export default function MatchHistoryScreen() {
 
       {/* Season Picker */}
       {availableSeasons.length > 0 && (
-        <View style={styles.seasonRow}>
-          <Text style={styles.seasonLabel}>{t('matchHistory.season')} :</Text>
+        <View className="flex-row items-center gap-2 px-4 py-2 border-b border-gray-100">
+          <Text className="text-[13px] font-medium text-muted">{t('matchHistory.season')} :</Text>
           <Pressable
-            style={[styles.chip, activeSeason === null && styles.chipActive]}
+            className={`px-3 py-1.5 rounded-full border ${activeSeason === null ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}
             onPress={() => setSeason(null)}
           >
-            <Text
-              style={[
-                styles.chipText,
-                activeSeason === null && styles.chipTextActive,
-              ]}
-            >
+            <Text className={`text-[13px] font-medium ${activeSeason === null ? 'text-white' : 'text-gray-700'}`}>
               {t('matchHistory.allSeasons')}
             </Text>
           </Pressable>
@@ -181,12 +171,10 @@ export default function MatchHistoryScreen() {
             return (
               <Pressable
                 key={season}
-                style={[styles.chip, isActive && styles.chipActive]}
+                className={`px-3 py-1.5 rounded-full border ${isActive ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}
                 onPress={() => setSeason(season)}
               >
-                <Text
-                  style={[styles.chipText, isActive && styles.chipTextActive]}
-                >
+                <Text className={`text-[13px] font-medium ${isActive ? 'text-white' : 'text-gray-700'}`}>
                   {season}
                 </Text>
               </Pressable>
@@ -202,7 +190,7 @@ export default function MatchHistoryScreen() {
         renderSectionHeader={({ section }) => (
           <TournamentHeader section={section} t={t} />
         )}
-        renderItem={({ item }) => <MatchCard match={item} t={t} />}
+        renderItem={({ item }) => <MatchCardItem match={item} t={t} />}
         stickySectionHeadersEnabled={true}
         refreshControl={
           <RefreshControl
@@ -213,9 +201,9 @@ export default function MatchHistoryScreen() {
           />
         }
         ListEmptyComponent={
-          <Text style={styles.emptyText}>{emptyMessage}</Text>
+          <Text className="text-body text-gray-400 italic text-center py-10 px-6">{emptyMessage}</Text>
         }
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={{ paddingBottom: 32 }}
         onScroll={handleScroll}
         scrollEventThrottle={16}
       />
@@ -234,35 +222,25 @@ interface StatsHeaderProps {
 
 function StatsHeader({ stats, t }: StatsHeaderProps) {
   return (
-    <View style={styles.statsContent}>
-      <Text style={styles.statsTitle}>{t('matchHistory.statsHeader')}</Text>
-
-      {/* Win rate percentage */}
-      <Text style={styles.statsWinRate}>
+    <View className="p-4 pb-3">
+      <Text className="text-[14px] font-semibold text-gray-700 mb-2">
+        {t('matchHistory.statsHeader')}
+      </Text>
+      <Text className="text-[36px] font-bold text-primary mb-2">
         {t('matchHistory.winRate', { rate: stats.winPercentage })}
       </Text>
-
       {/* Progress bar */}
-      <View style={styles.progressBarContainer}>
+      <View className="h-2 bg-loss-bg rounded-full overflow-hidden mb-2">
         <View
-          style={[
-            styles.progressBarFill,
-            {
-              width:
-                stats.total > 0
-                  ? (`${stats.winPercentage}%` as unknown as number)
-                  : 0,
-            },
-          ]}
+          className="h-full bg-win rounded-full"
+          style={{ width: stats.total > 0 ? `${stats.winPercentage}%` : 0 }}
         />
       </View>
-
-      {/* Win / Loss counts */}
-      <View style={styles.statsCountRow}>
-        <Text style={styles.statsWins}>
+      <View className="flex-row justify-between">
+        <Text className="text-[14px] font-semibold text-win">
           {t('matchHistory.wins', { count: stats.wins })}
         </Text>
-        <Text style={styles.statsLosses}>
+        <Text className="text-[14px] font-semibold text-loss">
           {t('matchHistory.losses', { count: stats.losses })}
         </Text>
       </View>
@@ -282,12 +260,12 @@ interface TournamentHeaderProps {
 function TournamentHeader({ section, t }: TournamentHeaderProps) {
   const title = section.title || t('matchHistory.tournamentUnknown');
   return (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle} numberOfLines={1}>
+    <View className="flex-row justify-between items-center px-4 py-2.5 bg-slate-50 border-l-[3px] border-l-primary border-b border-b-gray-200">
+      <Text className="text-body font-semibold text-gray-900 flex-1 mr-2" numberOfLines={1}>
         {title}
       </Text>
       {section.date ? (
-        <Text style={styles.sectionDate}>{section.date}</Text>
+        <Text className="text-caption text-muted">{section.date}</Text>
       ) : null}
     </View>
   );
@@ -297,73 +275,74 @@ function TournamentHeader({ section, t }: TournamentHeaderProps) {
 // Match Card Sub-component (inline details, no accordion)
 // ============================================================
 
-interface MatchCardProps {
+interface MatchCardItemProps {
   match: MatchItem;
   t: (key: string, opts?: Record<string, unknown>) => string;
 }
 
-function MatchCard({ match, t }: MatchCardProps) {
+function MatchCardItem({ match, t }: MatchCardItemProps) {
   const disciplineLetter =
     match.discipline === 'simple' ? 'S'
       : match.discipline === 'double' ? 'D'
         : match.discipline === 'mixte' ? 'M'
           : '';
 
-  const resultBadge = match.isWin === true
-    ? { style: styles.badgeWin, text: t('matchHistory.victory') }
-    : match.isWin === false
-      ? { style: styles.badgeLoss, text: t('matchHistory.defeat') }
-      : { style: styles.badgeUnknown, text: '?' };
+  const isWin = match.isWin === true;
+  const isLoss = match.isWin === false;
+
+  const borderClass = isWin ? 'border-l-win' : isLoss ? 'border-l-loss' : 'border-l-gray-300';
+  const badgeBg = isWin ? 'bg-win' : isLoss ? 'bg-loss' : 'bg-gray-300';
+  const badgeText = isWin ? t('matchHistory.victory') : isLoss ? t('matchHistory.defeat') : '?';
 
   const pointsText = match.pointsImpact != null
     ? (match.pointsImpact >= 0 ? `+${match.pointsImpact.toFixed(1)}` : match.pointsImpact.toFixed(1)) + ' pts'
     : null;
-  const pointsStyle = match.pointsImpact != null && match.pointsImpact >= 0
-    ? styles.pointsPositive
-    : styles.pointsNegative;
+  const pointsClass = match.pointsImpact != null && match.pointsImpact >= 0 ? 'text-win' : 'text-loss';
+
+  // Discipline badge colors
+  const discColors: Record<string, string> = { simple: 'bg-blue-100', double: 'bg-emerald-100', mixte: 'bg-amber-100' };
+  const discTextColors: Record<string, string> = { simple: 'text-singles', double: 'text-doubles', mixte: 'text-mixed' };
+  const discBg = discColors[match.discipline ?? ''] || 'bg-gray-200';
+  const discText = discTextColors[match.discipline ?? ''] || 'text-gray-500';
 
   return (
-    <View style={styles.matchCard}>
+    <View className={`px-4 py-2.5 border-l-[3px] ${borderClass} border-b border-b-gray-50`}>
       {/* Row 1: discipline badge + round + result badge */}
-      <View style={styles.matchCardHeader}>
-        <View style={styles.matchCardHeaderLeft}>
+      <View className="flex-row justify-between items-center mb-1">
+        <View className="flex-row items-center gap-2 flex-1">
           {disciplineLetter ? (
-            <View style={styles.disciplineBadge}>
-              <Text style={styles.disciplineBadgeText}>{disciplineLetter}</Text>
+            <View className={`w-5 h-5 rounded-full items-center justify-center ${discBg}`}>
+              <Text className={`text-[10px] font-bold ${discText}`}>{disciplineLetter}</Text>
             </View>
           ) : null}
           {match.round ? (
-            <Text style={styles.matchRound} numberOfLines={1}>{match.round}</Text>
+            <Text className="text-caption text-muted" numberOfLines={1}>{match.round}</Text>
           ) : null}
         </View>
-        <View style={[styles.badge, resultBadge.style]}>
-          <Text style={styles.badgeText}>{resultBadge.text}</Text>
+        <View className={`w-7 h-7 rounded-full items-center justify-center ${badgeBg}`}>
+          <Text className="text-caption font-bold text-white">{badgeText}</Text>
         </View>
       </View>
 
       {/* Row 2: Players */}
-      <View style={styles.matchCardPlayers}>
+      <View className="mb-1">
         {match.partner ? (
-          <Text style={styles.playerText} numberOfLines={1}>
+          <Text className="text-[14px] font-medium text-gray-700 mb-0.5" numberOfLines={1}>
             {t('matchHistory.partner', { name: match.partner })}
           </Text>
         ) : null}
         {match.opponent ? (
-          <View style={styles.vsRow}>
-            <Text style={styles.vsText}>{t('matchHistory.vs')} </Text>
+          <View className="flex-row items-center">
+            <Text className="text-[13px] text-gray-400">{t('matchHistory.vs')} </Text>
             {match.opponentLicence ? (
-              <Pressable
-                onPress={() => router.push(`/player/${match.opponentLicence}`)}
-              >
-                <Text style={styles.opponentLink} numberOfLines={1}>
-                  {match.opponent}
-                  {match.opponent2 ? ` / ${match.opponent2}` : ''}
+              <Pressable onPress={() => router.push(`/player/${match.opponentLicence}`)}>
+                <Text className="text-[14px] font-medium text-primary" numberOfLines={1}>
+                  {match.opponent}{match.opponent2 ? ` / ${match.opponent2}` : ''}
                 </Text>
               </Pressable>
             ) : (
-              <Text style={styles.opponentText} numberOfLines={1}>
-                {match.opponent}
-                {match.opponent2 ? ` / ${match.opponent2}` : ''}
+              <Text className="text-[14px] text-gray-700" numberOfLines={1}>
+                {match.opponent}{match.opponent2 ? ` / ${match.opponent2}` : ''}
               </Text>
             )}
           </View>
@@ -371,298 +350,20 @@ function MatchCard({ match, t }: MatchCardProps) {
       </View>
 
       {/* Row 3: Scores + points */}
-      <View style={styles.matchCardFooter}>
+      <View className="flex-row justify-between items-center mt-0.5">
         {match.setScores && match.setScores.length > 0 ? (
-          <Text style={styles.setScoresText}>{match.setScores.join('  ')}</Text>
+          <Text className="text-[14px] font-semibold text-gray-900" style={{ fontVariant: ['tabular-nums'] }}>
+            {match.setScores.join('  ')}
+          </Text>
         ) : match.score ? (
-          <Text style={styles.setScoresText}>{match.score}</Text>
-        ) : null}
+          <Text className="text-[14px] font-semibold text-gray-900" style={{ fontVariant: ['tabular-nums'] }}>
+            {match.score}
+          </Text>
+        ) : <View />}
         {pointsText ? (
-          <Text style={pointsStyle}>{pointsText}</Text>
+          <Text className={`text-[13px] font-semibold ${pointsClass}`}>{pointsText}</Text>
         ) : null}
       </View>
     </View>
   );
 }
-
-// ============================================================
-// Styles
-// ============================================================
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 24,
-  },
-  listContent: {
-    paddingBottom: 32,
-  },
-
-  // Stats Header
-  statsHeader: {
-    overflow: 'hidden',
-    backgroundColor: '#eff6ff',
-  },
-  statsContent: {
-    padding: 16,
-    paddingBottom: 12,
-  },
-  statsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  statsWinRate: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1e40af',
-    marginBottom: 8,
-  },
-  progressBarContainer: {
-    height: 8,
-    backgroundColor: '#fee2e2',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#16a34a',
-    borderRadius: 4,
-  },
-  statsCountRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  statsWins: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#16a34a',
-  },
-  statsLosses: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#dc2626',
-  },
-
-  // Filter Chips
-  filtersRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
-  },
-  chipActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#374151',
-  },
-  chipTextActive: {
-    color: '#fff',
-  },
-
-  // Season Row
-  seasonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  seasonLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#6b7280',
-  },
-
-  // Section Header
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#f9fafb',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#111',
-    flex: 1,
-    marginRight: 8,
-  },
-  sectionDate: {
-    fontSize: 12,
-    color: '#9ca3af',
-  },
-
-  // Match Card
-  matchCard: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  matchCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  matchCardHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  matchCardPlayers: {
-    marginBottom: 4,
-  },
-  playerText: {
-    fontSize: 14,
-    color: '#374151',
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  vsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  vsText: {
-    fontSize: 13,
-    color: '#9ca3af',
-  },
-  opponentText: {
-    fontSize: 14,
-    color: '#374151',
-  },
-  opponentLink: {
-    fontSize: 14,
-    color: '#2563eb',
-    fontWeight: '500',
-  },
-  matchCardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  setScoresText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111',
-    fontVariant: ['tabular-nums'],
-  },
-  pointsPositive: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#16a34a',
-  },
-  pointsNegative: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#dc2626',
-  },
-
-  // Badge
-  badge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badgeWin: {
-    backgroundColor: '#dcfce7',
-  },
-  badgeLoss: {
-    backgroundColor: '#fee2e2',
-  },
-  badgeUnknown: {
-    backgroundColor: '#f3f4f6',
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#374151',
-  },
-
-  // Discipline badge
-  disciplineBadge: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#e5e7eb',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  disciplineBadgeText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#6b7280',
-  },
-
-  // Match round
-  matchRound: {
-    fontSize: 12,
-    color: '#9ca3af',
-  },
-
-  // Empty state
-  emptyText: {
-    fontSize: 15,
-    color: '#9ca3af',
-    fontStyle: 'italic',
-    textAlign: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 24,
-  },
-
-  // Error
-  errorText: {
-    fontSize: 16,
-    color: '#dc2626',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  retryButton: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonPressed: {
-    backgroundColor: '#1d4ed8',
-  },
-  retryText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
