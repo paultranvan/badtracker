@@ -5,7 +5,6 @@ import {
   TextInput,
   Pressable,
   Switch,
-  StyleSheet,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -51,27 +50,35 @@ export default function SignIn() {
     if (errorKey) setErrorKey(null);
   };
 
+  const isLoginDisabled = isLoading || !licence.trim() || !password.trim();
+
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      className="flex-1 bg-white"
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}
         keyboardShouldPersistTaps="handled"
       >
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>{t('auth.title')}</Text>
-          <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
+        <View className="items-center mb-10">
+          <Text className="text-[32px] font-bold text-gray-900 mb-2">
+            {t('auth.title')}
+          </Text>
+          <Text className="text-body text-muted">{t('auth.subtitle')}</Text>
         </View>
 
         {/* Form */}
-        <View style={styles.form}>
+        <View className="w-full">
           {/* Licence Number */}
-          <Text style={styles.label}>{t('auth.licence')}</Text>
+          <Text className="text-sm font-semibold text-gray-700 mb-1.5 mt-4">
+            {t('auth.licence')}
+          </Text>
           <TextInput
-            style={[styles.input, errorKey && styles.inputError]}
+            className={`bg-gray-50 border rounded-xl px-4 py-3.5 text-base text-gray-900 ${
+              errorKey ? 'border-loss' : 'border-gray-300'
+            }`}
             value={licence}
             onChangeText={(text) => {
               setLicence(text);
@@ -86,9 +93,13 @@ export default function SignIn() {
           />
 
           {/* Password */}
-          <Text style={styles.label}>{t('auth.password')}</Text>
+          <Text className="text-sm font-semibold text-gray-700 mb-1.5 mt-4">
+            {t('auth.password')}
+          </Text>
           <TextInput
-            style={[styles.input, errorKey && styles.inputError]}
+            className={`bg-gray-50 border rounded-xl px-4 py-3.5 text-base text-gray-900 ${
+              errorKey ? 'border-loss' : 'border-gray-300'
+            }`}
             value={password}
             onChangeText={(text) => {
               setPassword(text);
@@ -105,8 +116,8 @@ export default function SignIn() {
           />
 
           {/* Remember Me Toggle */}
-          <View style={styles.rememberRow}>
-            <Text style={styles.rememberLabel}>{t('auth.rememberMe')}</Text>
+          <View className="flex-row items-center justify-between mt-5 py-1">
+            <Text className="text-body text-gray-700">{t('auth.rememberMe')}</Text>
             <Switch
               value={rememberMe}
               onValueChange={setRememberMe}
@@ -118,25 +129,27 @@ export default function SignIn() {
 
           {/* Error Message (per-action, inline — per user decision) */}
           {errorKey && (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{t(errorKey)}</Text>
+            <View className="mt-4 bg-loss-bg border border-loss/30 rounded-lg p-3">
+              <Text className="text-sm text-loss text-center">{t(errorKey)}</Text>
             </View>
           )}
 
           {/* Login Button */}
           <Pressable
-            style={({ pressed }) => [
-              styles.loginButton,
-              isLoading && styles.loginButtonDisabled,
-              pressed && styles.loginButtonPressed,
-            ]}
+            className={`mt-6 py-4 rounded-xl items-center ${
+              isLoginDisabled
+                ? 'bg-primary-light'
+                : 'bg-primary active:bg-primary-dark'
+            }`}
             onPress={handleLogin}
-            disabled={isLoading || !licence.trim() || !password.trim()}
+            disabled={isLoginDisabled}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.loginButtonText}>{t('auth.login')}</Text>
+              <Text className="text-[17px] font-semibold text-white">
+                {t('auth.login')}
+              </Text>
             )}
           </Pressable>
         </View>
@@ -144,93 +157,3 @@ export default function SignIn() {
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#1e293b',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#64748b',
-  },
-  form: {
-    width: '100%',
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 6,
-    marginTop: 16,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-    backgroundColor: '#f9fafb',
-    color: '#111827',
-  },
-  inputError: {
-    borderColor: '#ef4444',
-  },
-  rememberRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 20,
-    paddingVertical: 4,
-  },
-  rememberLabel: {
-    fontSize: 15,
-    color: '#374151',
-  },
-  errorContainer: {
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: '#fef2f2',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#fecaca',
-  },
-  errorText: {
-    color: '#dc2626',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  loginButton: {
-    marginTop: 24,
-    backgroundColor: '#2563eb',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  loginButtonDisabled: {
-    backgroundColor: '#93c5fd',
-  },
-  loginButtonPressed: {
-    backgroundColor: '#1d4ed8',
-  },
-  loginButtonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '600',
-  },
-});
