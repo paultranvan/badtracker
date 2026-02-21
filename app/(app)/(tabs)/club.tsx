@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,12 @@ import { useClubLeaderboard } from '../../../src/hooks/useClubLeaderboard';
 import { useClubSearch } from '../../../src/hooks/useClubSearch';
 import { useSession } from '../../../src/auth/context';
 import { getPlayerProfile } from '../../../src/api/ffbad';
-import type { LeaderboardEntry } from '../../../src/utils/clubLeaderboard';
+import {
+  type LeaderboardEntry,
+  type ClubDisciplineFilter,
+  sortLeaderboardByDiscipline,
+  getDisplayRank,
+} from '../../../src/utils/clubLeaderboard';
 import type { ClubSearchResult } from '../../../src/hooks/useClubSearch';
 
 const Separator = () => <View style={styles.separator} />;
@@ -112,6 +117,13 @@ export default function ClubScreen() {
 
   const { clubs: searchResults, isLoading: searchLoading, search } = useClubSearch();
 
+  const [disciplineFilter, setDisciplineFilter] = useState<ClubDisciplineFilter>('all');
+
+  const filteredMembers = useMemo(
+    () => sortLeaderboardByDiscipline(members, disciplineFilter),
+    [members, disciplineFilter]
+  );
+
   // ----------------------------------------------------------
   // Fetch user's own club ID on mount
   // ----------------------------------------------------------
@@ -203,12 +215,12 @@ export default function ClubScreen() {
             </Text>
           </View>
           <View style={styles.rankBadge}>
-            <Text style={styles.rankBadgeText}>{item.bestRank}</Text>
+            <Text style={styles.rankBadgeText}>{getDisplayRank(item, disciplineFilter)}</Text>
           </View>
         </Pressable>
       );
     },
-    [session?.licence]
+    [session?.licence, disciplineFilter]
   );
 
   const renderSearchResult = useCallback(
@@ -389,10 +401,31 @@ export default function ClubScreen() {
         </Pressable>
       ) : null}
 
+      {/* Discipline filter chips */}
+      {hasMembers ? (
+        <View style={styles.disciplineFiltersRow}>
+          {(['all', 'simple', 'double', 'mixte'] as ClubDisciplineFilter[]).map((key) => {
+            const isActive = disciplineFilter === key;
+            const labelKey = key === 'all' ? 'club.filterAll' : `club.filter${key.charAt(0).toUpperCase() + key.slice(1)}`;
+            return (
+              <Pressable
+                key={key}
+                style={[styles.filterChip, isActive && styles.filterChipActive]}
+                onPress={() => setDisciplineFilter(key)}
+              >
+                <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                  {t(labelKey)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+
       {/* Club info + Members */}
       {hasMembers ? (
         <FlatList
-          data={members}
+          data={filteredMembers}
           keyExtractor={(item) => item.licence}
           renderItem={renderLeaderboardRow}
           ItemSeparatorComponent={Separator}
@@ -530,6 +563,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#2563eb',
     fontWeight: '500',
+  },
+
+  // Discipline filter chips
+  disciplineFiltersRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
+  },
+  filterChipActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  filterChipTextActive: {
+    color: '#fff',
   },
 
   // Leaderboard rows

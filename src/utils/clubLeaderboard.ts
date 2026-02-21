@@ -16,7 +16,15 @@ export interface LeaderboardEntry {
   bestRank: string;
   /** 1-based position after sorting (1 = best rank) */
   position: number;
+  simpleRank: string;
+  simpleCpph?: number;
+  doubleRank: string;
+  doubleCpph?: number;
+  mixteRank: string;
+  mixteCpph?: number;
 }
+
+export type ClubDisciplineFilter = 'all' | 'simple' | 'double' | 'mixte';
 
 // ============================================================
 // Helpers
@@ -107,6 +115,12 @@ export function normalizeToLeaderboard(rawItems: unknown[]): LeaderboardEntry[] 
         nom: (item.Nom as string | undefined) ?? '',
         prenom: (item.Prenom as string | undefined) ?? '',
         bestRank,
+        simpleRank: rankings.simple?.classement ?? 'NC',
+        simpleCpph: rankings.simple?.cpph,
+        doubleRank: rankings.double?.classement ?? 'NC',
+        doubleCpph: rankings.double?.cpph,
+        mixteRank: rankings.mixte?.classement ?? 'NC',
+        mixteCpph: rankings.mixte?.cpph,
       };
     });
 
@@ -117,4 +131,40 @@ export function normalizeToLeaderboard(rawItems: unknown[]): LeaderboardEntry[] 
 
   // Add 1-based position after sorting
   return entries.map((entry, index) => ({ ...entry, position: index + 1 }));
+}
+
+/**
+ * Sort and re-position leaderboard entries by a specific discipline.
+ * 'all' uses bestRank (default behavior).
+ */
+export function sortLeaderboardByDiscipline(
+  entries: LeaderboardEntry[],
+  discipline: ClubDisciplineFilter
+): LeaderboardEntry[] {
+  const getRank = (entry: LeaderboardEntry): string => {
+    switch (discipline) {
+      case 'simple': return entry.simpleRank;
+      case 'double': return entry.doubleRank;
+      case 'mixte': return entry.mixteRank;
+      default: return entry.bestRank;
+    }
+  };
+
+  const sorted = [...entries].sort(
+    (a, b) => getRankSortIndex(getRank(a)) - getRankSortIndex(getRank(b))
+  );
+
+  return sorted.map((entry, index) => ({ ...entry, position: index + 1 }));
+}
+
+/**
+ * Get the display rank for an entry based on the active discipline filter.
+ */
+export function getDisplayRank(entry: LeaderboardEntry, discipline: ClubDisciplineFilter): string {
+  switch (discipline) {
+    case 'simple': return entry.simpleRank;
+    case 'double': return entry.doubleRank;
+    case 'mixte': return entry.mixteRank;
+    default: return entry.bestRank;
+  }
 }

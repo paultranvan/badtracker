@@ -137,7 +137,11 @@
     "myClub": "My club",
     "loadError": "Unable to load club leaderboard",
     "networkError": "No internet connection",
-    "pullToRefresh": "Pull to refresh"
+    "pullToRefresh": "Pull to refresh",
+    "filterAll": "All",
+    "filterSimple": "Singles",
+    "filterDouble": "Doubles",
+    "filterMixte": "Mixed"
   },
   "offline": {
     "noConnection": "No connection",

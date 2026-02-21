@@ -137,7 +137,11 @@
     "myClub": "Mon club",
     "loadError": "Impossible de charger le classement du club",
     "networkError": "Pas de connexion internet",
-    "pullToRefresh": "Tirer pour actualiser"
+    "pullToRefresh": "Tirer pour actualiser",
+    "filterAll": "Tous",
+    "filterSimple": "Simple",
+    "filterDouble": "Double",
+    "filterMixte": "Mixte"
   },
   "offline": {
     "noConnection": "Hors connexion",
