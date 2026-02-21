@@ -731,6 +731,7 @@ export async function getClubLeaderboard(
         Licence: String(raw.licence ?? ''),
         Nom: nom,
         Prenom: prenom,
+        Sex: raw.sex === 'HOMME' ? 'M' : raw.sex === 'FEMME' ? 'F' : String(raw.sex ?? ''),
         Club: String(club.id ?? clubId),
         NomClub: String(club.name ?? ''),
         ClassementSimple: String(rank.simpleSubLevel ?? ''),

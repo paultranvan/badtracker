@@ -135,7 +135,10 @@
     "filterAll": "Tous",
     "filterSimple": "Simple",
     "filterDouble": "Double",
-    "filterMixte": "Mixte"
+    "filterMixte": "Mixte",
+    "genderAll": "Tous",
+    "genderMen": "Hommes",
+    "genderWomen": "Femmes"
   },
   "offline": {
     "noConnection": "Hors connexion",

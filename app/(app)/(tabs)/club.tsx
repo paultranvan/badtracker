@@ -19,11 +19,12 @@ import { getPlayerProfile } from '../../../src/api/ffbad';
 import {
   type LeaderboardEntry,
   type ClubDisciplineFilter,
+  type ClubGenderFilter,
   sortLeaderboardByDiscipline,
-  getDisplayRank,
+  filterByGender,
 } from '../../../src/utils/clubLeaderboard';
 import type { ClubSearchResult } from '../../../src/hooks/useClubSearch';
-import { Card, PlayerRow } from '../../../src/components';
+import { Card } from '../../../src/components';
 
 // ============================================================
 // Club Info Card Component
@@ -119,11 +120,12 @@ export default function ClubScreen() {
   const { clubs: searchResults, isLoading: searchLoading, search } = useClubSearch();
 
   const [disciplineFilter, setDisciplineFilter] = useState<ClubDisciplineFilter>('all');
+  const [genderFilter, setGenderFilter] = useState<ClubGenderFilter>('all');
 
-  const filteredMembers = useMemo(
-    () => sortLeaderboardByDiscipline(members, disciplineFilter),
-    [members, disciplineFilter]
-  );
+  const filteredMembers = useMemo(() => {
+    const sorted = sortLeaderboardByDiscipline(members, disciplineFilter);
+    return filterByGender(sorted, genderFilter);
+  }, [members, disciplineFilter, genderFilter]);
 
   // ----------------------------------------------------------
   // Fetch user's own club ID on mount
@@ -193,10 +195,8 @@ export default function ClubScreen() {
   // ----------------------------------------------------------
   const renderLeaderboardRow = useCallback(
     ({ item }: { item: LeaderboardEntry }) => (
-      <PlayerRow
-        name={`${item.nom} ${item.prenom}`}
-        rank={getDisplayRank(item, disciplineFilter)}
-        position={item.position}
+      <ClubMemberRow
+        item={item}
         isCurrentUser={item.licence === session?.licence}
         onPress={() =>
           router.push({
@@ -206,7 +206,7 @@ export default function ClubScreen() {
         }
       />
     ),
-    [session?.licence, disciplineFilter]
+    [session?.licence]
   );
 
   const renderSearchResult = useCallback(
@@ -376,24 +376,45 @@ export default function ClubScreen() {
         </Pressable>
       ) : null}
 
-      {/* Discipline filter chips */}
+      {/* Filter chips */}
       {hasMembers ? (
-        <View className="flex-row gap-2 px-4 py-2.5 border-b border-gray-100">
-          {(['all', 'simple', 'double', 'mixte'] as ClubDisciplineFilter[]).map((key) => {
-            const isActive = disciplineFilter === key;
-            const labelKey = key === 'all' ? 'club.filterAll' : `club.filter${key.charAt(0).toUpperCase() + key.slice(1)}`;
-            return (
-              <Pressable
-                key={key}
-                className={`px-3 py-1.5 rounded-full border ${isActive ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}
-                onPress={() => setDisciplineFilter(key)}
-              >
-                <Text className={`text-[13px] font-medium ${isActive ? 'text-white' : 'text-gray-700'}`}>
-                  {t(labelKey)}
-                </Text>
-              </Pressable>
-            );
-          })}
+        <View className="border-b border-gray-100">
+          {/* Discipline filter */}
+          <View className="flex-row gap-2 px-4 pt-2.5 pb-1.5">
+            {(['all', 'simple', 'double', 'mixte'] as ClubDisciplineFilter[]).map((key) => {
+              const isActive = disciplineFilter === key;
+              const labelKey = key === 'all' ? 'club.filterAll' : `club.filter${key.charAt(0).toUpperCase() + key.slice(1)}`;
+              return (
+                <Pressable
+                  key={key}
+                  className={`px-3 py-1.5 rounded-full border ${isActive ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}
+                  onPress={() => setDisciplineFilter(key)}
+                >
+                  <Text className={`text-[13px] font-medium ${isActive ? 'text-white' : 'text-gray-700'}`}>
+                    {t(labelKey)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {/* Gender filter */}
+          <View className="flex-row gap-2 px-4 pb-2.5 pt-1">
+            {(['all', 'M', 'F'] as ClubGenderFilter[]).map((key) => {
+              const isActive = genderFilter === key;
+              const labelKey = key === 'all' ? 'club.genderAll' : key === 'M' ? 'club.genderMen' : 'club.genderWomen';
+              return (
+                <Pressable
+                  key={key}
+                  className={`px-3 py-1.5 rounded-full border ${isActive ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}
+                  onPress={() => setGenderFilter(key)}
+                >
+                  <Text className={`text-[13px] font-medium ${isActive ? 'text-white' : 'text-gray-700'}`}>
+                    {t(labelKey)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
       ) : null}
 
@@ -437,6 +458,82 @@ export default function ClubScreen() {
           }
         />
       )}
+    </View>
+  );
+}
+
+// ============================================================
+// Club Member Row Component (shows all 3 ranks)
+// ============================================================
+
+function ClubMemberRow({
+  item,
+  isCurrentUser,
+  onPress,
+}: {
+  item: LeaderboardEntry;
+  isCurrentUser: boolean;
+  onPress: () => void;
+}) {
+  const genderColor = item.sex === 'F' ? '#ec4899' : '#3b82f6';
+
+  return (
+    <Pressable
+      className={`flex-row items-center px-4 py-3 ${isCurrentUser ? 'bg-primary-bg border-l-[3px] border-l-primary' : ''}`}
+      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+      onPress={onPress}
+    >
+      {/* Position */}
+      <View className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center mr-3">
+        <Text className="text-caption font-bold text-gray-600">
+          {item.position}
+        </Text>
+      </View>
+
+      {/* Name + gender indicator */}
+      <View className="flex-1 mr-2">
+        <View className="flex-row items-center gap-1.5">
+          <Ionicons
+            name={item.sex === 'F' ? 'female' : 'male'}
+            size={14}
+            color={genderColor}
+          />
+          <Text className="text-body font-semibold text-gray-900 flex-1" numberOfLines={1}>
+            {item.nom} {item.prenom}
+          </Text>
+        </View>
+        {/* All 3 ranks row */}
+        <View className="flex-row items-center gap-2 mt-1">
+          <RankBadge label="S" rank={item.simpleRank} color="#3b82f6" bgColor="#dbeafe" />
+          <RankBadge label="D" rank={item.doubleRank} color="#10b981" bgColor="#d1fae5" />
+          <RankBadge label="M" rank={item.mixteRank} color="#f59e0b" bgColor="#fef3c7" />
+        </View>
+      </View>
+
+      <Ionicons name="chevron-forward" size={16} color="#d1d5db" />
+    </Pressable>
+  );
+}
+
+// ============================================================
+// Rank Badge Sub-component
+// ============================================================
+
+function RankBadge({ label, rank, color, bgColor }: { label: string; rank: string; color: string; bgColor: string }) {
+  if (!rank || rank === 'NC') {
+    return (
+      <View className="flex-row items-center gap-1">
+        <Text style={{ color, fontSize: 11, fontWeight: '700' }}>{label}</Text>
+        <Text className="text-[11px] text-gray-300">NC</Text>
+      </View>
+    );
+  }
+  return (
+    <View className="flex-row items-center gap-1">
+      <Text style={{ color, fontSize: 11, fontWeight: '700' }}>{label}</Text>
+      <View style={{ backgroundColor: bgColor }} className="rounded px-1.5 py-0.5">
+        <Text style={{ color, fontSize: 11, fontWeight: '600' }}>{rank}</Text>
+      </View>
     </View>
   );
 }

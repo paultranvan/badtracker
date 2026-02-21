@@ -22,9 +22,12 @@ export interface LeaderboardEntry {
   doubleCpph?: number;
   mixteRank: string;
   mixteCpph?: number;
+  /** 'M' for male, 'F' for female, undefined if unknown */
+  sex?: string;
 }
 
 export type ClubDisciplineFilter = 'all' | 'simple' | 'double' | 'mixte';
+export type ClubGenderFilter = 'all' | 'M' | 'F';
 
 // ============================================================
 // Helpers
@@ -121,6 +124,7 @@ export function normalizeToLeaderboard(rawItems: unknown[]): LeaderboardEntry[] 
         doubleCpph: rankings.double?.cpph,
         mixteRank: rankings.mixte?.classement ?? 'NC',
         mixteCpph: rankings.mixte?.cpph,
+        sex: (item.Sex as string | undefined) ?? undefined,
       };
     });
 
@@ -167,4 +171,16 @@ export function getDisplayRank(entry: LeaderboardEntry, discipline: ClubDiscipli
     case 'mixte': return entry.mixteRank;
     default: return entry.bestRank;
   }
+}
+
+/**
+ * Filter leaderboard entries by gender, then re-assign 1-based positions.
+ */
+export function filterByGender(
+  entries: LeaderboardEntry[],
+  gender: ClubGenderFilter
+): LeaderboardEntry[] {
+  if (gender === 'all') return entries;
+  const filtered = entries.filter((e) => e.sex === gender);
+  return filtered.map((entry, index) => ({ ...entry, position: index + 1 }));
 }
