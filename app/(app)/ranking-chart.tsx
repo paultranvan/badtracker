@@ -6,12 +6,12 @@ import {
   RefreshControl,
   Pressable,
   ActivityIndicator,
-  StyleSheet,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { LineChart } from 'react-native-gifted-charts';
 import { useSession } from '../../src/auth/context';
 import { useRankingEvolution } from '../../src/hooks/useRankingEvolution';
+import { Card } from '../../src/components';
 import {
   DISCIPLINE_COLORS,
   RANK_ORDER,
@@ -69,10 +69,8 @@ export default function RankingChartScreen() {
             item.dataPointRadius = 7;
             item.customDataPoint = () => (
               <View
-                style={[
-                  styles.milestoneDot,
-                  { backgroundColor: d.color },
-                ]}
+                className="w-3.5 h-3.5 rounded-full border-2 border-white"
+                style={{ backgroundColor: d.color }}
               />
             );
           }
@@ -115,7 +113,7 @@ export default function RankingChartScreen() {
   // ----------------------------------------------------------
   if (isLoading) {
     return (
-      <View style={styles.centered}>
+      <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#2563eb" />
       </View>
     );
@@ -126,16 +124,13 @@ export default function RankingChartScreen() {
   // ----------------------------------------------------------
   if (error) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{t(error)}</Text>
+      <View className="flex-1 items-center justify-center bg-white px-6">
+        <Text className="text-body text-loss text-center mb-4">{t(error)}</Text>
         <Pressable
-          style={({ pressed }) => [
-            styles.retryButton,
-            pressed && styles.retryButtonPressed,
-          ]}
+          className="bg-primary px-6 py-2.5 rounded-lg active:bg-primary-dark"
           onPress={() => refresh()}
         >
-          <Text style={styles.retryText}>{t('common.retry')}</Text>
+          <Text className="text-white text-body font-semibold">{t('common.retry')}</Text>
         </Pressable>
       </View>
     );
@@ -147,8 +142,8 @@ export default function RankingChartScreen() {
   if (!chartData || chartData.disciplines.every((d) => d.points.length === 0)) {
     return (
       <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.centeredContent}
+        className="flex-1 bg-white"
+        contentContainerStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -158,7 +153,7 @@ export default function RankingChartScreen() {
           />
         }
       >
-        <Text style={styles.noDataText}>{t('ranking.noData')}</Text>
+        <Text className="text-body text-muted italic text-center">{t('ranking.noData')}</Text>
       </ScrollView>
     );
   }
@@ -168,8 +163,8 @@ export default function RankingChartScreen() {
   // ----------------------------------------------------------
   return (
     <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
+      className="flex-1 bg-white"
+      contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
       refreshControl={
         <RefreshControl
           refreshing={isRefreshing}
@@ -180,8 +175,8 @@ export default function RankingChartScreen() {
       }
     >
       {/* Header */}
-      <Text style={styles.title}>{t('ranking.title')}</Text>
-      <Text style={styles.subtitle}>{t('ranking.subtitle')}</Text>
+      <Text className="text-title text-gray-900 mb-1">{t('ranking.title')}</Text>
+      <Text className="text-caption text-muted mb-4">{t('ranking.subtitle')}</Text>
 
       {/* Legend */}
       <ChartLegend
@@ -192,7 +187,7 @@ export default function RankingChartScreen() {
       />
 
       {/* Chart */}
-      <View style={styles.chartContainer}>
+      <Card className="p-4 mb-4">
         {dataSets.length > 0 ? (
           <LineChart
             dataSet={dataSets}
@@ -206,8 +201,8 @@ export default function RankingChartScreen() {
             endSpacing={20}
             rulesType="solid"
             rulesColor="#f3f4f6"
-            yAxisTextStyle={styles.yAxisText}
-            xAxisLabelTextStyle={styles.xAxisText}
+            yAxisTextStyle={{ color: '#6b7280', fontSize: 11 }}
+            xAxisLabelTextStyle={{ color: '#6b7280', fontSize: 10 }}
             xAxisColor="#e5e7eb"
             yAxisColor="#e5e7eb"
             hideRules={false}
@@ -225,24 +220,24 @@ export default function RankingChartScreen() {
                 const val = Math.round(items[0]?.value ?? 0) + (chartData?.minValue ?? 0);
                 const rankLabel = RANK_ORDER[val] ?? '';
                 return (
-                  <View style={styles.tooltipContainer}>
-                    <Text style={styles.tooltipText}>{rankLabel}</Text>
-                  </View>
+                  <Card className="px-3 py-2 shadow-md" style={{ borderLeftWidth: 3, borderLeftColor: '#6b7280' }}>
+                    <Text className="text-caption font-bold text-gray-800">{rankLabel}</Text>
+                  </Card>
                 );
               },
             }}
           />
         ) : (
-          <View style={styles.noVisibleLines}>
-            <Text style={styles.noVisibleText}>
+          <View className="h-[280px] items-center justify-center bg-gray-50 rounded-lg">
+            <Text className="text-body text-muted italic">
               {t('ranking.legend')}
             </Text>
           </View>
         )}
-      </View>
+      </Card>
 
       {/* Legend hint */}
-      <Text style={styles.legendHint}>{t('ranking.legend')}</Text>
+      <Text className="text-[11px] text-muted text-center mt-2">{t('ranking.legend')}</Text>
     </ScrollView>
   );
 }
@@ -273,36 +268,30 @@ function ChartLegend({ visible, onToggle, chartData, t }: ChartLegendProps) {
   ];
 
   return (
-    <View style={styles.legendRow}>
+    <View className="flex-row justify-center gap-4 mb-3">
       {items.map(({ key, color, labelKey }) => {
         const hasData =
           chartData.find((d) => d.discipline === key)?.points.length ?? 0;
+        const isVisible = visible[key];
         return (
           <Pressable
             key={key}
+            className="flex-row items-center gap-2 py-1 px-2"
             onPress={() => onToggle(key)}
-            style={[
-              styles.legendItem,
-              !visible[key] && styles.legendItemHidden,
-            ]}
           >
             <View
-              style={[
-                styles.legendDot,
-                { backgroundColor: color },
-                !visible[key] && styles.legendDotHidden,
-              ]}
+              className="w-3 h-3 rounded-full"
+              style={{
+                backgroundColor: isVisible ? color : 'transparent',
+                borderWidth: isVisible ? 0 : 2,
+                borderColor: color,
+              }}
             />
-            <Text
-              style={[
-                styles.legendLabel,
-                !visible[key] && styles.legendLabelHidden,
-              ]}
-            >
+            <Text className={`text-caption ${isVisible ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
               {t(labelKey)}
             </Text>
             {hasData === 0 && (
-              <Text style={styles.legendNC}>NC</Text>
+              <Text className="text-[10px] text-gray-400 italic ml-1">NC</Text>
             )}
           </Pressable>
         );
@@ -310,177 +299,3 @@ function ChartLegend({ visible, onToggle, chartData, t }: ChartLegendProps) {
     </View>
   );
 }
-
-// ============================================================
-// Styles
-// ============================================================
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  centeredContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 24,
-  },
-
-  // Header
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 16,
-  },
-
-  // Legend
-  legendRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
-    marginBottom: 12,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-  },
-  legendItemHidden: {
-    opacity: 0.4,
-  },
-  legendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 6,
-  },
-  legendDotHidden: {
-    opacity: 0.5,
-  },
-  legendLabel: {
-    fontSize: 13,
-    color: '#374151',
-    fontWeight: '500',
-  },
-  legendLabelHidden: {
-    color: '#9ca3af',
-  },
-  legendNC: {
-    fontSize: 10,
-    color: '#9ca3af',
-    marginLeft: 4,
-    fontStyle: 'italic',
-  },
-  legendHint: {
-    fontSize: 11,
-    color: '#9ca3af',
-    textAlign: 'center',
-    marginTop: 8,
-  },
-
-  // Chart
-  chartContainer: {
-    marginTop: 8,
-    paddingRight: 8,
-  },
-  yAxisText: {
-    color: '#6b7280',
-    fontSize: 11,
-  },
-  xAxisText: {
-    color: '#6b7280',
-    fontSize: 10,
-  },
-
-  // No visible lines
-  noVisibleLines: {
-    height: 280,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
-  },
-  noVisibleText: {
-    fontSize: 14,
-    color: '#9ca3af',
-    fontStyle: 'italic',
-  },
-
-  // Milestone markers
-  milestoneDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  // Tooltip
-  tooltipContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  tooltipText: {
-    fontWeight: '600',
-    fontSize: 13,
-    color: '#111',
-    textAlign: 'center',
-  },
-
-  // No data
-  noDataText: {
-    fontSize: 15,
-    color: '#9ca3af',
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
-
-  // Error
-  errorText: {
-    fontSize: 16,
-    color: '#dc2626',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  retryButton: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonPressed: {
-    backgroundColor: '#1d4ed8',
-  },
-  retryText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
