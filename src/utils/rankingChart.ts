@@ -57,18 +57,17 @@ export const DISCIPLINE_COLORS: Record<Discipline, string> = {
 };
 
 /**
- * Map rank labels to numeric values for Y-axis positioning.
- * Higher value = better rank. NC=0, P12=1, ..., N1=12.
- */
-export const RANK_VALUES: Record<string, number> = {
-  NC: 0, P12: 1, P11: 2, P10: 3, D9: 4, D8: 5, D7: 6,
-  R6: 7, R5: 8, R4: 9, N3: 10, N2: 11, N1: 12,
-};
-
-/**
  * Ordered rank labels from lowest (NC) to highest (N1).
  */
 export const RANK_ORDER = ['NC', 'P12', 'P11', 'P10', 'D9', 'D8', 'D7', 'R6', 'R5', 'R4', 'N3', 'N2', 'N1'];
+
+/**
+ * Map rank labels to numeric values for Y-axis positioning.
+ * Derived from RANK_ORDER to stay in sync. Higher value = better rank.
+ */
+export const RANK_VALUES: Record<string, number> = Object.fromEntries(
+  RANK_ORDER.map((rank, index) => [rank, index])
+);
 
 /**
  * Convert a rank string to its numeric value. Returns 0 for unknown ranks.
@@ -88,19 +87,6 @@ const FRENCH_MONTHS = [
 // ============================================================
 // Parsing Helpers
 // ============================================================
-
-/**
- * Parse a CPPH value from the API response.
- * Returns 0 if undefined, null, or NaN (chart-friendly default for NC).
- *
- * Similar to parseCpph in src/api/ffbad.ts but returns 0 instead of undefined
- * since charts need numeric values for all data points.
- */
-export function parseCpphValue(value: string | number | undefined): number {
-  if (value == null) return 0;
-  const num = typeof value === 'number' ? value : parseFloat(value);
-  return isNaN(num) ? 0 : num;
-}
 
 /**
  * Parse a date string from FFBaD API response.
@@ -263,11 +249,6 @@ export function transformEvolutionData(
     const discipline = parseDiscipline(item.Discipline as string | undefined);
     const dateStr = (item.Date as string) ?? '';
     const rank = (item.Classement as string) ?? 'NC';
-    // Try Points first, then CPPH — API field names may vary
-    const cpph = parseCpphValue(
-      (item.Points as string | number | undefined) ??
-      (item.CPPH as string | number | undefined)
-    );
 
     const point: ChartDataPoint = {
       value: rankToValue(rank),

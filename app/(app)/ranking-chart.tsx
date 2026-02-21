@@ -433,17 +433,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#fff',
   },
-  milestoneBadge: {
-    borderRadius: 4,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-  },
-  milestoneText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: '700',
-  },
-
   // Tooltip
   tooltipContainer: {
     backgroundColor: '#fff',
