@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   RefreshControl,
   Linking,
-  StyleSheet,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -24,8 +23,7 @@ import {
   getDisplayRank,
 } from '../../../src/utils/clubLeaderboard';
 import type { ClubSearchResult } from '../../../src/hooks/useClubSearch';
-
-const Separator = () => <View style={styles.separator} />;
+import { Card, PlayerRow } from '../../../src/components';
 
 // ============================================================
 // Club Info Card Component
@@ -41,46 +39,49 @@ function ClubInfoCard({ info }: { info: NonNullable<ReturnType<typeof useClubLea
   };
 
   return (
-    <View style={styles.infoCard}>
-      <Text style={styles.infoCardTitle}>{info.name}</Text>
+    <Card className="mx-4 mt-4 overflow-hidden">
+      <View className="h-1.5 bg-primary" />
+      <View className="p-4">
+        <Text className="text-[17px] font-bold text-gray-900 mb-3">{info.name}</Text>
 
-      {info.city ? (
-        <View style={styles.infoRow}>
-          <Ionicons name="location-outline" size={16} color="#6b7280" />
-          <Text style={styles.infoText}>
-            {info.address ? `${info.address}, ` : ''}{info.city}
-          </Text>
-        </View>
-      ) : null}
+        {info.city ? (
+          <View className="flex-row items-center gap-2 mb-2">
+            <Ionicons name="location-outline" size={16} color="#6b7280" />
+            <Text className="text-body text-gray-700 flex-1">
+              {info.address ? `${info.address}, ` : ''}{info.city}
+            </Text>
+          </View>
+        ) : null}
 
-      {info.mail ? (
-        <Pressable style={styles.infoRow} onPress={() => Linking.openURL(`mailto:${info.mail}`)}>
-          <Ionicons name="mail-outline" size={16} color="#6b7280" />
-          <Text style={[styles.infoText, styles.infoLink]}>{info.mail}</Text>
-        </Pressable>
-      ) : null}
+        {info.mail ? (
+          <Pressable className="flex-row items-center gap-2 mb-2" onPress={() => Linking.openURL(`mailto:${info.mail}`)}>
+            <Ionicons name="mail-outline" size={16} color="#6b7280" />
+            <Text className="text-body text-primary flex-1">{info.mail}</Text>
+          </Pressable>
+        ) : null}
 
-      {info.phone ? (
-        <Pressable style={styles.infoRow} onPress={() => Linking.openURL(`tel:${info.phone}`)}>
-          <Ionicons name="call-outline" size={16} color="#6b7280" />
-          <Text style={[styles.infoText, styles.infoLink]}>{info.phone}</Text>
-        </Pressable>
-      ) : null}
+        {info.phone ? (
+          <Pressable className="flex-row items-center gap-2 mb-2" onPress={() => Linking.openURL(`tel:${info.phone}`)}>
+            <Ionicons name="call-outline" size={16} color="#6b7280" />
+            <Text className="text-body text-primary flex-1">{info.phone}</Text>
+          </Pressable>
+        ) : null}
 
-      {info.website ? (
-        <Pressable style={styles.infoRow} onPress={() => openLink(info.website)}>
-          <Ionicons name="globe-outline" size={16} color="#6b7280" />
-          <Text style={[styles.infoText, styles.infoLink]} numberOfLines={1}>{info.website}</Text>
-        </Pressable>
-      ) : null}
+        {info.website ? (
+          <Pressable className="flex-row items-center gap-2 mb-2" onPress={() => openLink(info.website)}>
+            <Ionicons name="globe-outline" size={16} color="#6b7280" />
+            <Text className="text-body text-primary flex-1" numberOfLines={1}>{info.website}</Text>
+          </Pressable>
+        ) : null}
 
-      {info.initials ? (
-        <View style={styles.infoRow}>
-          <Ionicons name="id-card-outline" size={16} color="#6b7280" />
-          <Text style={styles.infoText}>{info.initials}</Text>
-        </View>
-      ) : null}
-    </View>
+        {info.initials ? (
+          <View className="flex-row items-center gap-2">
+            <Ionicons name="id-card-outline" size={16} color="#6b7280" />
+            <Text className="text-body text-gray-700 flex-1">{info.initials}</Text>
+          </View>
+        ) : null}
+      </View>
+    </Card>
   );
 }
 
@@ -191,48 +192,30 @@ export default function ClubScreen() {
   // Render helpers
   // ----------------------------------------------------------
   const renderLeaderboardRow = useCallback(
-    ({ item }: { item: LeaderboardEntry }) => {
-      const isCurrentUser = item.licence === session?.licence;
-
-      return (
-        <Pressable
-          style={({ pressed }) => [
-            styles.row,
-            isCurrentUser && styles.rowHighlighted,
-            pressed && styles.rowPressed,
-          ]}
-          onPress={() =>
-            router.push({
-              pathname: '/player/[licence]',
-              params: { licence: item.licence },
-            })
-          }
-        >
-          <Text style={styles.rowPosition}>#{item.position}</Text>
-          <View style={styles.rowInfo}>
-            <Text style={styles.rowName} numberOfLines={1}>
-              {item.nom} {item.prenom}
-            </Text>
-          </View>
-          <View style={styles.rankBadge}>
-            <Text style={styles.rankBadgeText}>{getDisplayRank(item, disciplineFilter)}</Text>
-          </View>
-        </Pressable>
-      );
-    },
+    ({ item }: { item: LeaderboardEntry }) => (
+      <PlayerRow
+        name={`${item.nom} ${item.prenom}`}
+        rank={getDisplayRank(item, disciplineFilter)}
+        position={item.position}
+        isCurrentUser={item.licence === session?.licence}
+        onPress={() =>
+          router.push({
+            pathname: '/player/[licence]',
+            params: { licence: item.licence },
+          })
+        }
+      />
+    ),
     [session?.licence, disciplineFilter]
   );
 
   const renderSearchResult = useCallback(
     ({ item }: { item: ClubSearchResult }) => (
       <Pressable
-        style={({ pressed }) => [
-          styles.searchResultItem,
-          pressed && styles.searchResultItemPressed,
-        ]}
+        className="px-4 py-3 active:bg-gray-50"
         onPress={() => handleSelectClub(item)}
       >
-        <Text style={styles.searchResultName}>{item.name}</Text>
+        <Text className="text-body font-medium text-gray-900">{item.name}</Text>
       </Pressable>
     ),
     [handleSelectClub]
@@ -243,34 +226,38 @@ export default function ClubScreen() {
   // ----------------------------------------------------------
   if (searchMode) {
     return (
-      <View style={styles.container}>
-        <View style={styles.searchHeader}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder={t('club.searchPlaceholder')}
-            placeholderTextColor="#999"
-            value={searchQuery}
-            onChangeText={handleSearchChange}
-            autoFocus
-            autoCorrect={false}
-            autoCapitalize="none"
-            returnKeyType="search"
-            clearButtonMode="while-editing"
-          />
+      <View className="flex-1 bg-white">
+        <View className="flex-row items-center gap-2 px-4 pt-4 pb-2 bg-white border-b border-gray-200">
+          <View className="flex-1 flex-row items-center bg-gray-50 rounded-full px-4 py-2 border border-gray-200">
+            <Ionicons name="search" size={18} color="#9ca3af" />
+            <TextInput
+              className="flex-1 ml-2 text-body text-gray-900"
+              placeholder={t('club.searchPlaceholder')}
+              placeholderTextColor="#9ca3af"
+              value={searchQuery}
+              onChangeText={handleSearchChange}
+              autoFocus
+              autoCorrect={false}
+              autoCapitalize="none"
+              returnKeyType="search"
+            />
+            {searchQuery.length > 0 && (
+              <Pressable onPress={() => { setSearchQuery(''); search(''); }} hitSlop={8}>
+                <Ionicons name="close-circle" size={18} color="#d1d5db" />
+              </Pressable>
+            )}
+          </View>
           <Pressable
-            style={({ pressed }) => [
-              styles.cancelButton,
-              pressed && styles.cancelButtonPressed,
-            ]}
+            className="px-2 py-1 active:opacity-60"
             onPress={handleCancelSearch}
           >
-            <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
+            <Text className="text-body text-primary">{t('common.cancel')}</Text>
           </Pressable>
         </View>
 
-        <View style={styles.searchContent}>
+        <View className="flex-1">
           {searchLoading ? (
-            <View style={styles.centered}>
+            <View className="flex-1 items-center justify-center">
               <ActivityIndicator size="large" color="#2563eb" />
             </View>
           ) : searchResults.length > 0 ? (
@@ -278,16 +265,16 @@ export default function ClubScreen() {
               data={searchResults}
               keyExtractor={(item) => item.id}
               renderItem={renderSearchResult}
-              ItemSeparatorComponent={Separator}
-              contentContainerStyle={styles.listContent}
+              ItemSeparatorComponent={() => <View className="h-px bg-gray-100 mx-4" />}
+              contentContainerStyle={{ paddingVertical: 4 }}
             />
           ) : searchQuery.length >= 3 ? (
-            <View style={styles.centered}>
-              <Text style={styles.hintText}>{t('club.noResults')}</Text>
+            <View className="flex-1 items-center justify-center px-6">
+              <Text className="text-body text-gray-400 text-center">{t('club.noResults')}</Text>
             </View>
           ) : (
-            <View style={styles.centered}>
-              <Text style={styles.hintText}>{t('club.searchMinChars')}</Text>
+            <View className="flex-1 items-center justify-center px-6">
+              <Text className="text-body text-gray-400 text-center">{t('club.searchMinChars')}</Text>
             </View>
           )}
         </View>
@@ -300,7 +287,7 @@ export default function ClubScreen() {
   // ----------------------------------------------------------
   if (userClubLoading) {
     return (
-      <View style={styles.centered}>
+      <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#2563eb" />
       </View>
     );
@@ -311,16 +298,13 @@ export default function ClubScreen() {
   // ----------------------------------------------------------
   if (!displayClubId && !userClubLoading) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.noClubText}>{t('club.noClub')}</Text>
+      <View className="flex-1 items-center justify-center bg-white px-6">
+        <Text className="text-body text-muted text-center mb-5">{t('club.noClub')}</Text>
         <Pressable
-          style={({ pressed }) => [
-            styles.browseButton,
-            pressed && styles.browseButtonPressed,
-          ]}
+          className="bg-primary px-6 py-2.5 rounded-lg active:bg-primary-dark"
           onPress={handleOpenSearch}
         >
-          <Text style={styles.browseButtonText}>{t('club.browseClubs')}</Text>
+          <Text className="text-white text-body font-semibold">{t('club.browseClubs')}</Text>
         </Pressable>
       </View>
     );
@@ -331,7 +315,7 @@ export default function ClubScreen() {
   // ----------------------------------------------------------
   if (isLoading) {
     return (
-      <View style={styles.centered}>
+      <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#2563eb" />
       </View>
     );
@@ -342,16 +326,13 @@ export default function ClubScreen() {
   // ----------------------------------------------------------
   if (error) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{error}</Text>
+      <View className="flex-1 items-center justify-center bg-white px-6">
+        <Text className="text-body text-loss text-center mb-4">{error}</Text>
         <Pressable
-          style={({ pressed }) => [
-            styles.retryButton,
-            pressed && styles.retryButtonPressed,
-          ]}
+          className="bg-primary px-6 py-2.5 rounded-lg active:bg-primary-dark"
           onPress={() => refresh()}
         >
-          <Text style={styles.retryText}>{t('common.retry')}</Text>
+          <Text className="text-white text-body font-semibold">{t('common.retry')}</Text>
         </Pressable>
       </View>
     );
@@ -364,24 +345,21 @@ export default function ClubScreen() {
   const hasMembers = members.length > 0;
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-white">
       {/* Club header */}
-      <View style={styles.clubHeader}>
-        <View style={styles.clubHeaderLeft}>
-          <Text style={styles.clubHeaderName} numberOfLines={2}>
+      <View className="flex-row items-center px-4 pt-4 pb-2 border-b border-gray-200 bg-white">
+        <View className="flex-1">
+          <Text className="text-title text-gray-900" numberOfLines={2}>
             {clubName || t('club.title')}
           </Text>
           {hasMembers ? (
-            <Text style={styles.clubHeaderCount}>
+            <Text className="text-caption text-muted mt-0.5">
               {t('club.members', { count: rankedCount })}
             </Text>
           ) : null}
         </View>
         <Pressable
-          style={({ pressed }) => [
-            styles.searchIconButton,
-            pressed && styles.searchIconButtonPressed,
-          ]}
+          className="p-2 active:opacity-60"
           onPress={handleOpenSearch}
         >
           <Ionicons name="search" size={20} color="#6b7280" />
@@ -391,29 +369,26 @@ export default function ClubScreen() {
       {/* "My Club" button when viewing another club */}
       {isViewingOtherClub ? (
         <Pressable
-          style={({ pressed }) => [
-            styles.myClubButton,
-            pressed && styles.myClubButtonPressed,
-          ]}
+          className="mx-4 mt-2 mb-1 self-start px-3.5 py-2 rounded-lg border border-primary active:bg-primary-bg"
           onPress={handleMyClub}
         >
-          <Text style={styles.myClubButtonText}>{t('club.myClub')}</Text>
+          <Text className="text-body font-medium text-primary">{t('club.myClub')}</Text>
         </Pressable>
       ) : null}
 
       {/* Discipline filter chips */}
       {hasMembers ? (
-        <View style={styles.disciplineFiltersRow}>
+        <View className="flex-row gap-2 px-4 py-2.5 border-b border-gray-100">
           {(['all', 'simple', 'double', 'mixte'] as ClubDisciplineFilter[]).map((key) => {
             const isActive = disciplineFilter === key;
             const labelKey = key === 'all' ? 'club.filterAll' : `club.filter${key.charAt(0).toUpperCase() + key.slice(1)}`;
             return (
               <Pressable
                 key={key}
-                style={[styles.filterChip, isActive && styles.filterChipActive]}
+                className={`px-3 py-1.5 rounded-full border ${isActive ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}
                 onPress={() => setDisciplineFilter(key)}
               >
-                <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                <Text className={`text-[13px] font-medium ${isActive ? 'text-white' : 'text-gray-700'}`}>
                   {t(labelKey)}
                 </Text>
               </Pressable>
@@ -428,8 +403,8 @@ export default function ClubScreen() {
           data={filteredMembers}
           keyExtractor={(item) => item.licence}
           renderItem={renderLeaderboardRow}
-          ItemSeparatorComponent={Separator}
-          contentContainerStyle={styles.listContent}
+          ItemSeparatorComponent={() => <View className="h-px bg-gray-100 mx-4" />}
+          contentContainerStyle={{ paddingVertical: 4 }}
           ListHeaderComponent={clubInfo ? <ClubInfoCard info={clubInfo} /> : null}
           refreshControl={
             <RefreshControl
@@ -446,12 +421,12 @@ export default function ClubScreen() {
           renderItem={() => null}
           ListHeaderComponent={clubInfo ? <ClubInfoCard info={clubInfo} /> : null}
           ListEmptyComponent={
-            <View style={styles.emptyMembersContainer}>
+            <View className="items-center py-8 px-6 gap-2">
               <Ionicons name="people-outline" size={36} color="#d1d5db" />
-              <Text style={styles.emptyText}>{t('club.membersUnavailable')}</Text>
+              <Text className="text-body text-gray-400 text-center">{t('club.membersUnavailable')}</Text>
             </View>
           }
-          contentContainerStyle={styles.infoListContent}
+          contentContainerStyle={{ paddingBottom: 24 }}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
@@ -465,297 +440,3 @@ export default function ClubScreen() {
     </View>
   );
 }
-
-// ============================================================
-// Styles
-// ============================================================
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 24,
-  },
-
-  // Club header
-  clubHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    backgroundColor: '#fff',
-  },
-  clubHeaderLeft: {
-    flex: 1,
-  },
-  clubHeaderName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111',
-  },
-  clubHeaderCount: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  searchIconButton: {
-    padding: 8,
-  },
-  searchIconButtonPressed: {
-    opacity: 0.6,
-  },
-
-  // Club info card
-  infoCard: {
-    margin: 16,
-    padding: 16,
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  infoCardTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#111',
-    marginBottom: 12,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#374151',
-    flex: 1,
-  },
-  infoLink: {
-    color: '#2563eb',
-  },
-
-  // "My Club" button
-  myClubButton: {
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2563eb',
-    alignSelf: 'flex-start',
-  },
-  myClubButtonPressed: {
-    backgroundColor: '#eff6ff',
-  },
-  myClubButtonText: {
-    fontSize: 14,
-    color: '#2563eb',
-    fontWeight: '500',
-  },
-
-  // Discipline filter chips
-  disciplineFiltersRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
-  },
-  filterChipActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
-  },
-  filterChipText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#374151',
-  },
-  filterChipTextActive: {
-    color: '#fff',
-  },
-
-  // Leaderboard rows
-  listContent: {
-    paddingVertical: 4,
-  },
-  infoListContent: {
-    paddingBottom: 24,
-  },
-  emptyMembersContainer: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 24,
-    gap: 8,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#f9fafb',
-  },
-  rowHighlighted: {
-    backgroundColor: '#eff6ff',
-    borderLeftWidth: 3,
-    borderLeftColor: '#2563eb',
-  },
-  rowPressed: {
-    opacity: 0.7,
-  },
-  rowPosition: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
-    width: 36,
-  },
-  rowInfo: {
-    flex: 1,
-    marginHorizontal: 8,
-  },
-  rowName: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#111',
-  },
-  rankBadge: {
-    backgroundColor: '#e5e7eb',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  rankBadgeText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#e5e7eb',
-    marginHorizontal: 16,
-  },
-
-  // Search mode
-  searchHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 44,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    backgroundColor: '#f9fafb',
-    color: '#111',
-  },
-  cancelButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  cancelButtonPressed: {
-    opacity: 0.6,
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    color: '#2563eb',
-  },
-  searchContent: {
-    flex: 1,
-  },
-  searchResultItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-  },
-  searchResultItemPressed: {
-    backgroundColor: '#f3f4f6',
-  },
-  searchResultName: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#111',
-  },
-
-  // No club state
-  noClubText: {
-    fontSize: 16,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  browseButton: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  browseButtonPressed: {
-    backgroundColor: '#1d4ed8',
-  },
-  browseButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  emptyText: {
-    fontSize: 15,
-    color: '#9ca3af',
-    textAlign: 'center',
-  },
-  hintText: {
-    fontSize: 14,
-    color: '#9ca3af',
-    textAlign: 'center',
-  },
-
-  // Error state
-  errorText: {
-    fontSize: 16,
-    color: '#dc2626',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  retryButton: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonPressed: {
-    backgroundColor: '#1d4ed8',
-  },
-  retryText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

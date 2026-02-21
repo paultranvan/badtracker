@@ -6,15 +6,14 @@ import {
   Pressable,
   ActivityIndicator,
   RefreshControl,
-  StyleSheet,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 import { useClubLeaderboard } from '../../../src/hooks/useClubLeaderboard';
 import { useSession } from '../../../src/auth/context';
 import type { LeaderboardEntry } from '../../../src/utils/clubLeaderboard';
-
-const Separator = () => <View style={styles.separator} />;
+import { PlayerRow } from '../../../src/components';
 
 // ============================================================
 // Club Leaderboard Stack Screen
@@ -47,35 +46,20 @@ export default function ClubLeaderboardScreen() {
   // Row renderer
   // ----------------------------------------------------------
   const renderRow = useCallback(
-    ({ item }: { item: LeaderboardEntry }) => {
-      const isCurrentUser = item.licence === session?.licence;
-
-      return (
-        <Pressable
-          style={({ pressed }) => [
-            styles.row,
-            isCurrentUser && styles.rowHighlighted,
-            pressed && styles.rowPressed,
-          ]}
-          onPress={() =>
-            router.push({
-              pathname: '/player/[licence]',
-              params: { licence: item.licence },
-            })
-          }
-        >
-          <Text style={styles.rowPosition}>#{item.position}</Text>
-          <View style={styles.rowInfo}>
-            <Text style={styles.rowName} numberOfLines={1}>
-              {item.nom} {item.prenom}
-            </Text>
-          </View>
-          <View style={styles.rankBadge}>
-            <Text style={styles.rankBadgeText}>{item.bestRank}</Text>
-          </View>
-        </Pressable>
-      );
-    },
+    ({ item }: { item: LeaderboardEntry }) => (
+      <PlayerRow
+        name={`${item.nom} ${item.prenom}`}
+        rank={item.bestRank}
+        position={item.position}
+        isCurrentUser={item.licence === session?.licence}
+        onPress={() =>
+          router.push({
+            pathname: '/player/[licence]',
+            params: { licence: item.licence },
+          })
+        }
+      />
+    ),
     [session?.licence]
   );
 
@@ -84,7 +68,7 @@ export default function ClubLeaderboardScreen() {
   // ----------------------------------------------------------
   if (isLoading) {
     return (
-      <View style={styles.centered}>
+      <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#2563eb" />
       </View>
     );
@@ -95,16 +79,13 @@ export default function ClubLeaderboardScreen() {
   // ----------------------------------------------------------
   if (error) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{error}</Text>
+      <View className="flex-1 items-center justify-center bg-white px-6">
+        <Text className="text-body text-loss text-center mb-4">{error}</Text>
         <Pressable
-          style={({ pressed }) => [
-            styles.retryButton,
-            pressed && styles.retryButtonPressed,
-          ]}
+          className="bg-primary px-6 py-2.5 rounded-lg active:bg-primary-dark"
           onPress={() => refresh()}
         >
-          <Text style={styles.retryText}>{t('common.retry')}</Text>
+          <Text className="text-white text-body font-semibold">{t('common.retry')}</Text>
         </Pressable>
       </View>
     );
@@ -114,13 +95,13 @@ export default function ClubLeaderboardScreen() {
   // Leaderboard view
   // ----------------------------------------------------------
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-white">
       {/* Club header */}
-      <View style={styles.clubHeader}>
-        <Text style={styles.clubHeaderName} numberOfLines={2}>
+      <View className="px-4 pt-4 pb-2 border-b border-gray-200 bg-white">
+        <Text className="text-title text-gray-900" numberOfLines={2}>
           {clubName || t('club.title')}
         </Text>
-        <Text style={styles.clubHeaderCount}>
+        <Text className="text-caption text-muted mt-0.5">
           {t('club.members', { count: rankedCount })}
         </Text>
       </View>
@@ -130,9 +111,9 @@ export default function ClubLeaderboardScreen() {
         data={members}
         keyExtractor={(item) => item.licence}
         renderItem={renderRow}
-        ItemSeparatorComponent={Separator}
+        ItemSeparatorComponent={() => <View className="h-px bg-gray-100 mx-4" />}
         contentContainerStyle={
-          members.length === 0 ? styles.emptyContainer : styles.listContent
+          members.length === 0 ? { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 } : { paddingVertical: 4 }
         }
         refreshControl={
           <RefreshControl
@@ -143,133 +124,12 @@ export default function ClubLeaderboardScreen() {
           />
         }
         ListEmptyComponent={
-          <View style={styles.centered}>
-            <Text style={styles.emptyText}>{t('club.noMembers')}</Text>
+          <View className="items-center gap-2">
+            <Ionicons name="people-outline" size={36} color="#d1d5db" />
+            <Text className="text-body text-gray-400 italic text-center">{t('club.noMembers')}</Text>
           </View>
         }
       />
     </View>
   );
 }
-
-// ============================================================
-// Styles
-// ============================================================
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 24,
-  },
-
-  // Club header
-  clubHeader: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    backgroundColor: '#fff',
-  },
-  clubHeaderName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111',
-  },
-  clubHeaderCount: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-
-  // Leaderboard rows
-  listContent: {
-    paddingVertical: 4,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#f9fafb',
-  },
-  rowHighlighted: {
-    backgroundColor: '#eff6ff',
-    borderLeftWidth: 3,
-    borderLeftColor: '#2563eb',
-  },
-  rowPressed: {
-    opacity: 0.7,
-  },
-  rowPosition: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
-    width: 36,
-  },
-  rowInfo: {
-    flex: 1,
-    marginHorizontal: 8,
-  },
-  rowName: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#111',
-  },
-  rankBadge: {
-    backgroundColor: '#e5e7eb',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  rankBadgeText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#e5e7eb',
-    marginHorizontal: 16,
-  },
-  emptyText: {
-    fontSize: 15,
-    color: '#9ca3af',
-    fontStyle: 'italic',
-  },
-
-  // Error state
-  errorText: {
-    fontSize: 16,
-    color: '#dc2626',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  retryButton: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonPressed: {
-    backgroundColor: '#1d4ed8',
-  },
-  retryText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
