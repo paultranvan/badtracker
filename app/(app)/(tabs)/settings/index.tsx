@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Alert, Pressable } from 'react-native';
+import { View, Text, Alert, Pressable } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,7 +45,6 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             await signOut();
-            // Stack.Protected guard automatically navigates to sign-in
           },
         },
       ]
@@ -53,156 +52,73 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.sectionTitle}>{t('settings.title')}</Text>
+    <View className="flex-1 bg-white px-5 pt-6">
+      {/* Preferences Section */}
+      <Text className="text-caption text-muted uppercase tracking-wider mb-3 mt-2">
+        {t('settings.language')}
+      </Text>
 
       {/* Language Toggle */}
-      <View style={styles.row}>
-        <Text style={styles.label}>{t('settings.language')}</Text>
-        <Pressable style={styles.languageToggle} onPress={toggleLanguage}>
-          <View
-            style={[
-              styles.languageOption,
-              currentLanguage === 'fr' && styles.languageOptionActive,
-            ]}
+      <View className="flex-row items-center justify-between py-3 border-b border-gray-100 mb-2">
+        <Text className="text-body text-gray-800">{t('settings.language')}</Text>
+        <View className="flex-row bg-gray-100 rounded-full p-1">
+          <Pressable
+            className={`px-4 py-2 rounded-full items-center ${currentLanguage === 'fr' ? 'bg-primary' : ''}`}
+            onPress={() => i18n.changeLanguage('fr')}
           >
-            <Text
-              style={[
-                styles.languageText,
-                currentLanguage === 'fr' && styles.languageTextActive,
-              ]}
-            >
+            <Text className={`text-body font-medium ${currentLanguage === 'fr' ? 'text-white' : 'text-gray-600'}`}>
               {t('settings.french')}
             </Text>
-          </View>
-          <View
-            style={[
-              styles.languageOption,
-              currentLanguage === 'en' && styles.languageOptionActive,
-            ]}
+          </Pressable>
+          <Pressable
+            className={`px-4 py-2 rounded-full items-center ${currentLanguage === 'en' ? 'bg-primary' : ''}`}
+            onPress={() => i18n.changeLanguage('en')}
           >
-            <Text
-              style={[
-                styles.languageText,
-                currentLanguage === 'en' && styles.languageTextActive,
-              ]}
-            >
+            <Text className={`text-body font-medium ${currentLanguage === 'en' ? 'text-white' : 'text-gray-600'}`}>
               {t('settings.english')}
             </Text>
-          </View>
-        </Pressable>
+          </Pressable>
+        </View>
       </View>
+
+      {/* Data Section */}
+      <Text className="text-caption text-muted uppercase tracking-wider mb-3 mt-6">
+        Data
+      </Text>
 
       {/* Bookmarks row */}
       <Pressable
-        style={({ pressed }) => [styles.bookmarksRow, pressed && styles.rowPressed]}
+        className="flex-row items-center justify-between py-4 border-b border-gray-100 active:bg-gray-50"
         onPress={() => router.push('/settings/bookmarks')}
       >
-        <View style={styles.rowContent}>
-          <Ionicons name="star" size={20} color="#f59e0b" style={styles.rowIcon} />
-          <Text style={styles.label}>{t('bookmarks.settingsRow')}</Text>
+        <View className="flex-row items-center">
+          <Ionicons name="star" size={20} color="#f59e0b" style={{ marginRight: 12 }} />
+          <Text className="text-body text-gray-800">{t('bookmarks.settingsRow')}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+        <Ionicons name="chevron-forward" size={20} color="#d1d5db" />
       </Pressable>
 
       {/* Clear cache row */}
       <Pressable
-        style={({ pressed }) => [styles.bookmarksRow, pressed && styles.rowPressed]}
+        className="flex-row items-center justify-between py-4 border-b border-gray-100 active:bg-gray-50"
         onPress={handleClearCache}
       >
-        <View style={styles.rowContent}>
-          <Ionicons name="trash-outline" size={20} color="#6b7280" style={styles.rowIcon} />
-          <Text style={styles.label}>{t('settings.clearCache')}</Text>
+        <View className="flex-row items-center">
+          <Ionicons name="trash-outline" size={20} color="#6b7280" style={{ marginRight: 12 }} />
+          <Text className="text-body text-gray-800">{t('settings.clearCache')}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+        <Ionicons name="chevron-forward" size={20} color="#d1d5db" />
       </Pressable>
 
-      {/* Logout Button — in settings screen per user decision */}
-      <Pressable style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>{t('common.logout')}</Text>
-      </Pressable>
+      {/* Logout */}
+      <View className="mt-auto mb-10">
+        <Pressable
+          className="py-4 items-center active:opacity-60"
+          onPress={handleLogout}
+        >
+          <Text className="text-body font-semibold text-loss">{t('common.logout')}</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 20,
-    paddingTop: 60,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 30,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  label: {
-    fontSize: 16,
-    color: '#333',
-  },
-  languageToggle: {
-    flexDirection: 'row',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    overflow: 'hidden',
-  },
-  languageOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#f5f5f5',
-  },
-  languageOptionActive: {
-    backgroundColor: '#2563eb',
-  },
-  languageText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  languageTextActive: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  bookmarksRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    marginBottom: 20,
-  },
-  rowPressed: {
-    backgroundColor: '#f3f4f6',
-  },
-  rowContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  rowIcon: {
-    marginRight: 12,
-  },
-  logoutButton: {
-    marginTop: 'auto',
-    marginBottom: 40,
-    padding: 16,
-    backgroundColor: '#fee2e2',
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  logoutText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#dc2626',
-  },
-});
