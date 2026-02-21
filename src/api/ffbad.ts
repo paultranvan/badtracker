@@ -425,6 +425,17 @@ function inferDisciplineFromName(name: string | undefined, subName: string | und
 }
 
 /**
+ * Parse interclub subName patterns like "94-CALB-2 contre 94-VBC-3"
+ * into a cleaner "CALB-2 vs VBC-3" format.
+ */
+function parseInterclubSubName(subName: string): { team1: string; team2: string } | null {
+  // Pattern: "XX-ABCD-N contre XX-EFGH-N" where XX=department, ABCD=club code, N=team number
+  const match = subName.match(/^\d{2,3}-([A-Z]+)-(\d+)\s+contre\s+\d{2,3}-([A-Z]+)-(\d+)$/i);
+  if (!match) return null;
+  return { team1: `${match[1]}-${match[2]}`, team2: `${match[3]}-${match[4]}` };
+}
+
+/**
  * Transform a myffbad.fr result item to the existing ResultItem format.
  *
  * myffbad.fr result items have:
@@ -468,16 +479,22 @@ function transformResultItem(raw: Record<string, unknown>): Record<string, unkno
     }
   }
 
+  // Clean up interclub opponent names (e.g. "94-CALB-2 contre 94-VSSM-6" → "CALB-2 vs VSSM-6")
+  const interclub = parseInterclubSubName(raw.subName as string ?? '');
+  const adversaire = interclub
+    ? `${interclub.team1} vs ${interclub.team2}`
+    : raw.subName;
+
   return {
     Date: formattedDate,
+    DateCompetition: formattedDate,
     Epreuve: raw.name,
     Competition: raw.name,
     Discipline: discipline,
     Points: winPoint,
     Resultat: resultat,
     Score: score,
-    // subName often contains the matchup (e.g. "94-CALB-2 contre 94-VSSM-6")
-    Adversaire: raw.subName,
+    Adversaire: adversaire,
     // Keep original date for season computation
     _rawDate: raw.date,
     // Pass through all original fields
