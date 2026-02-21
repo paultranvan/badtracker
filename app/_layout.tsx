@@ -6,7 +6,7 @@ import { ConnectivityProvider, OfflineBar } from '../src/connectivity/context';
 import { WebViewBridgeProvider } from '../src/api/webview-bridge';
 import Toast from 'react-native-toast-message';
 import { useEffect } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Text } from 'react-native';
 import '../src/i18n';
 
 function AuthGate() {
@@ -30,7 +30,8 @@ function AuthGate() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+      <View className="flex-1 items-center justify-center bg-white">
+        <Text className="text-display text-primary mb-4">BadTracker</Text>
         <ActivityIndicator size="large" color="#2563eb" />
       </View>
     );
