@@ -392,29 +392,32 @@ function MatchCardItem({ match, t, expanded = false }: MatchCardItemProps) {
     );
   }
 
-  // Expanded: full detail card
+  // Expanded: detailed card with all available info
   return (
-    <View className={`px-4 py-3 border-l-[3px] ${borderClass} border-b border-b-gray-100 bg-white`}>
-      {/* Row 1: discipline badge + round + result badge */}
+    <View className={`mx-3 my-1.5 rounded-xl border ${isWin ? 'border-win/30 bg-win/5' : isLoss ? 'border-loss/30 bg-loss/5' : 'border-gray-200 bg-gray-50'} p-3`}>
+      {/* Header: Discipline + Date + Round + W/L badge */}
       <View className="flex-row justify-between items-center mb-2">
-        <View className="flex-row items-center gap-2 flex-1">
+        <View className="flex-row items-center gap-2">
           {disciplineLetter ? (
             <View className={`w-6 h-6 rounded-full items-center justify-center ${discBg}`}>
               <Text className={`text-[11px] font-bold ${discText}`}>{disciplineLetter}</Text>
             </View>
           ) : null}
+          {match.date ? (
+            <Text className="text-[13px] text-muted">{match.date}</Text>
+          ) : null}
           {match.round ? (
-            <Text className="text-caption text-muted" numberOfLines={1}>{match.round}</Text>
+            <Text className="text-caption text-muted">{'\u2022'} {match.round}</Text>
           ) : null}
         </View>
-        <View className={`w-7 h-7 rounded-full items-center justify-center ${badgeBg}`}>
-          <Text className="text-caption font-bold text-white">{badgeText}</Text>
+        <View className={`px-2.5 py-1 rounded-full ${badgeBg}`}>
+          <Text className="text-[11px] font-bold text-white">{badgeText}</Text>
         </View>
       </View>
 
-      {/* Row 2: Partner (doubles/mixed) */}
+      {/* Partner (doubles/mixed only) */}
       {match.partner ? (
-        <View className="flex-row items-center mb-1">
+        <View className="flex-row items-center mb-1.5">
           <Ionicons name="people-outline" size={14} color="#64748b" style={{ marginRight: 6 }} />
           <Text className="text-[14px] font-medium text-gray-700" numberOfLines={1}>
             {match.partner}
@@ -422,50 +425,52 @@ function MatchCardItem({ match, t, expanded = false }: MatchCardItemProps) {
         </View>
       ) : null}
 
-      {/* Row 3: Opponent */}
-      {match.opponent ? (
-        <View className="flex-row items-center mb-2">
-          <Text className="text-[13px] text-gray-400 mr-1">{t('matchHistory.vs')}</Text>
-          {match.opponentLicence ? (
-            <Pressable onPress={() => router.push(`/player/${match.opponentLicence}`)}>
-              <Text className="text-[14px] font-medium text-primary" numberOfLines={1}>
-                {match.opponent}{match.opponent2 ? ` / ${match.opponent2}` : ''}
-              </Text>
-            </Pressable>
-          ) : (
-            <Text className="text-[14px] font-medium text-gray-700" numberOfLines={1}>
-              {match.opponent}{match.opponent2 ? ` / ${match.opponent2}` : ''}
+      {/* Opponent */}
+      <View className="flex-row items-center mb-2">
+        <Text className="text-[13px] text-gray-400 mr-1.5">{t('matchHistory.vs')}</Text>
+        {match.opponentLicence ? (
+          <Pressable onPress={() => router.push(`/player/${match.opponentLicence}`)}>
+            <Text className="text-[14px] font-medium text-primary" numberOfLines={1}>
+              {match.opponent || '-'}{match.opponent2 ? ` / ${match.opponent2}` : ''}
             </Text>
-          )}
-        </View>
-      ) : null}
+          </Pressable>
+        ) : (
+          <Text className="text-[14px] font-medium text-gray-700" numberOfLines={1}>
+            {match.opponent || '-'}{match.opponent2 ? ` / ${match.opponent2}` : ''}
+          </Text>
+        )}
+      </View>
 
-      {/* Row 4: Set scores displayed prominently */}
-      {match.setScores && match.setScores.length > 0 ? (
-        <View className="flex-row gap-3 mb-2">
-          {match.setScores.map((setScore, i) => (
-            <View key={i} className="bg-gray-50 px-3 py-1.5 rounded-lg">
-              <Text className="text-[10px] text-muted text-center mb-0.5">Set {i + 1}</Text>
-              <Text className="text-[15px] font-bold text-gray-900 text-center" style={{ fontVariant: ['tabular-nums'] }}>
-                {setScore}
-              </Text>
-            </View>
-          ))}
-        </View>
-      ) : match.score ? (
-        <View className="mb-2">
-          <Text className="text-[15px] font-bold text-gray-900" style={{ fontVariant: ['tabular-nums'] }}>
+      {/* Score + Points row */}
+      <View className="flex-row justify-between items-center">
+        {/* Set scores or fallback score (but NOT if score is just points format) */}
+        {match.setScores && match.setScores.length > 0 ? (
+          <View className="flex-row gap-2">
+            {match.setScores.map((setScore, i) => (
+              <View key={i} className="bg-white px-2.5 py-1 rounded-lg border border-gray-100">
+                <Text className="text-[14px] font-bold text-gray-900" style={{ fontVariant: ['tabular-nums'] }}>
+                  {setScore}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : match.score && !match.score.includes('pts') ? (
+          <Text className="text-[14px] font-bold text-gray-900" style={{ fontVariant: ['tabular-nums'] }}>
             {match.score}
           </Text>
-        </View>
-      ) : null}
+        ) : (
+          <View />
+        )}
 
-      {/* Row 5: Points impact */}
-      {pointsText ? (
-        <View className="flex-row justify-end">
-          <Text className={`text-[13px] font-semibold ${pointsClass}`}>{pointsText}</Text>
-        </View>
-      ) : null}
+        {/* Points impact — always show when available */}
+        {pointsText ? (
+          <View className={`px-2.5 py-1 rounded-lg ${match.pointsImpact != null && match.pointsImpact >= 0 ? 'bg-win/10' : 'bg-loss/10'}`}>
+            <Text className={`text-[14px] font-bold ${pointsClass}`} style={{ fontVariant: ['tabular-nums'] }}>
+              {pointsText}
+            </Text>
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
