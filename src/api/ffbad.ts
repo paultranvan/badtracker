@@ -354,7 +354,9 @@ export async function getPlayerProfile(
 
 /**
  * Get match results for a player by licence number.
- * Uses myffbad.fr /api/person/{personId}/result endpoint.
+ * Uses myffbad.fr /api/person/{personId}/result/actual endpoint which returns
+ * richer data with all IDs populated (eventId, disciplineId, bracketId, roundId)
+ * and discipline names like "SIMPLE HOMMES", "DOUBLE HOMMES", "MIXTE".
  */
 export async function getResultsByLicence(
   licence: string
@@ -371,7 +373,7 @@ export async function getResultsByLicence(
 
   try {
     const data = await bridgeGet(
-      `/api/person/${personId}/result`,
+      `/api/person/${personId}/result/actual`,
       session.accessToken,
       personId
     );
@@ -415,6 +417,18 @@ function formatDateFR(dateStr: string | null | undefined): string | undefined {
  * myffbad.fr event names often contain discipline keywords or use naming patterns
  * like "SH" (Simple Homme), "DD" (Double Dame), "MX" (Mixte), etc.
  */
+/**
+ * Map a full discipline string from myffbad.fr to a short code.
+ * E.g. "SIMPLE HOMMES" → "S", "DOUBLE HOMMES" → "D", "MIXTE" → "M"
+ */
+function mapDisciplineCode(disc: string): string | undefined {
+  const upper = disc.toUpperCase();
+  if (upper.includes('SIMPLE')) return 'S';
+  if (upper.includes('DOUBLE')) return 'D';
+  if (upper.includes('MIXTE')) return 'M';
+  return undefined;
+}
+
 function inferDisciplineFromName(name: string | undefined, subName: string | undefined): string | undefined {
   const text = `${name ?? ''} ${subName ?? ''}`.toUpperCase();
   // Check for common discipline indicators in tournament/matchup names
@@ -454,9 +468,12 @@ function transformResultItem(raw: Record<string, unknown>): Record<string, unkno
   // Format the date for display (ISO → DD/MM/YYYY)
   const formattedDate = formatDateFR(raw.date as string | null | undefined);
 
-  // Try to get discipline from API field, or infer from event name
-  const discipline = (raw.discipline as string | null) ??
-    inferDisciplineFromName(raw.name as string | undefined, raw.subName as string | undefined);
+  // Map discipline from API (e.g. "SIMPLE HOMMES" → "S", "DOUBLE HOMMES" → "D", "MIXTE" → "M")
+  // or infer from event name as fallback
+  const rawDisc = raw.discipline as string | null;
+  const discipline = rawDisc
+    ? mapDisciplineCode(rawDisc)
+    : inferDisciplineFromName(raw.name as string | undefined, raw.subName as string | undefined);
 
   // Show winPoint as score indicator (e.g. "+43 pts" or "-7 pts")
   let score: string | undefined;
@@ -840,3 +857,4 @@ export async function getClubList(): Promise<ClubListResponse> {
     return { Retour: 'Error fetching club list' };
   }
 }
+
