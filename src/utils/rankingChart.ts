@@ -11,7 +11,7 @@ export type Discipline = 'simple' | 'double' | 'mixte';
  * A single data point on the ranking evolution chart.
  */
 export interface ChartDataPoint {
-  value: number;          // CPPH value (0 for NC/unranked)
+  value: number;          // Rank numeric value (0=NC, 1=P12, ..., 12=N1)
   label?: string;         // X-axis date label (e.g., "Sep '25")
   date: string;           // ISO-ish date string for sorting
   rank: string;           // Rank at this point (e.g., "P10", "NC")
@@ -55,6 +55,27 @@ export const DISCIPLINE_COLORS: Record<Discipline, string> = {
   double: '#16a34a',
   mixte: '#d97706',
 };
+
+/**
+ * Map rank labels to numeric values for Y-axis positioning.
+ * Higher value = better rank. NC=0, P12=1, ..., N1=12.
+ */
+export const RANK_VALUES: Record<string, number> = {
+  NC: 0, P12: 1, P11: 2, P10: 3, D9: 4, D8: 5, D7: 6,
+  R6: 7, R5: 8, R4: 9, N3: 10, N2: 11, N1: 12,
+};
+
+/**
+ * Ordered rank labels from lowest (NC) to highest (N1).
+ */
+export const RANK_ORDER = ['NC', 'P12', 'P11', 'P10', 'D9', 'D8', 'D7', 'R6', 'R5', 'R4', 'N3', 'N2', 'N1'];
+
+/**
+ * Convert a rank string to its numeric value. Returns 0 for unknown ranks.
+ */
+export function rankToValue(rank: string): number {
+  return RANK_VALUES[rank.toUpperCase().trim()] ?? 0;
+}
 
 /**
  * French month abbreviations for chart axis labels.
@@ -249,7 +270,7 @@ export function transformEvolutionData(
     );
 
     const point: ChartDataPoint = {
-      value: cpph,
+      value: rankToValue(rank),
       label: formatDateLabel(dateStr),
       date: dateStr,
       rank,
@@ -261,8 +282,8 @@ export function transformEvolutionData(
       grouped[discipline].push(point);
     } else {
       // If no discipline field, add to all groups (API might return undifferentiated data)
-      // But only if there's actual data (non-zero CPPH)
-      if (cpph > 0) {
+      // But only if there's actual data (non-NC rank)
+      if (rankToValue(rank) > 0) {
         grouped.simple.push({ ...point, discipline: 'simple' });
       }
     }
@@ -309,8 +330,10 @@ export function transformEvolutionData(
 
   // Compute value bounds
   const allValues = disciplineData.flatMap((d) => d.points.map((p) => p.value));
-  const maxValue = allValues.length > 0 ? Math.max(...allValues) : 0;
-  const minValue = allValues.length > 0 ? Math.min(...allValues) : 0;
+  const dataMax = allValues.length > 0 ? Math.max(...allValues) : 0;
+  const dataMin = allValues.length > 0 ? Math.min(...allValues.filter((v) => v > 0)) : 0;
+  const maxValue = Math.min(dataMax + 1, 12);
+  const minValue = Math.max((dataMin > 0 ? dataMin : 0) - 1, 0);
 
   return {
     disciplines: disciplineData,

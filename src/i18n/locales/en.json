@@ -96,7 +96,7 @@
   },
   "ranking": {
     "title": "Ranking Evolution",
-    "subtitle": "CPPH progression by discipline",
+    "subtitle": "Ranking progression by discipline",
     "noData": "No ranking evolution data available",
     "networkError": "Unable to load ranking data",
     "loadError": "Error loading ranking data",

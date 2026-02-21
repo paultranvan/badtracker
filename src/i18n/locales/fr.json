@@ -96,7 +96,7 @@
   },
   "ranking": {
     "title": "Évolution du classement",
-    "subtitle": "Progression CPPH par discipline",
+    "subtitle": "Progression du classement par discipline",
     "noData": "Aucune donnée d'évolution disponible",
     "networkError": "Impossible de charger les données de classement",
     "loadError": "Erreur lors du chargement des classements",

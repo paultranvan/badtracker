@@ -14,6 +14,7 @@ import { useSession } from '../../src/auth/context';
 import { useRankingEvolution } from '../../src/hooks/useRankingEvolution';
 import {
   DISCIPLINE_COLORS,
+  RANK_ORDER,
   type Discipline,
   type ChartDataPoint,
 } from '../../src/utils/rankingChart';
@@ -49,6 +50,8 @@ export default function RankingChartScreen() {
   // ----------------------------------------------------------
   // Build chart dataSets from visible disciplines
   // ----------------------------------------------------------
+  const yAxisOffset = chartData?.minValue ?? 0;
+
   const dataSets = useMemo(() => {
     if (!chartData) return [];
 
@@ -57,7 +60,7 @@ export default function RankingChartScreen() {
       .map((d) => {
         const data = d.points.map((point) => {
           const item: Record<string, unknown> = {
-            value: point.value,
+            value: point.value - yAxisOffset,
             label: point.label,
           };
 
@@ -72,18 +75,6 @@ export default function RankingChartScreen() {
                 ]}
               />
             );
-            item.dataPointLabelComponent = () => (
-              <View
-                style={[
-                  styles.milestoneBadge,
-                  { backgroundColor: d.color },
-                ]}
-              >
-                <Text style={styles.milestoneText}>{point.rank}</Text>
-              </View>
-            );
-            item.dataPointLabelShiftY = -22;
-            item.dataPointLabelShiftX = -8;
           }
 
           return item;
@@ -99,25 +90,24 @@ export default function RankingChartScreen() {
           endFillColor: `${d.color}05`,
         };
       });
-  }, [chartData, visibleDisciplines]);
+  }, [chartData, visibleDisciplines, yAxisOffset]);
 
   // ----------------------------------------------------------
   // Chart dimensions and config
   // ----------------------------------------------------------
   const chartConfig = useMemo(() => {
     if (!chartData || dataSets.length === 0) {
-      return { maxValue: 100, spacing: 40, xLabels: [] };
+      return { maxValue: 12, noOfSections: 12, spacing: 40, yAxisLabelTexts: RANK_ORDER };
     }
 
     const maxVal = chartData.maxValue;
-    const paddedMax = maxVal > 0 ? Math.ceil(maxVal * 1.1) : 100;
-
-    // Calculate spacing to use available width
-    // Largest dataset determines point count
+    const minVal = chartData.minValue;
+    const yAxisLabelTexts = RANK_ORDER.slice(minVal, maxVal + 1);
+    const noOfSections = (maxVal - minVal) || 1;
     const maxPoints = Math.max(...dataSets.map((ds) => ds.data.length), 1);
     const spacing = Math.max(20, Math.min(50, 300 / maxPoints));
 
-    return { maxValue: paddedMax, spacing, xLabels: [] };
+    return { maxValue: maxVal - minVal, noOfSections, spacing, yAxisLabelTexts };
   }, [chartData, dataSets]);
 
   // ----------------------------------------------------------
@@ -207,8 +197,10 @@ export default function RankingChartScreen() {
           <LineChart
             dataSet={dataSets}
             height={280}
+            stepChart
             maxValue={chartConfig.maxValue}
-            noOfSections={5}
+            noOfSections={chartConfig.noOfSections}
+            yAxisLabelTexts={chartConfig.yAxisLabelTexts}
             spacing={chartConfig.spacing}
             initialSpacing={20}
             endSpacing={20}
@@ -229,15 +221,15 @@ export default function RankingChartScreen() {
               pointerLabelWidth: 100,
               pointerLabelHeight: 60,
               autoAdjustPointerLabelPosition: true,
-              pointerLabelComponent: (items: Array<{ value: number }>) => (
-                <View style={styles.tooltipContainer}>
-                  <Text style={styles.tooltipText}>
-                    {items[0]?.value != null
-                      ? `${items[0].value.toFixed(1)} pts`
-                      : ''}
-                  </Text>
-                </View>
-              ),
+              pointerLabelComponent: (items: Array<{ value: number }>) => {
+                const val = Math.round(items[0]?.value ?? 0) + (chartData?.minValue ?? 0);
+                const rankLabel = RANK_ORDER[val] ?? '';
+                return (
+                  <View style={styles.tooltipContainer}>
+                    <Text style={styles.tooltipText}>{rankLabel}</Text>
+                  </View>
+                );
+              },
             }}
           />
         ) : (
