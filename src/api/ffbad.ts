@@ -685,30 +685,35 @@ export async function getClubLeaderboard(
       return { Retour: [] };
     }
 
-    // Search for players by club initials using the same search endpoint
-    // that searchPlayersByKeywords uses (POST /api/search/). The club's
-    // initials (e.g., "CALB94") match only players from that club.
-    const result = await bridgePost(
-      '/api/search/',
-      { type: 'PERSON', text: initials },
-      session.accessToken,
-      session.personId
-    );
+    // Fetch all pages of club members
+    let allPersons: Array<Record<string, unknown>> = [];
+    let currentPage = 0;
+    let totalPages = 1;
 
-    if (!result || typeof result === 'string') {
-      return { Retour: [] };
+    while (currentPage < totalPages) {
+      const result = await bridgePost(
+        '/api/search/',
+        { type: 'PERSON', text: initials, page: currentPage },
+        session.accessToken,
+        session.personId
+      );
+
+      if (!result || typeof result === 'string') break;
+
+      const data = result as Record<string, unknown>;
+      const persons = (data.persons ?? data.results ?? data.data ?? []) as Array<Record<string, unknown>>;
+
+      if (!Array.isArray(persons) || persons.length === 0) break;
+
+      allPersons = allPersons.concat(persons);
+
+      const reportedTotal = Number(data.totalPage ?? data.totalPages ?? 1);
+      if (reportedTotal > totalPages) {
+        totalPages = reportedTotal;
+      }
+
+      currentPage++;
     }
-
-    const data = result as Record<string, unknown>;
-    const persons = (data.persons ?? data.results ?? data.data ?? []) as Array<Record<string, unknown>>;
-
-    if (!Array.isArray(persons) || persons.length === 0) {
-      return { Retour: [] };
-    }
-
-    // The search by club initials already returns only members of this club,
-    // so no additional filtering by clubId is needed.
-    const allPersons = persons;
 
     if (allPersons.length === 0) {
       return { Retour: [] };
