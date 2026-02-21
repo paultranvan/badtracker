@@ -719,6 +719,15 @@ export async function getClubLeaderboard(
       return { Retour: [] };
     }
 
+    // Deduplicate by licence (pages may overlap)
+    const seen = new Set<string>();
+    allPersons = allPersons.filter((raw) => {
+      const licence = String(raw.personLicence ?? raw.licence ?? '');
+      if (!licence || seen.has(licence)) return false;
+      seen.add(licence);
+      return true;
+    });
+
     // Map player search results to the expected leaderboard format.
     // The search API returns nested objects:
     //   { name, licence, rank: { simpleSubLevel, doubleSubLevel, mixteSubLevel },
@@ -726,14 +735,14 @@ export async function getClubLeaderboard(
     const items = allPersons.map((raw) => {
       const rank = (raw.rank as Record<string, unknown>) ?? {};
       const club = (raw.club as Record<string, unknown>) ?? {};
-      const fullName = String(raw.name ?? '');
-      // Name format is "Firstname LASTNAME" or "LASTNAME Firstname"
+      const fullName = String(raw.personName ?? raw.name ?? '');
+      // Name format from search API is "LASTNAME Firstname"
       const nameParts = fullName.split(' ');
-      const prenom = nameParts[0] || '';
-      const nom = nameParts.slice(1).join(' ') || fullName;
+      const nom = nameParts[0] || '';
+      const prenom = nameParts.slice(1).join(' ') || '';
 
       return {
-        Licence: String(raw.licence ?? ''),
+        Licence: String(raw.personLicence ?? raw.licence ?? ''),
         Nom: nom,
         Prenom: prenom,
         Sex: raw.sex === 'HOMME' ? 'M' : raw.sex === 'FEMME' ? 'F' : String(raw.sex ?? ''),

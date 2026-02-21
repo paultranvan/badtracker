@@ -488,8 +488,6 @@ function ClubMemberRow({
   isCurrentUser: boolean;
   onPress: () => void;
 }) {
-  const genderColor = item.sex === 'F' ? '#ec4899' : '#3b82f6';
-
   return (
     <Pressable
       className={`flex-row items-center px-4 py-3 ${isCurrentUser ? 'bg-primary-bg border-l-[3px] border-l-primary' : ''}`}
@@ -503,23 +501,25 @@ function ClubMemberRow({
         </Text>
       </View>
 
-      {/* Name + gender indicator */}
+      {/* Name + ranks */}
       <View className="flex-1 mr-2">
         <View className="flex-row items-center gap-1.5">
-          <Ionicons
-            name={item.sex === 'F' ? 'female' : 'male'}
-            size={14}
-            color={genderColor}
-          />
+          {item.sex ? (
+            <Ionicons
+              name={item.sex === 'F' ? 'female' : 'male'}
+              size={13}
+              color="#9ca3af"
+            />
+          ) : null}
           <Text className="text-body font-semibold text-gray-900 flex-1" numberOfLines={1}>
             {item.nom} {item.prenom}
           </Text>
         </View>
-        {/* All 3 ranks row */}
-        <View className="flex-row items-center gap-2 mt-1">
-          <RankBadge label="S" rank={item.simpleRank} color="#3b82f6" bgColor="#dbeafe" />
-          <RankBadge label="D" rank={item.doubleRank} color="#10b981" bgColor="#d1fae5" />
-          <RankBadge label="M" rank={item.mixteRank} color="#f59e0b" bgColor="#fef3c7" />
+        {/* All 3 ranks as colored pills */}
+        <View className="flex-row items-center gap-1.5 mt-1">
+          <RankBadge rank={item.simpleRank} color="#3b82f6" bgColor="#dbeafe" />
+          <RankBadge rank={item.doubleRank} color="#10b981" bgColor="#d1fae5" />
+          <RankBadge rank={item.mixteRank} color="#f59e0b" bgColor="#fef3c7" />
         </View>
       </View>
 
@@ -532,21 +532,17 @@ function ClubMemberRow({
 // Rank Badge Sub-component
 // ============================================================
 
-function RankBadge({ label, rank, color, bgColor }: { label: string; rank: string; color: string; bgColor: string }) {
+function RankBadge({ rank, color, bgColor }: { rank: string; color: string; bgColor: string }) {
   if (!rank || rank === 'NC') {
     return (
-      <View className="flex-row items-center gap-1">
-        <Text style={{ color, fontSize: 11, fontWeight: '700' }}>{label}</Text>
+      <View className="rounded px-1.5 py-0.5 bg-gray-50">
         <Text className="text-[11px] text-gray-300">NC</Text>
       </View>
     );
   }
   return (
-    <View className="flex-row items-center gap-1">
-      <Text style={{ color, fontSize: 11, fontWeight: '700' }}>{label}</Text>
-      <View style={{ backgroundColor: bgColor }} className="rounded px-1.5 py-0.5">
-        <Text style={{ color, fontSize: 11, fontWeight: '600' }}>{rank}</Text>
-      </View>
+    <View style={{ backgroundColor: bgColor, borderLeftColor: color, borderLeftWidth: 2 }} className="rounded px-1.5 py-0.5">
+      <Text style={{ color, fontSize: 11, fontWeight: '600' }}>{rank}</Text>
     </View>
   );
 }
