@@ -6,6 +6,7 @@ import { useConnectivity } from '../connectivity/context';
 import {
   transformEvolutionData,
   buildFlatLineForNC,
+  extendChartToToday,
   type ChartData,
   type Discipline,
 } from '../utils/rankingChart';
@@ -64,7 +65,7 @@ export function useRankingEvolution(licence: string): RankingEvolutionResult {
       if (!isRefresh) {
         const cached = await cacheGet<ChartData>(`ranking:${licence}`);
         if (cached) {
-          setChartData(cached);
+          setChartData(extendChartToToday(cached));
           hasCachedData.current = true;
           if (!isConnected) {
             setIsLoading(false);
@@ -113,9 +114,9 @@ export function useRankingEvolution(licence: string): RankingEvolutionResult {
           }
         }
 
-        setChartData(data);
+        setChartData(extendChartToToday(data));
 
-        // Step 3: Update cache
+        // Step 3: Update cache (store without extension so it stays fresh on next read)
         cacheSet(`ranking:${licence}`, data);
         hasCachedData.current = true;
       } catch (err) {

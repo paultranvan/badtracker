@@ -324,3 +324,47 @@ export function transformEvolutionData(
     minValue,
   };
 }
+
+// ============================================================
+// Extend to Today
+// ============================================================
+
+/**
+ * Extend chart data lines to today's date by appending a point
+ * at the current rank for each discipline. This ensures the chart
+ * visually reaches the present day. Safe to call on cached data.
+ */
+export function extendChartToToday(data: ChartData): ChartData {
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const todayLabel = formatDateLabel(todayStr);
+  const todayTime = now.getTime();
+
+  const disciplines = data.disciplines.map((disc) => {
+    const points = [...disc.points];
+    if (points.length > 0) {
+      const last = points[points.length - 1];
+      // Only extend if the last point is more than 1 day old
+      if (parseDate(last.date).getTime() < todayTime - 86400000) {
+        points.push({
+          value: last.value,
+          label: todayLabel,
+          date: todayStr,
+          rank: last.rank,
+          isMilestone: false,
+          discipline: disc.discipline,
+        });
+      }
+    }
+    return { ...disc, points };
+  });
+
+  return {
+    ...data,
+    disciplines,
+    dateRange: {
+      start: data.dateRange.start,
+      end: todayStr,
+    },
+  };
+}

@@ -66,6 +66,9 @@ export default function RankingChartScreen() {
           const item: Record<string, unknown> = {
             value: point.value - yAxisOffset,
             label: idx % labelInterval === 0 ? point.label : '',
+            // Store for pointer tooltip
+            _date: point.label,
+            _rank: point.rank,
           };
 
           if (point.isMilestone) {
@@ -247,12 +250,16 @@ export default function RankingChartScreen() {
               pointerLabelWidth: 100,
               pointerLabelHeight: 60,
               autoAdjustPointerLabelPosition: true,
-              pointerLabelComponent: (items: Array<{ value: number }>) => {
-                const val = Math.round(items[0]?.value ?? 0) + (chartData?.minValue ?? 0);
-                const rankLabel = RANK_ORDER[val] ?? '';
+              pointerLabelComponent: (items: Array<{ value: number; _date?: string; _rank?: string }>) => {
+                const item = items[0] as { value: number; _date?: string; _rank?: string } | undefined;
+                const rankLabel = item?._rank ?? RANK_ORDER[Math.round(item?.value ?? 0) + (chartData?.minValue ?? 0)] ?? '';
+                const dateLabel = item?._date ?? '';
                 return (
-                  <Card className="px-3 py-2 shadow-md" style={{ borderLeftWidth: 3, borderLeftColor: '#6b7280' }}>
+                  <Card className="px-3 py-1.5 shadow-md" style={{ borderLeftWidth: 3, borderLeftColor: '#6b7280' }}>
                     <Text className="text-caption font-bold text-gray-800">{rankLabel}</Text>
+                    {dateLabel ? (
+                      <Text className="text-[10px] text-muted">{dateLabel}</Text>
+                    ) : null}
                   </Card>
                 );
               },
