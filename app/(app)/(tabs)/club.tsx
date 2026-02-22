@@ -360,12 +360,15 @@ export default function ClubScreen() {
           onPress={() => clubInfo && setShowClubInfo((v) => !v)}
         >
           <View className="flex-1">
-            <Text className="text-title text-gray-900" numberOfLines={2}>
-              {clubName || t('club.title')}
-            </Text>
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="people" size={18} color="#2563eb" />
+              <Text className="text-title text-gray-900 flex-shrink" numberOfLines={2}>
+                {clubName || t('club.title')}
+              </Text>
+            </View>
             {hasMembers ? (
-              <Text className="text-caption text-muted mt-0.5">
-                {t('club.members', { count: members.length, ranked: rankedCount })}
+              <Text className="text-caption text-muted mt-0.5 ml-[26px]">
+                {members.length} {t('club.memberCount')} · {rankedCount} {t('club.rankedCount')}
               </Text>
             ) : null}
           </View>
@@ -403,13 +406,18 @@ export default function ClubScreen() {
             {(['all', 'simple', 'double', 'mixte'] as ClubDisciplineFilter[]).map((key) => {
               const isActive = disciplineFilter === key;
               const labelKey = key === 'all' ? 'club.filterAll' : `club.filter${key.charAt(0).toUpperCase() + key.slice(1)}`;
+              const chipColor = DISCIPLINE_CHIP_COLORS[key];
               return (
                 <Pressable
                   key={key}
-                  className={`px-3 py-1.5 rounded-full border ${isActive ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}
+                  className={`px-3 py-1.5 rounded-full border ${isActive ? 'border-transparent' : 'bg-white border-gray-200'}`}
+                  style={isActive ? { backgroundColor: chipColor.bg } : undefined}
                   onPress={() => setDisciplineFilter(key)}
                 >
-                  <Text className={`text-[13px] font-medium ${isActive ? 'text-white' : 'text-gray-700'}`}>
+                  <Text
+                    className={`text-[13px] font-medium ${isActive ? '' : 'text-gray-700'}`}
+                    style={isActive ? { color: chipColor.text } : undefined}
+                  >
                     {t(labelKey)}
                   </Text>
                 </Pressable>
@@ -485,6 +493,19 @@ export default function ClubScreen() {
 // Club Member Row Component
 // ============================================================
 
+const PODIUM_COLORS: Record<number, { bg: string; text: string }> = {
+  1: { bg: '#FEF3C7', text: '#D97706' },  // gold
+  2: { bg: '#F3F4F6', text: '#6B7280' },  // silver
+  3: { bg: '#FED7AA', text: '#C2410C' },  // bronze
+};
+
+const DISCIPLINE_CHIP_COLORS: Record<string, { bg: string; text: string }> = {
+  all: { bg: '#2563eb', text: '#ffffff' },      // primary blue
+  simple: { bg: '#3b82f6', text: '#ffffff' },   // singles blue
+  double: { bg: '#10b981', text: '#ffffff' },   // doubles green
+  mixte: { bg: '#f59e0b', text: '#ffffff' },    // mixed amber
+};
+
 function ClubMemberRow({
   item,
   isCurrentUser,
@@ -507,24 +528,41 @@ function ClubMemberRow({
       style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
       onPress={onPress}
     >
-      {/* Line 1: Position, sex, name, category, points */}
+      {/* Line 1: Position, name (+YOU badge), category, points */}
       <View className="flex-row items-center">
-        <View className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center mr-3">
-          <Text className="text-caption font-bold text-gray-600">
+        <View
+          className="w-8 h-8 rounded-full items-center justify-center mr-3"
+          style={{
+            backgroundColor: PODIUM_COLORS[item.position]?.bg ?? '#F3F4F6',
+          }}
+        >
+          <Text
+            className="text-caption font-bold"
+            style={{
+              color: PODIUM_COLORS[item.position]?.text ?? '#6B7280',
+            }}
+          >
             {item.position}
           </Text>
         </View>
-        <Text className="text-[15px] mr-1.5">
-          {item.sex === 'F' ? '\u{1F469}' : '\u{1F468}'}
-        </Text>
-        <Text className="text-body font-semibold text-gray-900 flex-1 flex-shrink" numberOfLines={1}>
-          {item.name}
-        </Text>
+        <View className="flex-1 flex-shrink flex-row items-center gap-1.5">
+          <Text className="text-body font-semibold text-gray-900 flex-shrink" numberOfLines={1}>
+            {item.name}
+          </Text>
+          {isCurrentUser && (
+            <View className="bg-primary rounded px-1.5 py-0.5">
+              <Text className="text-[9px] font-bold text-white">YOU</Text>
+            </View>
+          )}
+        </View>
         <Text className="text-[11px] text-gray-400 mx-2">
           {abbreviateCategory(item.category)}
         </Text>
         {displayRate != null ? (
-          <Text className="text-body font-bold text-gray-800" style={{ fontVariant: ['tabular-nums'] }}>
+          <Text
+            className={`font-bold text-gray-800 ${item.position <= 3 ? 'text-[17px]' : 'text-body'}`}
+            style={{ fontVariant: ['tabular-nums'] }}
+          >
             {displayRate}
           </Text>
         ) : (
@@ -533,21 +571,24 @@ function ClubMemberRow({
       </View>
 
       {/* Line 2: 3 rank pills with points */}
-      <View className="flex-row items-center gap-1.5 mt-1.5 ml-11">
+      <View className="flex-row items-center gap-2 mt-1.5 ml-11">
         <RankPill
           ranking={item.simple}
+          label="S"
           color="#3b82f6"
           bgColor="#dbeafe"
           isSort={sortDisc === 'simple'}
         />
         <RankPill
           ranking={item.double}
+          label="D"
           color="#10b981"
           bgColor="#d1fae5"
           isSort={sortDisc === 'double'}
         />
         <RankPill
           ranking={item.mixte}
+          label="M"
           color="#f59e0b"
           bgColor="#fef3c7"
           isSort={sortDisc === 'mixte'}
@@ -563,37 +604,63 @@ function ClubMemberRow({
 
 function RankPill({
   ranking,
+  label,
   color,
   bgColor,
   isSort,
 }: {
   ranking: DisciplineRanking | null;
+  label: string;
   color: string;
   bgColor: string;
   isSort: boolean;
 }) {
   if (!ranking || ranking.subLevel === '-') {
     return (
-      <View className="rounded px-1.5 py-0.5 bg-gray-50">
-        <Text className="text-[11px] text-gray-300">NC</Text>
+      <View className="items-center">
+        <View className="rounded-md px-2.5 py-1 bg-gray-50">
+          <Text className="text-[11px] text-gray-300">NC</Text>
+        </View>
+        <Text className="text-[9px] text-gray-300 mt-0.5">{label}</Text>
       </View>
     );
   }
 
   const rateStr = ranking.rate != null ? ` \u00b7 ${ranking.rate}` : '';
 
+  if (isSort) {
+    // Active sort pill: filled with discipline color, white text
+    return (
+      <View className="items-center">
+        <View
+          style={{ backgroundColor: color }}
+          className="rounded-md px-2.5 py-1"
+        >
+          <Text className="text-[11px] font-bold text-white">
+            {ranking.subLevel}{rateStr}
+          </Text>
+        </View>
+        <Text style={{ color }} className="text-[9px] font-bold mt-0.5">{label}</Text>
+      </View>
+    );
+  }
+
+  // Inactive pill: tinted background with colored left border
   return (
-    <View
-      style={{
-        backgroundColor: bgColor,
-        borderLeftColor: color,
-        borderLeftWidth: isSort ? 3 : 2,
-      }}
-      className={`rounded px-1.5 py-0.5 ${isSort ? 'opacity-100' : 'opacity-70'}`}
-    >
-      <Text style={{ color, fontSize: 11, fontWeight: isSort ? '700' : '500' }}>
-        {ranking.subLevel}{rateStr}
-      </Text>
+    <View className="items-center">
+      <View
+        style={{
+          backgroundColor: bgColor,
+          borderLeftColor: color,
+          borderLeftWidth: 2,
+        }}
+        className="rounded-md px-2.5 py-1"
+      >
+        <Text style={{ color, fontSize: 11, fontWeight: '500' }}>
+          {ranking.subLevel}{rateStr}
+        </Text>
+      </View>
+      <Text className="text-[9px] text-gray-400 mt-0.5">{label}</Text>
     </View>
   );
 }

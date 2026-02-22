@@ -120,6 +120,8 @@
     "title": "Club Leaderboard",
     "leaderboard": "Leaderboard",
     "members": "{{count}} members ({{ranked}} ranked)",
+    "memberCount": "members",
+    "rankedCount": "ranked",
     "position": "#{{position}}",
     "searchPlaceholder": "Search for a club",
     "searchMinChars": "Type at least 3 characters",

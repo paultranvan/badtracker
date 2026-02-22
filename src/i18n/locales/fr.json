@@ -120,6 +120,8 @@
     "title": "Classement du club",
     "leaderboard": "Classement",
     "members": "{{count}} membres ({{ranked}} class\u00e9s)",
+    "memberCount": "membres",
+    "rankedCount": "class\u00e9s",
     "position": "#{{position}}",
     "searchPlaceholder": "Rechercher un club",
     "searchMinChars": "Tapez au moins 3 caract\u00e8res",
