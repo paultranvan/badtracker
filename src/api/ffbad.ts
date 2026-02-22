@@ -672,7 +672,7 @@ function transformResultItem(raw: Record<string, unknown>): Record<string, unkno
   let resultat: string | undefined;
   if (winPoint != null && winPoint > 0) {
     resultat = 'V';
-  } else if (winPoint != null && winPoint < 0) {
+  } else if (winPoint != null && winPoint <= 0) {
     resultat = 'D';
   }
 
