@@ -62,6 +62,11 @@
     "error": "Erreur de recherche",
     "minChars": "Tapez au moins 3 caract\u00e8res"
   },
+  "players": {
+    "tab": "Joueurs",
+    "noFavourites": "Aucun joueur favori",
+    "searchOffline": "La recherche nécessite une connexion internet"
+  },
   "matchHistory": {
     "title": "Matchs",
     "tab": "Matchs",
