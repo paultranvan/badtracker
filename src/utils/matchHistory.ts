@@ -52,6 +52,15 @@ export interface WinLossStats {
  */
 export type DisciplineFilter = 'all' | 'simple' | 'double' | 'mixte';
 
+/**
+ * A single set score split into per-team values.
+ */
+export interface SplitScore {
+  userScore: number;
+  opponentScore: number;
+  userWonSet: boolean;
+}
+
 // ============================================================
 // Parsing
 // ============================================================
@@ -169,6 +178,7 @@ export function toFullMatchItem(
  * Matches within sections are kept in their original order.
  */
 export function groupByTournament(matches: MatchItem[]): MatchSection[] {
+  if (!Array.isArray(matches)) return [];
   const groups = new Map<string, MatchItem[]>();
 
   for (const match of matches) {
@@ -213,6 +223,7 @@ export function filterByDiscipline(
   matches: MatchItem[],
   discipline: DisciplineFilter
 ): MatchItem[] {
+  if (!Array.isArray(matches)) return [];
   if (discipline === 'all') return matches;
   return matches.filter((m) => m.discipline === discipline);
 }
@@ -334,4 +345,29 @@ export function getDisciplineCounts(
   }
 
   return counts;
+}
+
+// ============================================================
+// Score Splitting
+// ============================================================
+
+/**
+ * Split set scores into per-team values for scoreboard display.
+ *
+ * Parses match.setScores (["21-17", "21-18"]) or falls back to match.score.
+ * Returns null if no parseable scores are found.
+ */
+export function splitSetScores(match: MatchItem): SplitScore[] | null {
+  const rawSets = match.setScores ?? (match.score ? match.score.split(/[\s,]+/).filter((s) => s.includes('-') && /^\d+-\d+$/.test(s)) : null);
+
+  if (!rawSets || rawSets.length === 0) return null;
+
+  return rawSets.map((set) => {
+    const [a, b] = set.split('-').map(Number);
+    return {
+      userScore: a,
+      opponentScore: b,
+      userWonSet: a > b,
+    };
+  });
 }
