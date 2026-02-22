@@ -214,6 +214,7 @@ export default function MatchHistoryScreen() {
             isExpanded={expandedDisciplines.has(`${item.tournament.title || t('matchHistory.tournamentUnknown')}:${item.discipline.discipline}`)}
             isLoading={loadingDetails.has(`${item.tournament.title || t('matchHistory.tournamentUnknown')}:${item.discipline.discipline}`)}
             onToggle={() => toggleDiscipline(item.tournament.title || t('matchHistory.tournamentUnknown'), item.discipline)}
+            detailCache={detailCache}
           />
         );
       case 'match': {
@@ -453,12 +454,24 @@ interface DisciplineRowProps {
   isExpanded: boolean;
   isLoading: boolean;
   onToggle: () => void;
+  detailCache: Map<string, MatchItem[]>;
 }
 
-function DisciplineRow({ discipline, t, isExpanded, isLoading, onToggle }: DisciplineRowProps) {
+function DisciplineRow({ discipline, tournament, t, isExpanded, isLoading, onToggle, detailCache }: DisciplineRowProps) {
   const disc = discipline.discipline;
   const letter = DISC_LETTERS[disc] ?? '?';
   const labelKey = DISC_LABELS[disc] ?? disc;
+
+  // Compute live win/loss from detailCache if available (after expansion)
+  const tKey = tournament.title || 'Unknown tournament';
+  const detailKey = `${tKey}:${disc}`;
+  const detailMatches = detailCache.get(detailKey);
+  const wins = detailMatches
+    ? detailMatches.filter((m) => m.isWin === true).length
+    : discipline.wins;
+  const losses = detailMatches
+    ? detailMatches.filter((m) => m.isWin === false).length
+    : discipline.losses;
 
   const discColors: Record<string, string> = { simple: 'bg-blue-100', double: 'bg-emerald-100', mixte: 'bg-amber-100' };
   const discTextColors: Record<string, string> = { simple: 'text-singles', double: 'text-doubles', mixte: 'text-mixed' };
@@ -479,14 +492,14 @@ function DisciplineRow({ discipline, t, isExpanded, isLoading, onToggle }: Disci
           <Text className={`text-[11px] font-bold ${discText}`}>{letter}</Text>
         </View>
         <Text className="text-[14px] font-medium text-gray-800">{t(labelKey)}</Text>
-        {discipline.wins > 0 && (
+        {wins > 0 && (
           <View className="bg-win/20 px-1.5 py-0.5 rounded">
-            <Text className="text-[11px] font-semibold text-win">{discipline.wins}W</Text>
+            <Text className="text-[11px] font-semibold text-win">{wins}W</Text>
           </View>
         )}
-        {discipline.losses > 0 && (
+        {losses > 0 && (
           <View className="bg-loss/20 px-1.5 py-0.5 rounded">
-            <Text className="text-[11px] font-semibold text-loss">{discipline.losses}L</Text>
+            <Text className="text-[11px] font-semibold text-loss">{losses}L</Text>
           </View>
         )}
       </View>
