@@ -1,4 +1,5 @@
 import { View, Text, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Badge } from './Badge';
 
 interface MatchCardProps {
@@ -9,6 +10,7 @@ interface MatchCardProps {
   score?: string;
   discipline?: string;
   onPress?: () => void;
+  expanded?: boolean;
 }
 
 export function MatchCard({
@@ -18,6 +20,7 @@ export function MatchCard({
   event,
   score,
   onPress,
+  expanded,
 }: MatchCardProps) {
   const borderColor = isWin === true
     ? 'border-l-win'
@@ -53,6 +56,14 @@ export function MatchCard({
           {score}
         </Text>
       )}
+      {onPress ? (
+        <Ionicons
+          name={expanded ? 'chevron-up' : 'chevron-down'}
+          size={14}
+          color="#94a3b8"
+          style={{ marginLeft: 8 }}
+        />
+      ) : null}
     </Pressable>
   );
 }

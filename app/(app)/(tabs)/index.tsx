@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -5,13 +6,16 @@ import {
   RefreshControl,
   Pressable,
   ActivityIndicator,
+  LayoutAnimation,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useDashboardData } from '../../../src/hooks/useDashboardData';
 import { getRankLabel } from '../../../src/utils/rankings';
 import { useSession } from '../../../src/auth/context';
-import { StatCard, SectionHeader, MatchCard, Card } from '../../../src/components';
+import { StatCard, SectionHeader, MatchCard, Card, DetailMatchCard } from '../../../src/components';
+import { getMatchDetailsForBrackets } from '../../../src/api/ffbad';
+import { toFullMatchItem, type MatchItem } from '../../../src/utils/matchHistory';
 
 // ============================================================
 // Discipline config
@@ -47,7 +51,13 @@ export default function DashboardScreen() {
     isRefreshing,
     error,
     refresh,
+    rawItems,
+    personId,
   } = useDashboardData();
+
+  const [expandedMatch, setExpandedMatch] = useState<string | null>(null);
+  const [detailCache, setDetailCache] = useState<Map<string, MatchItem[]>>(new Map());
+  const [loadingDetail, setLoadingDetail] = useState<string | null>(null);
 
   // ----------------------------------------------------------
   // Loading state
@@ -85,6 +95,75 @@ export default function DashboardScreen() {
   const greetingKey = hasRecentWin ? 'dashboard.greetingWin' : 'dashboard.greeting';
 
   // ----------------------------------------------------------
+  // Match detail expansion
+  // ----------------------------------------------------------
+  const loadMatchDetail = async (matchId: string, match: MatchItem) => {
+    if (detailCache.has(matchId)) return;
+    if (!personId) return;
+
+    // Match raw items by tournament name and discipline
+    const discMap: Record<string, string> = {
+      simple: 'SIMPLE',
+      double: 'DOUBLE',
+      mixte: 'MIXTE',
+    };
+    const discKey = match.discipline ? discMap[match.discipline] : null;
+
+    const matchRaw = rawItems.filter((item) => {
+      const name = item.name as string | undefined;
+      const disc = item.discipline as string | undefined;
+      if (!name) return false;
+      const nameMatch = name === match.tournament;
+      const discMatch = !discKey || !disc || disc.toUpperCase().includes(discKey);
+      return nameMatch && discMatch;
+    });
+
+    // Deduplicate by bracket identity
+    const seen = new Set<string>();
+    const uniqueRaw = matchRaw.filter((item) => {
+      const date = (item.date as string) ?? '';
+      const bracketId = String(item.bracketId ?? '');
+      const disciplineId = String(item.disciplineId ?? '');
+      const key = `${date}|${bracketId}|${disciplineId}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    if (uniqueRaw.length === 0) return;
+
+    setLoadingDetail(matchId);
+    try {
+      const detailed = await getMatchDetailsForBrackets(uniqueRaw, personId);
+      const matches = detailed.map((item, i) =>
+        toFullMatchItem(item as Record<string, unknown>, i)
+      );
+      setDetailCache((prev) => new Map(prev).set(matchId, matches));
+    } catch {
+      // Silently fail — show basic card
+    } finally {
+      setLoadingDetail(null);
+    }
+  };
+
+  const toggleMatchExpand = (matchId: string, match: MatchItem) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    if (expandedMatch === matchId) {
+      setExpandedMatch(null);
+    } else {
+      setExpandedMatch(matchId);
+      loadMatchDetail(matchId, match);
+    }
+  };
+
+  const handleRefresh = () => {
+    setExpandedMatch(null);
+    setDetailCache(new Map());
+    setLoadingDetail(null);
+    refresh();
+  };
+
+  // ----------------------------------------------------------
   // Ranking data
   // ----------------------------------------------------------
   const bestDiscipline = quickStats?.bestRanking?.discipline ?? null;
@@ -99,7 +178,7 @@ export default function DashboardScreen() {
       refreshControl={
         <RefreshControl
           refreshing={isRefreshing}
-          onRefresh={refresh}
+          onRefresh={handleRefresh}
           colors={['#2563eb']}
           tintColor="#2563eb"
         />
@@ -177,15 +256,38 @@ export default function DashboardScreen() {
             if (match.isWin === true) badgeLabel = t('dashboard.victory');
             else if (match.isWin === false) badgeLabel = t('dashboard.defeat');
 
+            const matchId = match.id;
+            const isExpanded = expandedMatch === matchId;
+            const details = detailCache.get(matchId);
+            const isDetailLoading = loadingDetail === matchId;
+
             return (
-              <MatchCard
-                key={index}
-                isWin={match.isWin}
-                badgeLabel={badgeLabel}
-                opponent={match.opponent ?? '-'}
-                event={match.event}
-                score={match.score}
-              />
+              <View key={matchId}>
+                <MatchCard
+                  isWin={match.isWin ?? null}
+                  badgeLabel={badgeLabel}
+                  opponent={match.opponent ?? '-'}
+                  event={match.tournament}
+                  score={match.score}
+                  onPress={() => toggleMatchExpand(matchId, match)}
+                  expanded={isExpanded}
+                />
+                {isExpanded && (
+                  <View className="bg-gray-50">
+                    {isDetailLoading && !details ? (
+                      <View className="py-3 items-center">
+                        <ActivityIndicator size="small" color="#2563eb" />
+                      </View>
+                    ) : details ? (
+                      details.map((detail) => (
+                        <DetailMatchCard key={detail.id} match={detail} nested={false} />
+                      ))
+                    ) : (
+                      <DetailMatchCard match={match} nested={false} />
+                    )}
+                  </View>
+                )}
+              </View>
             );
           })}
           <Pressable
