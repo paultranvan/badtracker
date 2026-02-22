@@ -75,6 +75,15 @@ export interface WinLossStats {
  */
 export type DisciplineFilter = 'all' | 'simple' | 'double' | 'mixte';
 
+/**
+ * A single set score split into per-team values.
+ */
+export interface SplitScore {
+  userScore: number;
+  opponentScore: number;
+  userWonSet: boolean;
+}
+
 // ============================================================
 // Parsing
 // ============================================================
@@ -236,6 +245,7 @@ export function filterByDiscipline(
   matches: MatchItem[],
   discipline: DisciplineFilter
 ): MatchItem[] {
+  if (!Array.isArray(matches)) return [];
   if (discipline === 'all') return matches;
   return matches.filter((m) => m.discipline === discipline);
 }
@@ -286,8 +296,8 @@ export function computeWinLossStats(matches: MatchItem[]): WinLossStats {
  * Determine the French badminton season from a date string.
  *
  * French badminton season runs September 1 to August 31.
- * - September through December → current year to next year (e.g., "2025-2026")
- * - January through August → previous year to current year (e.g., "2024-2025")
+ * - September through December -> current year to next year (e.g., "2025-2026")
+ * - January through August -> previous year to current year (e.g., "2024-2025")
  */
 export function getSeasonFromDate(dateStr: string): string {
   let date = new Date(dateStr);
@@ -305,8 +315,8 @@ export function getSeasonFromDate(dateStr: string): string {
   const year = date.getFullYear();
   const month = date.getMonth(); // 0-indexed: 0=Jan, 8=Sep
 
-  // September (8) through December (11) → current year to next year
-  // January (0) through August (7) → previous year to current year
+  // September (8) through December (11) -> current year to next year
+  // January (0) through August (7) -> previous year to current year
   if (month >= 8) {
     return `${year}-${year + 1}`;
   }
@@ -402,13 +412,14 @@ function toSortableDate(dateStr: string | undefined): string {
 }
 
 /**
- * Group matches into a two-level structure: Tournament → Discipline → Matches.
+ * Group matches into a two-level structure: Tournament -> Discipline -> Matches.
  *
  * Tournaments are sorted by date descending. For interclubs, the sort date is
  * the latest match date within that tournament.
  * Disciplines within each tournament are in fixed order: Simple, Double, Mixed.
  */
 export function groupByTournamentNested(matches: MatchItem[]): TournamentSection[] {
+  if (!Array.isArray(matches)) return [];
   // Group by tournament name
   const groups = new Map<string, MatchItem[]>();
   for (const match of matches) {
@@ -486,4 +497,29 @@ export function groupByTournamentNested(matches: MatchItem[]): TournamentSection
   });
 
   return sections;
+}
+
+// ============================================================
+// Score Splitting
+// ============================================================
+
+/**
+ * Split set scores into per-team values for scoreboard display.
+ *
+ * Parses match.setScores (["21-17", "21-18"]) or falls back to match.score.
+ * Returns null if no parseable scores are found.
+ */
+export function splitSetScores(match: MatchItem): SplitScore[] | null {
+  const rawSets = match.setScores ?? (match.score ? match.score.split(/[\s,]+/).filter((s) => s.includes('-') && /^\d+-\d+$/.test(s)) : null);
+
+  if (!rawSets || rawSets.length === 0) return null;
+
+  return rawSets.map((set) => {
+    const [a, b] = set.split('-').map(Number);
+    return {
+      userScore: a,
+      opponentScore: b,
+      userWonSet: a > b,
+    };
+  });
 }
