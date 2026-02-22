@@ -499,6 +499,12 @@ const PODIUM_COLORS: Record<number, { bg: string; text: string }> = {
   3: { bg: '#FED7AA', text: '#C2410C' },  // bronze
 };
 
+const PODIUM_MEDALS: Record<number, string> = {
+  1: '\uD83E\uDD47',  // gold medal
+  2: '\uD83E\uDD48',  // silver medal
+  3: '\uD83E\uDD49',  // bronze medal
+};
+
 const DISCIPLINE_CHIP_COLORS: Record<string, { bg: string; text: string }> = {
   all: { bg: '#2563eb', text: '#ffffff' },      // primary blue
   simple: { bg: '#3b82f6', text: '#ffffff' },   // singles blue
@@ -536,14 +542,18 @@ function ClubMemberRow({
             backgroundColor: PODIUM_COLORS[item.position]?.bg ?? '#F3F4F6',
           }}
         >
-          <Text
-            className="text-caption font-bold"
-            style={{
-              color: PODIUM_COLORS[item.position]?.text ?? '#6B7280',
-            }}
-          >
-            {item.position}
-          </Text>
+          {PODIUM_MEDALS[item.position] ? (
+            <Text className="text-[18px]">{PODIUM_MEDALS[item.position]}</Text>
+          ) : (
+            <Text
+              className="text-caption font-bold"
+              style={{
+                color: PODIUM_COLORS[item.position]?.text ?? '#6B7280',
+              }}
+            >
+              {item.position}
+            </Text>
+          )}
         </View>
         <View className="flex-1 flex-shrink flex-row items-center gap-1.5">
           <Text className="text-body font-semibold text-gray-900 flex-shrink" numberOfLines={1}>
@@ -649,11 +659,7 @@ function RankPill({
   return (
     <View className="items-center">
       <View
-        style={{
-          backgroundColor: bgColor,
-          borderLeftColor: color,
-          borderLeftWidth: 2,
-        }}
+        style={{ backgroundColor: bgColor }}
         className="rounded-md px-2.5 py-1"
       >
         <Text style={{ color, fontSize: 11, fontWeight: '500' }}>
