@@ -48,6 +48,51 @@ export async function cacheSet<T>(key: string, data: T): Promise<void> {
   }
 }
 
+// ============================================================
+// TTL cache operations
+// ============================================================
+
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+/**
+ * Read a cached value by key, returning null if expired or missing.
+ * TTL is in milliseconds.
+ */
+export async function cacheGetWithTTL<T>(key: string, ttlMs: number): Promise<T | null> {
+  try {
+    const raw = await AsyncStorage.getItem(`${CACHE_PREFIX}${key}`);
+    if (raw === null) return null;
+    const entry = JSON.parse(raw) as CacheEntry<T>;
+    if (!entry.timestamp || Date.now() - entry.timestamp > ttlMs) {
+      // Expired — remove asynchronously
+      AsyncStorage.removeItem(`${CACHE_PREFIX}${key}`).catch(() => {});
+      return null;
+    }
+    return entry.data;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Write a value to cache with a timestamp for TTL checks.
+ */
+export async function cacheSetWithTTL<T>(key: string, data: T): Promise<void> {
+  try {
+    const entry: CacheEntry<T> = { data, timestamp: Date.now() };
+    await AsyncStorage.setItem(`${CACHE_PREFIX}${key}`, JSON.stringify(entry));
+  } catch {
+    // Silently ignore — cache is best-effort
+  }
+}
+
+// ============================================================
+// Cache clearing
+// ============================================================
+
 /**
  * Clear ALL cache entries (keys starting with CACHE_PREFIX).
  * Does NOT touch bookmarks ('badtracker_bookmarks') or language ('badtracker_language').

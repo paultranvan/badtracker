@@ -398,13 +398,16 @@ async function enrichWithDetails(
 
 /**
  * Get match results for a player by licence number.
- * Uses myffbad.fr /api/person/{personId}/result/actual endpoint which returns
- * richer data with all IDs populated (eventId, disciplineId, bracketId, roundId)
+ * Uses myffbad.fr /api/person/{personId}/result/Decade endpoint which returns
+ * 10 years of results with all IDs populated (eventId, disciplineId, bracketId, roundId)
  * and discipline names like "SIMPLE HOMMES", "DOUBLE HOMMES", "MIXTE".
+ *
+ * Returns raw result items WITHOUT detail enrichment — details are fetched lazily.
+ * Also returns _rawItems for lazy detail loading later.
  */
 export async function getResultsByLicence(
   licence: string
-): Promise<ResultByLicenceResponse> {
+): Promise<ResultByLicenceResponse & { _rawItems?: Array<Record<string, unknown>> }> {
   const session = requireSession();
 
   // For current user, use their personId
@@ -417,7 +420,7 @@ export async function getResultsByLicence(
 
   try {
     const data = await bridgeGet(
-      `/api/person/${personId}/result/actual`,
+      `/api/person/${personId}/result/Decade`,
       session.accessToken,
       personId
     );
@@ -432,22 +435,31 @@ export async function getResultsByLicence(
       return { Retour: 'No results' };
     }
 
-    // Fetch match details in parallel for items that have the required IDs
-    const enrichedResults = await enrichWithDetails(
-      results as Array<Record<string, unknown>>,
-      personId
-    );
+    const rawItems = results as Array<Record<string, unknown>>;
 
-    // Expand each result item into individual matches using detail data,
-    // then transform to the ResultItem format expected by consumers
-    const expanded = enrichedResults.flatMap((item) => expandWithDetail(item, personId));
-    const items = expanded.map(transformResultItem);
+    // Transform to the ResultItem format expected by consumers (no detail enrichment)
+    const items = rawItems.map(transformResultItem);
 
-    return { Retour: items };
+    return { Retour: items, _rawItems: rawItems };
   } catch (err) {
     if (err instanceof AuthError || err instanceof NetworkError) throw err;
     return { Retour: 'Error fetching results' };
   }
+}
+
+/**
+ * Fetch detail data for a set of result items (on-demand, when a discipline group is expanded).
+ * Calls /result/detail for each item in parallel, then expands into individual matches.
+ *
+ * Items missing required IDs (date, disciplineId, bracketId) are returned as-is.
+ */
+export async function getMatchDetailsForBrackets(
+  items: Array<Record<string, unknown>>,
+  personId: string
+): Promise<Array<Record<string, unknown>>> {
+  const enriched = await enrichWithDetails(items, personId);
+  const expanded = enriched.flatMap((item) => expandWithDetail(item, personId));
+  return expanded.map(transformResultItem);
 }
 
 /**
