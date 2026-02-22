@@ -513,7 +513,7 @@ function ClubMemberRow({
       style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
       onPress={onPress}
     >
-      {/* Line 1: Position, sex, name, category, points */}
+      {/* Line 1: Position, name (+YOU badge), category, points */}
       <View className="flex-row items-center">
         <View
           className="w-8 h-8 rounded-full items-center justify-center mr-3"
@@ -530,12 +530,16 @@ function ClubMemberRow({
             {item.position}
           </Text>
         </View>
-        <Text className="text-[15px] mr-1.5">
-          {item.sex === 'F' ? '\u{1F469}' : '\u{1F468}'}
-        </Text>
-        <Text className="text-body font-semibold text-gray-900 flex-1 flex-shrink" numberOfLines={1}>
-          {item.name}
-        </Text>
+        <View className="flex-1 flex-shrink flex-row items-center gap-1.5">
+          <Text className="text-body font-semibold text-gray-900 flex-shrink" numberOfLines={1}>
+            {item.name}
+          </Text>
+          {isCurrentUser && (
+            <View className="bg-primary rounded px-1.5 py-0.5">
+              <Text className="text-[9px] font-bold text-white">YOU</Text>
+            </View>
+          )}
+        </View>
         <Text className="text-[11px] text-gray-400 mx-2">
           {abbreviateCategory(item.category)}
         </Text>
@@ -552,7 +556,7 @@ function ClubMemberRow({
       </View>
 
       {/* Line 2: 3 rank pills with points */}
-      <View className="flex-row items-center gap-1.5 mt-1.5 ml-11">
+      <View className="flex-row items-center gap-2 mt-1.5 ml-11">
         <RankPill
           ranking={item.simple}
           color="#3b82f6"
