@@ -20,8 +20,11 @@ import {
   type LeaderboardEntry,
   type ClubDisciplineFilter,
   type ClubGenderFilter,
+  type DisciplineRanking,
   sortLeaderboardByDiscipline,
   filterByGender,
+  getSortDiscipline,
+  abbreviateCategory,
 } from '../../../src/utils/clubLeaderboard';
 import type { ClubSearchResult } from '../../../src/hooks/useClubSearch';
 import { Card } from '../../../src/components';
@@ -201,6 +204,7 @@ export default function ClubScreen() {
       <ClubMemberRow
         item={item}
         isCurrentUser={item.licence === session?.licence}
+        disciplineFilter={disciplineFilter}
         onPress={() =>
           router.push({
             pathname: '/player/[licence]',
@@ -209,7 +213,7 @@ export default function ClubScreen() {
         }
       />
     ),
-    [session?.licence]
+    [session?.licence, disciplineFilter]
   );
 
   const renderSearchResult = useCallback(
@@ -478,73 +482,118 @@ export default function ClubScreen() {
 }
 
 // ============================================================
-// Club Member Row Component (shows all 3 ranks)
+// Club Member Row Component
 // ============================================================
 
 function ClubMemberRow({
   item,
   isCurrentUser,
+  disciplineFilter,
   onPress,
 }: {
   item: LeaderboardEntry;
   isCurrentUser: boolean;
+  disciplineFilter: ClubDisciplineFilter;
   onPress: () => void;
 }) {
+  const sortDisc = getSortDiscipline(item, disciplineFilter);
+  const displayRate = disciplineFilter === 'all'
+    ? item.bestRate
+    : item[disciplineFilter]?.rate ?? null;
+
   return (
     <Pressable
-      className={`flex-row items-center px-4 py-3 ${isCurrentUser ? 'bg-primary-bg border-l-[3px] border-l-primary' : ''}`}
+      className={`px-4 py-3 ${isCurrentUser ? 'bg-primary-bg border-l-[3px] border-l-primary' : ''}`}
       style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
       onPress={onPress}
     >
-      {/* Position */}
-      <View className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center mr-3">
-        <Text className="text-caption font-bold text-gray-600">
-          {item.position}
-        </Text>
-      </View>
-
-      {/* Name + ranks */}
-      <View className="flex-1 mr-2">
-        <View className="flex-row items-center gap-1.5">
-          {item.sex ? (
-            <Ionicons
-              name={item.sex === 'F' ? 'female' : 'male'}
-              size={13}
-              color="#9ca3af"
-            />
-          ) : null}
-          <Text className="text-body font-semibold text-gray-900 flex-1" numberOfLines={1}>
-            {item.nom} {item.prenom}
+      {/* Line 1: Position, sex, name, category, points */}
+      <View className="flex-row items-center">
+        <View className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center mr-3">
+          <Text className="text-caption font-bold text-gray-600">
+            {item.position}
           </Text>
         </View>
-        {/* All 3 ranks as colored pills */}
-        <View className="flex-row items-center gap-1.5 mt-1">
-          <RankBadge rank={item.simpleRank} color="#3b82f6" bgColor="#dbeafe" />
-          <RankBadge rank={item.doubleRank} color="#10b981" bgColor="#d1fae5" />
-          <RankBadge rank={item.mixteRank} color="#f59e0b" bgColor="#fef3c7" />
-        </View>
+        <Text className="text-[15px] mr-1.5">
+          {item.sex === 'F' ? '\u{1F469}' : '\u{1F468}'}
+        </Text>
+        <Text className="text-body font-semibold text-gray-900 flex-1 flex-shrink" numberOfLines={1}>
+          {item.name}
+        </Text>
+        <Text className="text-[11px] text-gray-400 mx-2">
+          {abbreviateCategory(item.category)}
+        </Text>
+        {displayRate != null ? (
+          <Text className="text-body font-bold text-gray-800" style={{ fontVariant: ['tabular-nums'] }}>
+            {displayRate}
+          </Text>
+        ) : (
+          <Text className="text-body text-gray-300">-</Text>
+        )}
       </View>
 
-      <Ionicons name="chevron-forward" size={16} color="#d1d5db" />
+      {/* Line 2: 3 rank pills with points */}
+      <View className="flex-row items-center gap-1.5 mt-1.5 ml-11">
+        <RankPill
+          ranking={item.simple}
+          color="#3b82f6"
+          bgColor="#dbeafe"
+          isSort={sortDisc === 'simple'}
+        />
+        <RankPill
+          ranking={item.double}
+          color="#10b981"
+          bgColor="#d1fae5"
+          isSort={sortDisc === 'double'}
+        />
+        <RankPill
+          ranking={item.mixte}
+          color="#f59e0b"
+          bgColor="#fef3c7"
+          isSort={sortDisc === 'mixte'}
+        />
+      </View>
     </Pressable>
   );
 }
 
 // ============================================================
-// Rank Badge Sub-component
+// Rank Pill Sub-component (shows subLevel + rate)
 // ============================================================
 
-function RankBadge({ rank, color, bgColor }: { rank: string; color: string; bgColor: string }) {
-  if (!rank || rank === 'NC') {
+function RankPill({
+  ranking,
+  color,
+  bgColor,
+  isSort,
+}: {
+  ranking: DisciplineRanking | null;
+  color: string;
+  bgColor: string;
+  isSort: boolean;
+}) {
+  if (!ranking || ranking.subLevel === '-') {
     return (
       <View className="rounded px-1.5 py-0.5 bg-gray-50">
         <Text className="text-[11px] text-gray-300">NC</Text>
       </View>
     );
   }
+
+  const rateStr = ranking.rate != null ? ` \u00b7 ${ranking.rate}` : '';
+
   return (
-    <View style={{ backgroundColor: bgColor, borderLeftColor: color, borderLeftWidth: 2 }} className="rounded px-1.5 py-0.5">
-      <Text style={{ color, fontSize: 11, fontWeight: '600' }}>{rank}</Text>
+    <View
+      style={{
+        backgroundColor: bgColor,
+        borderLeftColor: color,
+        borderLeftWidth: isSort ? 3 : 2,
+      }}
+      className={`rounded px-1.5 py-0.5 ${isSort ? 'opacity-100' : 'opacity-70'}`}
+    >
+      <Text style={{ color, fontSize: 11, fontWeight: isSort ? '700' : '500' }}>
+        {ranking.subLevel}{rateStr}
+      </Text>
     </View>
   );
 }

@@ -4,7 +4,6 @@ import type {
   LicenceSearchResponse,
   ResultByLicenceResponse,
   RankingEvolutionResponse,
-  ClubRankingResponse,
   ClubListResponse,
 } from './schemas';
 import { AuthError, NetworkError } from './errors';
@@ -937,128 +936,59 @@ export async function getClubInfo(
 }
 
 /**
- * Get rankings for all members of a club.
- * Uses myffbad.fr /api/club/{clubId} endpoints.
- *
- * Note: The myffbad.fr API may not expose a club members endpoint.
- * Returns empty array if no members endpoint is found.
+ * Discipline numbers for /api/search/tops endpoint.
+ * 1=Simple Hommes, 2=Simple Dames, 3=Double Hommes,
+ * 4=Double Dames, 5=Mixte Hommes, 6=Mixte Dames.
  */
-export async function getClubLeaderboard(
-  clubId: string,
-  clubInitials?: string
-): Promise<ClubRankingResponse> {
+const TOPS_DISCIPLINES = [1, 2, 3, 4, 5, 6] as const;
+
+/**
+ * Fetch club leaderboard using /api/search/tops for all 6 disciplines.
+ * Returns raw arrays per discipline for merging by the caller.
+ *
+ * Partial failures are tolerated — successful disciplines are returned.
+ * Throws only if ALL 6 calls fail.
+ */
+export async function getClubTops(
+  clubId: string
+): Promise<Array<[number, Array<Record<string, unknown>>]>> {
   const session = requireSession();
+  const instanceId = parseInt(clubId, 10);
+  const dateFrom = new Date().toISOString();
 
-  try {
-    // Get club initials if not provided (needed for player search)
-    let initials = clubInitials;
-    if (!initials) {
-      const info = await getClubInfo(clubId);
-      initials = info?.initials || '';
-    }
-
-    if (!initials) {
-      return { Retour: [] };
-    }
-
-    // Fetch all pages of club members
-    let allPersons: Array<Record<string, unknown>> = [];
-    let currentPage = 0;
-    let totalPages = 1;
-
-    while (currentPage < totalPages) {
-      const result = await bridgePost(
-        '/api/search/',
-        { type: 'PERSON', text: initials, page: currentPage },
+  const results = await Promise.allSettled(
+    TOPS_DISCIPLINES.map(async (discipline) => {
+      const data = await bridgePost(
+        '/api/search/tops',
+        {
+          discipline,
+          dateFrom,
+          top: 500,
+          instanceId,
+          isFirstLoad: false,
+          sort: 'nom-ASC',
+        },
         session.accessToken,
         session.personId
       );
 
-      if (!result || typeof result === 'string') break;
-
-      const data = result as Record<string, unknown>;
-      const persons = (data.persons ?? data.results ?? data.data ?? []) as Array<Record<string, unknown>>;
-
-      if (!Array.isArray(persons) || persons.length === 0) break;
-
-      allPersons = allPersons.concat(persons);
-
-      const reportedTotal = Number(data.totalPage ?? data.totalPages ?? 1);
-      if (reportedTotal > totalPages) {
-        totalPages = reportedTotal;
+      if (!data || !Array.isArray(data)) {
+        return [discipline, []] as [number, Array<Record<string, unknown>>];
       }
 
-      currentPage++;
-    }
+      return [discipline, data as Array<Record<string, unknown>>] as [number, Array<Record<string, unknown>>];
+    })
+  );
 
-    if (allPersons.length === 0) {
-      return { Retour: [] };
-    }
+  const successful = results
+    .filter((r): r is PromiseFulfilledResult<[number, Array<Record<string, unknown>>]> => r.status === 'fulfilled')
+    .map((r) => r.value);
 
-    // Deduplicate by licence (pages may overlap)
-    const seen = new Set<string>();
-    allPersons = allPersons.filter((raw) => {
-      const licence = String(raw.personLicence ?? raw.licence ?? '');
-      if (!licence || seen.has(licence)) return false;
-      seen.add(licence);
-      return true;
-    });
-
-    // Inject current user if missing from search results
-    if (!seen.has(session.licence)) {
-      try {
-        const userResult = await bridgePost(
-          '/api/search/',
-          { type: 'PERSON', text: session.licence },
-          session.accessToken,
-          session.personId
-        );
-        if (userResult && typeof userResult !== 'string') {
-          const userData = userResult as Record<string, unknown>;
-          const userPersons = (userData.persons ?? userData.results ?? []) as Array<Record<string, unknown>>;
-          const userMatch = userPersons.find(
-            (p) => String(p.personLicence ?? p.licence ?? '') === session.licence
-          );
-          if (userMatch) {
-            allPersons.push(userMatch);
-          }
-        }
-      } catch {
-        // Silently ignore — user just won't appear in leaderboard
-      }
-    }
-
-    // Map player search results to the expected leaderboard format.
-    // The search API returns nested objects:
-    //   { name, licence, rank: { simpleSubLevel, doubleSubLevel, mixteSubLevel },
-    //     club: { id, name, acronym }, ... }
-    const items = allPersons.map((raw) => {
-      const rank = (raw.rank as Record<string, unknown>) ?? {};
-      const club = (raw.club as Record<string, unknown>) ?? {};
-      const fullName = String(raw.personName ?? raw.name ?? '');
-      // Name format from search API is "LASTNAME Firstname"
-      const nameParts = fullName.split(' ');
-      const nom = nameParts[0] || '';
-      const prenom = nameParts.slice(1).join(' ') || '';
-
-      return {
-        Licence: String(raw.personLicence ?? raw.licence ?? ''),
-        Nom: nom,
-        Prenom: prenom,
-        Sex: raw.sex === 'HOMME' ? 'M' : raw.sex === 'FEMME' ? 'F' : String(raw.sex ?? ''),
-        Club: String(club.id ?? clubId),
-        NomClub: String(club.name ?? ''),
-        ClassementSimple: String(rank.simpleSubLevel ?? ''),
-        ClassementDouble: String(rank.doubleSubLevel ?? ''),
-        ClassementMixte: String(rank.mixteSubLevel ?? ''),
-      };
-    });
-
-    return { Retour: items } as ClubRankingResponse;
-  } catch (err) {
-    if (err instanceof AuthError || err instanceof NetworkError) throw err;
-    return { Retour: 'Error fetching club data' };
+  if (successful.length === 0) {
+    throw new NetworkError('All discipline fetches failed');
   }
+
+  return successful;
 }
 
 /**

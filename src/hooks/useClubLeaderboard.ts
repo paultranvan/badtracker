@@ -1,10 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getClubLeaderboard, getClubInfo, type ClubInfo } from '../api/ffbad';
+import { getClubTops, getClubInfo, type ClubInfo } from '../api/ffbad';
 import { NetworkError } from '../api/errors';
 import { cacheGet, cacheSet } from '../cache/storage';
 import { useConnectivity } from '../connectivity/context';
-import { normalizeToLeaderboard, type LeaderboardEntry } from '../utils/clubLeaderboard';
+import {
+  mergeTopsResults,
+  type LeaderboardEntry,
+  type TopsApiItem,
+} from '../utils/clubLeaderboard';
 
 // ============================================================
 // Types
@@ -21,12 +25,10 @@ export interface ClubLeaderboardData {
   refresh: () => Promise<void>;
 }
 
-// Cache shape for club leaderboard
-interface CachedClubLeaderboard {
+interface CachedClubTops {
   members: LeaderboardEntry[];
   clubName: string;
   clubInfo: ClubInfo | null;
-  rankedCount: number;
 }
 
 // ============================================================
@@ -34,21 +36,20 @@ interface CachedClubLeaderboard {
 // ============================================================
 
 /**
- * Fetches and manages club leaderboard state for a given club ID.
+ * Fetches and manages club leaderboard using /api/search/tops.
+ * Fetches all 6 disciplines in parallel, merges by licence.
  *
- * Cache-first pattern: reads cached leaderboard immediately, then fetches from API
- * in background if online. Falls back to cache when offline.
- *
- * @param clubId - FFBaD club ID (Club field from player profile), or null if unknown
+ * Cache-first: reads cached data immediately, refreshes in background
+ * if online. Falls back to cache when offline.
  */
 export function useClubLeaderboard(clubId: string | null): ClubLeaderboardData {
   const { t } = useTranslation();
   const { isConnected } = useConnectivity();
 
   const [members, setMembers] = useState<LeaderboardEntry[]>([]);
-  const [clubName, setClubName] = useState<string>('');
+  const [clubName, setClubName] = useState('');
   const [clubInfo, setClubInfo] = useState<ClubInfo | null>(null);
-  const [rankedCount, setRankedCount] = useState<number>(0);
+  const [rankedCount, setRankedCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,12 +73,12 @@ export function useClubLeaderboard(clubId: string | null): ClubLeaderboardData {
 
       // Step 1: Read from cache
       if (!isRefresh) {
-        const cached = await cacheGet<CachedClubLeaderboard>(`club:${clubId}`);
+        const cached = await cacheGet<CachedClubTops>(`club-tops:${clubId}`);
         if (cached) {
           setMembers(cached.members);
           setClubName(cached.clubName);
           setClubInfo(cached.clubInfo ?? null);
-          setRankedCount(cached.rankedCount);
+          setRankedCount(cached.members.filter((m) => m.bestRate !== null).length);
           hasCachedData.current = true;
           if (!isConnected) {
             setIsLoading(false);
@@ -90,51 +91,33 @@ export function useClubLeaderboard(clubId: string | null): ClubLeaderboardData {
         }
       }
 
-      // Step 2: Fetch club info and members from API
+      // Step 2: Fetch club info and tops in parallel
       try {
-        // Fetch club info (name, address, contact, etc.)
-        const info = await getClubInfo(clubId);
+        const [info, topsResults] = await Promise.all([
+          getClubInfo(clubId),
+          getClubTops(clubId),
+        ]);
+
         if (info) {
           setClubInfo(info);
           setClubName(info.name);
         }
 
-        // Fetch members via player search using club initials
-        const response = await getClubLeaderboard(clubId, info?.initials);
+        const merged = mergeTopsResults(
+          topsResults as Array<[1 | 2 | 3 | 4 | 5 | 6, TopsApiItem[]]>
+        );
 
-        if (Array.isArray(response.Retour)) {
-          const normalized = normalizeToLeaderboard(response.Retour);
-          setMembers(normalized);
+        setMembers(merged);
+        const ranked = merged.filter((m) => m.bestRate !== null).length;
+        setRankedCount(ranked);
 
-          // Use club name from info or from first member
-          const name = info?.name ?? '';
-          if (name) setClubName(name);
-
-          const ranked = normalized.filter((m) => m.bestRank !== 'NC').length;
-          setRankedCount(ranked);
-
-          // Step 3: Update cache
-          cacheSet(`club:${clubId}`, {
-            members: normalized,
-            clubName: name,
-            clubInfo: info,
-            rankedCount: ranked,
-          });
-          hasCachedData.current = true;
-        } else {
-          // No members available — still cache club info
-          setMembers([]);
-          setRankedCount(0);
-          if (info) {
-            cacheSet(`club:${clubId}`, {
-              members: [],
-              clubName: info.name,
-              clubInfo: info,
-              rankedCount: 0,
-            });
-            hasCachedData.current = true;
-          }
-        }
+        // Step 3: Update cache
+        cacheSet(`club-tops:${clubId}`, {
+          members: merged,
+          clubName: info?.name ?? '',
+          clubInfo: info,
+        });
+        hasCachedData.current = true;
       } catch (err) {
         if (hasCachedData.current) {
           setIsLoading(false);
@@ -167,7 +150,6 @@ export function useClubLeaderboard(clubId: string | null): ClubLeaderboardData {
       setIsLoading(true);
       load();
     } else {
-      // No club ID — ensure clean state, no loading spinner
       setMembers([]);
       setClubName('');
       setClubInfo(null);
