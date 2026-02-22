@@ -1,191 +1,197 @@
-import { RANK_BOUNDARIES, getBestRanking } from './rankings';
-
 // ============================================================
 // Types
 // ============================================================
 
-/**
- * Normalized leaderboard entry for a single club member.
- * Position is 1-based and assigned after sorting by bestRank.
- */
+export interface DisciplineRanking {
+  subLevel: string;
+  rate: number | null;
+  rank: number;
+}
+
 export interface LeaderboardEntry {
   licence: string;
-  nom: string;
-  prenom: string;
-  /** Best ranking category across all disciplines, e.g. "P10", "D7", "NC" */
-  bestRank: string;
-  /** 1-based position after sorting (1 = best rank) */
+  personId: number;
+  name: string;
+  category: string;
+  sex: 'M' | 'F';
+  simple: DisciplineRanking | null;
+  double: DisciplineRanking | null;
+  mixte: DisciplineRanking | null;
+  bestRate: number | null;
+  bestSubLevel: string;
+  bestDiscipline: 'simple' | 'double' | 'mixte' | null;
   position: number;
-  simpleRank: string;
-  simpleCpph?: number;
-  doubleRank: string;
-  doubleCpph?: number;
-  mixteRank: string;
-  mixteCpph?: number;
-  /** 'M' for male, 'F' for female, undefined if unknown */
-  sex?: string;
 }
 
 export type ClubDisciplineFilter = 'all' | 'simple' | 'double' | 'mixte';
 export type ClubGenderFilter = 'all' | 'M' | 'F';
 
 // ============================================================
-// Helpers
+// Raw API item shape from /api/search/tops
 // ============================================================
 
-/**
- * Parse a CPPH value from the API response (may be string or number).
- * Returns undefined if not a valid number.
- */
-function parseCpph(value: string | number | undefined): number | undefined {
-  if (value == null) return undefined;
-  const num = typeof value === 'number' ? value : parseFloat(value);
-  return isNaN(num) ? undefined : num;
+export interface TopsApiItem {
+  rank: number;
+  rate: number | null;
+  realRate: number | null;
+  subLevel: string;
+  personId: number;
+  name: string;
+  licence: string;
+  category: string;
+  club: { id: number; name: string; acronym: string };
+  frenchRank: number;
+  federalRank: number;
+  [key: string]: unknown;
+}
+
+type DisciplineNumber = 1 | 2 | 3 | 4 | 5 | 6;
+
+const DISCIPLINE_MAP: Record<DisciplineNumber, { field: 'simple' | 'double' | 'mixte'; sex: 'M' | 'F' }> = {
+  1: { field: 'simple', sex: 'M' },
+  2: { field: 'simple', sex: 'F' },
+  3: { field: 'double', sex: 'M' },
+  4: { field: 'double', sex: 'F' },
+  5: { field: 'mixte', sex: 'M' },
+  6: { field: 'mixte', sex: 'F' },
+};
+
+// ============================================================
+// Merge logic
+// ============================================================
+
+interface PartialPlayer {
+  licence: string;
+  personId: number;
+  name: string;
+  category: string;
+  sex: 'M' | 'F';
+  simple: DisciplineRanking | null;
+  double: DisciplineRanking | null;
+  mixte: DisciplineRanking | null;
 }
 
 /**
- * Build a ranking entry from a classement + CPPH pair.
- * Returns undefined if no classement is available.
+ * Merge responses from all 6 /api/search/tops calls into a single LeaderboardEntry[].
  */
-function buildRanking(
-  classement: string | undefined,
-  cpph: string | number | undefined
-): { classement: string; cpph?: number } | undefined {
-  if (!classement) return undefined;
-  return { classement, cpph: parseCpph(cpph) };
-}
+export function mergeTopsResults(
+  results: Array<[DisciplineNumber, TopsApiItem[]]>
+): LeaderboardEntry[] {
+  const byLicence = new Map<string, PartialPlayer>();
 
-// ============================================================
-// Exports
-// ============================================================
+  for (const [discipline, items] of results) {
+    const mapping = DISCIPLINE_MAP[discipline];
+    if (!mapping) continue;
 
-/**
- * Get the sort index for a rank string using RANK_BOUNDARIES.
- *
- * Lower index = better rank (N1 = 0, N2 = 1, ... NC = 12).
- * Returns RANK_BOUNDARIES.length if rank is not found (sorts last).
- */
-export function getRankSortIndex(classement: string): number {
-  const upper = classement.toUpperCase().trim();
-  const idx = RANK_BOUNDARIES.findIndex(
-    (b) => b.rank.toUpperCase() === upper
-  );
-  return idx === -1 ? RANK_BOUNDARIES.length : idx;
-}
+    for (const item of items) {
+      if (!item.licence) continue;
 
-/**
- * Normalize raw API items from ws_getrankingallbyclub into sorted LeaderboardEntry array.
- *
- * Processing steps:
- * 1. Cast each item to Record<string, unknown>
- * 2. Filter items without a truthy Licence field
- * 3. Build per-discipline ranking objects matching PlayerProfile['rankings'] shape
- * 4. Call getBestRanking() to find the best discipline ranking
- * 5. Sort ascending by getRankSortIndex (best rank first)
- * 6. Assign 1-based position after sorting
- */
-export function normalizeToLeaderboard(rawItems: unknown[]): LeaderboardEntry[] {
-  const entries = rawItems
-    .map((item) => item as Record<string, unknown>)
-    .filter((item) => !!item.Licence)
-    .map((item) => {
-      const rankings = {
-        simple: buildRanking(
-          item.ClassementSimple as string | undefined,
-          item.CPPHSimple as string | number | undefined
-        ),
-        double: buildRanking(
-          item.ClassementDouble as string | undefined,
-          item.CPPHDouble as string | number | undefined
-        ),
-        mixte: buildRanking(
-          item.ClassementMixte as string | undefined,
-          item.CPPHMixte as string | number | undefined
-        ),
-      };
-
-      const best = getBestRanking(rankings);
-      // If CPPH data is available, use it. Otherwise compare rank levels directly.
-      let bestRank: string;
-      if (best?.classement) {
-        bestRank = best.classement;
-      } else {
-        const candidates = [
-          item.ClassementSimple as string | undefined,
-          item.ClassementDouble as string | undefined,
-          item.ClassementMixte as string | undefined,
-        ].filter((c): c is string => !!c);
-        if (candidates.length === 0) {
-          bestRank = 'NC';
-        } else {
-          bestRank = candidates.reduce((a, b) =>
-            getRankSortIndex(a) <= getRankSortIndex(b) ? a : b
-          );
-        }
+      let player = byLicence.get(item.licence);
+      if (!player) {
+        player = {
+          licence: item.licence,
+          personId: item.personId,
+          name: item.name,
+          category: item.category,
+          sex: mapping.sex,
+          simple: null,
+          double: null,
+          mixte: null,
+        };
+        byLicence.set(item.licence, player);
       }
 
-      return {
-        licence: item.Licence as string,
-        nom: (item.Nom as string | undefined) ?? '',
-        prenom: (item.Prenom as string | undefined) ?? '',
-        bestRank,
-        simpleRank: rankings.simple?.classement ?? 'NC',
-        simpleCpph: rankings.simple?.cpph,
-        doubleRank: rankings.double?.classement ?? 'NC',
-        doubleCpph: rankings.double?.cpph,
-        mixteRank: rankings.mixte?.classement ?? 'NC',
-        mixteCpph: rankings.mixte?.cpph,
-        sex: (item.Sex as string | undefined) ?? undefined,
+      if (item.category) player.category = item.category;
+      if (item.name) player.name = item.name;
+
+      player[mapping.field] = {
+        subLevel: item.subLevel ?? '-',
+        rate: item.rate ?? null,
+        rank: item.rank,
       };
-    });
+    }
+  }
 
-  // Sort: lower RANK_BOUNDARIES index = better rank = comes first
-  entries.sort(
-    (a, b) => getRankSortIndex(a.bestRank) - getRankSortIndex(b.bestRank)
-  );
+  const entries: LeaderboardEntry[] = Array.from(byLicence.values()).map((p) => {
+    let bestRate: number | null = null;
+    let bestSubLevel = 'NC';
+    let bestDiscipline: 'simple' | 'double' | 'mixte' | null = null;
 
-  // Add 1-based position after sorting
-  return entries.map((entry, index) => ({ ...entry, position: index + 1 }));
+    for (const disc of ['simple', 'double', 'mixte'] as const) {
+      const ranking = p[disc];
+      if (ranking?.rate != null && (bestRate === null || ranking.rate > bestRate)) {
+        bestRate = ranking.rate;
+        bestSubLevel = ranking.subLevel;
+        bestDiscipline = disc;
+      }
+    }
+
+    return { ...p, bestRate, bestSubLevel, bestDiscipline, position: 0 };
+  });
+
+  entries.sort((a, b) => {
+    if (a.bestRate === null && b.bestRate === null) return 0;
+    if (a.bestRate === null) return 1;
+    if (b.bestRate === null) return -1;
+    return b.bestRate - a.bestRate;
+  });
+
+  return entries.map((entry, i) => ({ ...entry, position: i + 1 }));
+}
+
+// ============================================================
+// Sort and filter
+// ============================================================
+
+function getSortRate(
+  entry: LeaderboardEntry,
+  discipline: ClubDisciplineFilter
+): number | null {
+  switch (discipline) {
+    case 'simple': return entry.simple?.rate ?? null;
+    case 'double': return entry.double?.rate ?? null;
+    case 'mixte': return entry.mixte?.rate ?? null;
+    default: return entry.bestRate;
+  }
 }
 
 /**
- * Sort and re-position leaderboard entries by a specific discipline.
- * 'all' uses bestRank (default behavior).
+ * Get the discipline key used for sorting (for sort indicator in UI).
+ */
+export function getSortDiscipline(
+  entry: LeaderboardEntry,
+  discipline: ClubDisciplineFilter
+): 'simple' | 'double' | 'mixte' | null {
+  switch (discipline) {
+    case 'simple': return 'simple';
+    case 'double': return 'double';
+    case 'mixte': return 'mixte';
+    default: return entry.bestDiscipline;
+  }
+}
+
+/**
+ * Sort leaderboard by the selected discipline's rate (descending).
+ * Re-assigns 1-based positions after sorting.
  */
 export function sortLeaderboardByDiscipline(
   entries: LeaderboardEntry[],
   discipline: ClubDisciplineFilter
 ): LeaderboardEntry[] {
-  const getRank = (entry: LeaderboardEntry): string => {
-    switch (discipline) {
-      case 'simple': return entry.simpleRank;
-      case 'double': return entry.doubleRank;
-      case 'mixte': return entry.mixteRank;
-      default: return entry.bestRank;
-    }
-  };
+  const sorted = [...entries].sort((a, b) => {
+    const rateA = getSortRate(a, discipline);
+    const rateB = getSortRate(b, discipline);
+    if (rateA === null && rateB === null) return 0;
+    if (rateA === null) return 1;
+    if (rateB === null) return -1;
+    return rateB - rateA;
+  });
 
-  const sorted = [...entries].sort(
-    (a, b) => getRankSortIndex(getRank(a)) - getRankSortIndex(getRank(b))
-  );
-
-  return sorted.map((entry, index) => ({ ...entry, position: index + 1 }));
+  return sorted.map((entry, i) => ({ ...entry, position: i + 1 }));
 }
 
 /**
- * Get the display rank for an entry based on the active discipline filter.
- */
-export function getDisplayRank(entry: LeaderboardEntry, discipline: ClubDisciplineFilter): string {
-  switch (discipline) {
-    case 'simple': return entry.simpleRank;
-    case 'double': return entry.doubleRank;
-    case 'mixte': return entry.mixteRank;
-    default: return entry.bestRank;
-  }
-}
-
-/**
- * Filter leaderboard entries by gender, then re-assign 1-based positions.
+ * Filter leaderboard entries by gender, then re-assign positions.
  */
 export function filterByGender(
   entries: LeaderboardEntry[],
@@ -193,5 +199,30 @@ export function filterByGender(
 ): LeaderboardEntry[] {
   if (gender === 'all') return entries;
   const filtered = entries.filter((e) => e.sex === gender);
-  return filtered.map((entry, index) => ({ ...entry, position: index + 1 }));
+  return filtered.map((entry, i) => ({ ...entry, position: i + 1 }));
+}
+
+// ============================================================
+// Category abbreviation
+// ============================================================
+
+/**
+ * Abbreviate a category string for compact display.
+ * "Senior" -> "Sen", "Veteran 1" -> "V1", "Junior 2" -> "J2",
+ * "Minime 1" -> "M1", "Cadet 2" -> "C2", "Benjamin 2" -> "B2",
+ * "Poussin 2" -> "P2", "Minibad" -> "Mini"
+ */
+export function abbreviateCategory(category: string): string {
+  if (!category) return '';
+  const lower = category.toLowerCase();
+  if (lower === 'senior') return 'Sen';
+  if (lower === 'minibad') return 'Mini';
+
+  const match = category.match(/^(\w+)\s+(\d+)$/);
+  if (match) {
+    const type = match[1].charAt(0).toUpperCase();
+    return `${type}${match[2]}`;
+  }
+
+  return category.slice(0, 3);
 }
