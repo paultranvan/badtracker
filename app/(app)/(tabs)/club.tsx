@@ -403,13 +403,18 @@ export default function ClubScreen() {
             {(['all', 'simple', 'double', 'mixte'] as ClubDisciplineFilter[]).map((key) => {
               const isActive = disciplineFilter === key;
               const labelKey = key === 'all' ? 'club.filterAll' : `club.filter${key.charAt(0).toUpperCase() + key.slice(1)}`;
+              const chipColor = DISCIPLINE_CHIP_COLORS[key];
               return (
                 <Pressable
                   key={key}
-                  className={`px-3 py-1.5 rounded-full border ${isActive ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}
+                  className={`px-3 py-1.5 rounded-full border ${isActive ? 'border-transparent' : 'bg-white border-gray-200'}`}
+                  style={isActive ? { backgroundColor: chipColor.bg } : undefined}
                   onPress={() => setDisciplineFilter(key)}
                 >
-                  <Text className={`text-[13px] font-medium ${isActive ? 'text-white' : 'text-gray-700'}`}>
+                  <Text
+                    className={`text-[13px] font-medium ${isActive ? '' : 'text-gray-700'}`}
+                    style={isActive ? { color: chipColor.text } : undefined}
+                  >
                     {t(labelKey)}
                   </Text>
                 </Pressable>
@@ -489,6 +494,13 @@ const PODIUM_COLORS: Record<number, { bg: string; text: string }> = {
   1: { bg: '#FEF3C7', text: '#D97706' },  // gold
   2: { bg: '#F3F4F6', text: '#6B7280' },  // silver
   3: { bg: '#FED7AA', text: '#C2410C' },  // bronze
+};
+
+const DISCIPLINE_CHIP_COLORS: Record<string, { bg: string; text: string }> = {
+  all: { bg: '#2563eb', text: '#ffffff' },      // primary blue
+  simple: { bg: '#3b82f6', text: '#ffffff' },   // singles blue
+  double: { bg: '#10b981', text: '#ffffff' },   // doubles green
+  mixte: { bg: '#f59e0b', text: '#ffffff' },    // mixed amber
 };
 
 function ClubMemberRow({
