@@ -10,9 +10,7 @@ export default function AppLayout() {
       <Stack.Screen
         name="player/[licence]"
         options={{
-          headerShown: true,
-          headerTitle: '',
-          headerBackTitle: '',
+          headerShown: false,
         }}
       />
       <Stack.Screen

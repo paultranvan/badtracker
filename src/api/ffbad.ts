@@ -396,24 +396,30 @@ async function enrichWithDetails(
 }
 
 /**
- * Get match results for a player by licence number.
+ * Fetches match results for a player.
+ *
  * Uses myffbad.fr /api/person/{personId}/result/Decade endpoint which returns
  * 10 years of results with all IDs populated (eventId, disciplineId, bracketId, roundId)
  * and discipline names like "SIMPLE HOMMES", "DOUBLE HOMMES", "MIXTE".
  *
  * Returns raw result items WITHOUT detail enrichment — details are fetched lazily.
  * Also returns _rawItems for lazy detail loading later.
+ *
+ * @param licence - Player's licence number
+ * @param knownPersonId - If provided, used directly for the API call.
+ *   Otherwise falls back to session personId when licence matches the current user.
  */
 export async function getResultsByLicence(
-  licence: string
+  licence: string,
+  knownPersonId?: string
 ): Promise<ResultByLicenceResponse & { _rawItems?: Array<Record<string, unknown>> }> {
   const session = requireSession();
 
-  // For current user, use their personId
-  const personId = licence === session.licence ? session.personId : null;
+  // Use provided personId, or fall back to current user's personId if licence matches
+  const personId = knownPersonId ?? (licence === session.licence ? session.personId : null);
 
   if (!personId) {
-    // For other players, we'd need their personId — return empty for now
+    // For other players without a known personId, we can't fetch results
     return { Retour: [] };
   }
 
@@ -421,7 +427,7 @@ export async function getResultsByLicence(
     const data = await bridgeGet(
       `/api/person/${personId}/result/Decade`,
       session.accessToken,
-      personId
+      session.personId  // Always the logged-in user's personId
     );
 
     if (!data) {
@@ -996,6 +1002,32 @@ export async function getClubTops(
   }
 
   return successful;
+}
+
+/**
+ * Fetch head-to-head data between the logged-in user and another player.
+ *
+ * GET /api/person/{myPersonId}/playerOpposition/{theirPersonId}
+ *
+ * Response shape is discovered at runtime — returned as raw data.
+ */
+export async function getPlayerOpposition(
+  theirPersonId: string
+): Promise<unknown> {
+  const session = requireSession();
+
+  try {
+    const data = await bridgeGet(
+      `/api/person/${session.personId}/playerOpposition/${theirPersonId}`,
+      session.accessToken,
+      session.personId
+    );
+
+    return data;
+  } catch (err) {
+    if (err instanceof AuthError || err instanceof NetworkError) throw err;
+    return null;
+  }
 }
 
 /**

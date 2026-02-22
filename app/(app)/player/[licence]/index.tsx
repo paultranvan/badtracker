@@ -13,13 +13,14 @@ import Toast from 'react-native-toast-message';
 import {
   getPlayerProfile,
   type PlayerProfile,
-} from '../../../src/api/ffbad';
-import { useSession } from '../../../src/auth/context';
-import { useBookmarks } from '../../../src/bookmarks/context';
-import { useConnectivity } from '../../../src/connectivity/context';
-import { cacheGet, cacheSet } from '../../../src/cache/storage';
-import { Card } from '../../../src/components';
-import type { BookmarkedPlayer } from '../../../src/bookmarks/storage';
+} from '../../../../src/api/ffbad';
+import { useSession } from '../../../../src/auth/context';
+import { useBookmarks } from '../../../../src/bookmarks/context';
+import { useConnectivity } from '../../../../src/connectivity/context';
+import { cacheGet, cacheSet } from '../../../../src/cache/storage';
+import { Card } from '../../../../src/components';
+import type { BookmarkedPlayer } from '../../../../src/bookmarks/storage';
+import { useHeadToHead, type H2HStats, type H2HMatch } from '../../../../src/hooks/useHeadToHead';
 
 // ============================================================
 // Discipline colors (matches dashboard)
@@ -67,6 +68,208 @@ function RankingCardItem({
 }
 
 // ============================================================
+// H2H Win Rate Bar
+// ============================================================
+
+function WinRateBar({ wins, losses }: { wins: number; losses: number }) {
+  const total = wins + losses;
+  if (total === 0) return null;
+  const winPct = (wins / total) * 100;
+
+  return (
+    <View className="flex-row h-2 rounded-full overflow-hidden bg-gray-100 mt-2">
+      <View style={{ width: `${winPct}%` }} className="bg-win rounded-l-full" />
+      <View style={{ width: `${100 - winPct}%` }} className="bg-loss rounded-r-full" />
+    </View>
+  );
+}
+
+// ============================================================
+// H2H Discipline Mini-Card
+// ============================================================
+
+function DisciplineMiniCard({
+  label,
+  wins,
+  losses,
+  color,
+}: {
+  label: string;
+  wins: number;
+  losses: number;
+  color: string;
+}) {
+  if (wins === 0 && losses === 0) return null;
+
+  return (
+    <View
+      className="rounded-lg px-3 py-2 items-center border-t-[3px]"
+      style={{ borderTopColor: color, backgroundColor: `${color}10` }}
+    >
+      <Text className="text-caption font-bold text-gray-700">{label}</Text>
+      <Text className="text-body font-semibold text-gray-900 mt-0.5">
+        {wins}-{losses}
+      </Text>
+    </View>
+  );
+}
+
+// ============================================================
+// H2H Match Row
+// ============================================================
+
+function H2HMatchRow({ match }: { match: H2HMatch }) {
+  const discColor = match.discipline === 'simple' ? '#3b82f6'
+    : match.discipline === 'double' ? '#10b981' : '#f59e0b';
+
+  return (
+    <View
+      className="flex-row items-center py-2.5 border-l-[3px] pl-3"
+      style={{ borderLeftColor: discColor }}
+    >
+      <Text className={`text-body font-bold ${match.isWin ? 'text-win' : 'text-loss'} w-5`}>
+        {match.isWin ? '\u2713' : '\u2717'}
+      </Text>
+      <View className="flex-1 ml-1">
+        <Text className="text-body text-gray-900" numberOfLines={1}>
+          {match.tournament}
+        </Text>
+        <Text className="text-caption text-muted mt-0.5">
+          {match.date}
+          {match.opponents ? ` \u00b7 vs ${match.opponents}` : ''}
+        </Text>
+      </View>
+      <View className="items-end ml-2">
+        {match.score ? (
+          <Text className="text-caption font-medium text-gray-700">{match.score}</Text>
+        ) : null}
+        {match.points != null ? (
+          <Text className={`text-caption font-bold ${match.points >= 0 ? 'text-win' : 'text-loss'}`}>
+            {match.points >= 0 ? '+' : ''}{match.points}
+          </Text>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+// ============================================================
+// H2H Section
+// ============================================================
+
+function HeadToHeadSection({
+  playerName,
+  h2hTab,
+  setH2hTab,
+  against,
+  together,
+  againstMatches,
+  togetherMatches,
+  isLoading,
+  t,
+}: {
+  playerName: string;
+  h2hTab: 'against' | 'together';
+  setH2hTab: (tab: 'against' | 'together') => void;
+  against: H2HStats | null;
+  together: H2HStats | null;
+  againstMatches: H2HMatch[];
+  togetherMatches: H2HMatch[];
+  isLoading: boolean;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  const activeStats = h2hTab === 'against' ? against : together;
+  const activeMatches = h2hTab === 'against' ? againstMatches : togetherMatches;
+  const againstCount = againstMatches.length;
+  const togetherCount = togetherMatches.length;
+
+  return (
+    <View className="mb-6">
+      <Text className="text-[18px] font-semibold text-gray-900 mb-3">
+        {t('player.h2h')}
+      </Text>
+
+      {/* Segment control */}
+      <View className="flex-row gap-2 mb-4">
+        <Pressable
+          className={`flex-1 py-2.5 rounded-full items-center border ${
+            h2hTab === 'against' ? 'bg-primary border-primary' : 'bg-white border-gray-200'
+          }`}
+          onPress={() => setH2hTab('against')}
+        >
+          <Text className={`text-body font-medium ${h2hTab === 'against' ? 'text-white' : 'text-gray-700'}`}>
+            ⚔️ {t('player.h2hAgainst')} ({againstCount})
+          </Text>
+        </Pressable>
+        <Pressable
+          className={`flex-1 py-2.5 rounded-full items-center border ${
+            h2hTab === 'together' ? 'bg-primary border-primary' : 'bg-white border-gray-200'
+          }`}
+          onPress={() => setH2hTab('together')}
+        >
+          <Text className={`text-body font-medium ${h2hTab === 'together' ? 'text-white' : 'text-gray-700'}`}>
+            🤝 {t('player.h2hTogether')} ({togetherCount})
+          </Text>
+        </Pressable>
+      </View>
+
+      {isLoading ? (
+        <ActivityIndicator size="small" color="#2563eb" />
+      ) : activeStats ? (
+        <Card className="p-4">
+          {/* Summary */}
+          <Text className="text-body text-gray-500 mb-1">
+            {h2hTab === 'against' ? `⚔️ ${t('player.h2hAgainst')}` : `🤝 ${t('player.h2hTogether')}`} {playerName}
+          </Text>
+          <View className="flex-row items-baseline gap-2">
+            <Text className="text-[22px] font-bold text-win">
+              {t('player.h2hWins', { count: activeStats.wins })}
+            </Text>
+            <Text className="text-[18px] text-gray-400">{'\u00b7'}</Text>
+            <Text className="text-[22px] font-bold text-loss">
+              {t('player.h2hLosses', { count: activeStats.losses })}
+            </Text>
+          </View>
+          <WinRateBar wins={activeStats.wins} losses={activeStats.losses} />
+          <Text className="text-caption text-muted mt-1 text-right">{activeStats.winRate}%</Text>
+
+          {/* Per-discipline */}
+          <View className="flex-row gap-2 mt-3">
+            {h2hTab === 'against' && (
+              <DisciplineMiniCard label="S" wins={activeStats.byDiscipline.simple.wins} losses={activeStats.byDiscipline.simple.losses} color="#3b82f6" />
+            )}
+            <DisciplineMiniCard label="D" wins={activeStats.byDiscipline.double.wins} losses={activeStats.byDiscipline.double.losses} color="#10b981" />
+            <DisciplineMiniCard label="M" wins={activeStats.byDiscipline.mixte.wins} losses={activeStats.byDiscipline.mixte.losses} color="#f59e0b" />
+          </View>
+
+          {/* Last played */}
+          {activeStats.lastPlayed && (
+            <Text className="text-caption text-muted mt-3">
+              {t('player.h2hLastPlayed', { date: activeStats.lastPlayed })}
+            </Text>
+          )}
+
+          {/* Match list */}
+          {activeMatches.length > 0 && (
+            <View className="mt-3 pt-3 border-t border-gray-100">
+              {activeMatches.map((match, i) => (
+                <H2HMatchRow key={`${match.date}-${i}`} match={match} />
+              ))}
+            </View>
+          )}
+        </Card>
+      ) : (
+        <Card className="p-4 items-center">
+          <Text className="text-body text-gray-400">
+            {h2hTab === 'against' ? `⚔️ ${t('player.h2hNeverFaced')}` : `🤝 ${t('player.h2hNeverTeamed')}`}
+          </Text>
+        </Card>
+      )}
+    </View>
+  );
+}
+
+// ============================================================
 // Component
 // ============================================================
 
@@ -106,6 +309,13 @@ export default function PlayerProfileScreen() {
   const bookmarked = player ? isBookmarked(player.licence) : false;
   const isBookmarkedByLicence = licence ? isBookmarked(licence) : false;
   const hasCachedData = useRef(false);
+
+  const [h2hTab, setH2hTab] = useState<'against' | 'together'>('against');
+
+  // Head-to-head: only fetch when viewing someone else's profile
+  const h2h = useHeadToHead(
+    !isOwnProfile && personId ? personId : null
+  );
 
   const handleBookmarkToggle = async () => {
     if (!player) return;
@@ -350,6 +560,44 @@ export default function PlayerProfileScreen() {
         >
           <Ionicons name="trending-up" size={18} color="#2563eb" />
           <Text className="text-body font-medium text-primary ml-2">Ranking evolution</Text>
+        </Pressable>
+      )}
+
+      {/* Head-to-Head section (only for other players) */}
+      {!isOwnProfile && personId && (
+        <HeadToHeadSection
+          playerName={player.nom ?? ''}
+          h2hTab={h2hTab}
+          setH2hTab={setH2hTab}
+          against={h2h.against}
+          together={h2h.together}
+          againstMatches={h2h.againstMatches}
+          togetherMatches={h2h.togetherMatches}
+          isLoading={h2h.isLoading}
+          t={t}
+        />
+      )}
+
+      {/* See all matches button */}
+      {personId && (
+        <Pressable
+          className="flex-row items-center justify-center py-3.5 mx-0 mb-6 rounded-xl bg-primary-bg active:opacity-70"
+          onPress={() => {
+            if (isOwnProfile) {
+              router.push('/(app)/(tabs)/matches');
+            } else {
+              router.push({
+                pathname: '/player/[licence]/matches',
+                params: {
+                  licence: player.licence,
+                  personId,
+                  nom: player.nom,
+                },
+              });
+            }
+          }}
+        >
+          <Text className="text-body font-medium text-primary">📋 {t('player.seeAllMatches')} ›</Text>
         </Pressable>
       )}
     </ScrollView>
