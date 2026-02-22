@@ -24,13 +24,14 @@ import { DetailMatchCard } from '../../../../src/components';
 // ============================================================
 
 function StatsHeader({ wins, losses }: { wins: number; losses: number }) {
+  const { t } = useTranslation();
   const total = wins + losses;
   const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
 
   return (
     <View className="mx-4 mt-4 mb-3 p-4 bg-primary-bg rounded-xl">
-      <Text className="text-caption font-semibold text-gray-500 mb-1">Statistics</Text>
-      <Text className="text-display text-primary">{winRate}% win rate</Text>
+      <Text className="text-caption font-semibold text-gray-500 mb-1">{t('matchHistory.statsHeader')}</Text>
+      <Text className="text-display text-primary">{t('matchHistory.winRate', { rate: winRate })}</Text>
       <View className="flex-row h-2.5 rounded-full overflow-hidden bg-white mt-2">
         {wins > 0 && (
           <View style={{ flex: wins }} className="bg-win rounded-l-full" />
@@ -40,8 +41,8 @@ function StatsHeader({ wins, losses }: { wins: number; losses: number }) {
         )}
       </View>
       <View className="flex-row justify-between mt-1">
-        <Text className="text-caption font-semibold text-win">{wins} W</Text>
-        <Text className="text-caption font-semibold text-loss">{losses} L</Text>
+        <Text className="text-caption font-semibold text-win">{t('matchHistory.wins', { count: wins })}</Text>
+        <Text className="text-caption font-semibold text-loss">{t('matchHistory.losses', { count: losses })}</Text>
       </View>
     </View>
   );
@@ -103,6 +104,7 @@ function DisciplineRow({
   isLoading: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation();
   const letter = discipline === 'simple' ? 'S' : discipline === 'double' ? 'D' : 'M';
   const color = discipline === 'simple' ? '#3b82f6' : discipline === 'double' ? '#10b981' : '#f59e0b';
   const bgColor = discipline === 'simple' ? '#dbeafe' : discipline === 'double' ? '#d1fae5' : '#fef3c7';
@@ -118,7 +120,7 @@ function DisciplineRow({
         <Text style={{ color, fontSize: 13, fontWeight: '700' }}>{letter}</Text>
       </View>
       <Text className="text-body text-gray-700 capitalize">
-        {discipline === 'mixte' ? 'Mixed' : discipline === 'double' ? 'Doubles' : 'Singles'}
+        {discipline === 'mixte' ? t('matchHistory.mixte') : discipline === 'double' ? t('matchHistory.double') : t('matchHistory.simple')}
       </Text>
       <View className="flex-row items-center ml-2 gap-1">
         <View className="bg-win-bg rounded-full px-1.5 py-0.5">
@@ -313,7 +315,7 @@ export default function PlayerMatchesScreen() {
                     onPress={() => setDiscipline(key)}
                   >
                     <Text className={`text-[13px] font-medium ${isActive ? 'text-white' : 'text-gray-700'}`}>
-                      {key === 'all' ? 'All' : key === 'simple' ? 'Singles' : key === 'double' ? 'Doubles' : 'Mixed'}
+                      {key === 'all' ? t('matchHistory.all') : key === 'simple' ? t('matchHistory.simple') : key === 'double' ? t('matchHistory.double') : t('matchHistory.mixte')}
                     </Text>
                   </Pressable>
                 );

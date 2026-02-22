@@ -139,7 +139,10 @@ export function useMatchHistory(targetPersonId?: string): MatchHistoryData {
 
       // Step 2: Fetch from API (no detail enrichment — just result list)
       try {
-        const response = await getResultsByLicence(licence ?? '', personId);
+        const response = await getResultsByLicence(
+          targetPersonId ? '' : (licence ?? ''),
+          personId
+        );
         const retour = response.Retour;
 
         if (Array.isArray(retour)) {
