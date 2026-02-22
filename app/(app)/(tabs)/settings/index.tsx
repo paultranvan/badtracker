@@ -1,6 +1,5 @@
 import { View, Text, Alert, Pressable } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useSession } from '../../../../src/auth/context';
@@ -85,18 +84,6 @@ export default function SettingsScreen() {
       <Text className="text-caption text-muted uppercase tracking-wider mb-3 mt-6">
         Data
       </Text>
-
-      {/* Bookmarks row */}
-      <Pressable
-        className="flex-row items-center justify-between py-4 border-b border-gray-100 active:bg-gray-50"
-        onPress={() => router.push('/settings/bookmarks')}
-      >
-        <View className="flex-row items-center">
-          <Ionicons name="star" size={20} color="#f59e0b" style={{ marginRight: 12 }} />
-          <Text className="text-body text-gray-800">{t('bookmarks.settingsRow')}</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color="#d1d5db" />
-      </Pressable>
 
       {/* Clear cache row */}
       <Pressable
