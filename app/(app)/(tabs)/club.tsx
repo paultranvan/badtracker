@@ -360,12 +360,15 @@ export default function ClubScreen() {
           onPress={() => clubInfo && setShowClubInfo((v) => !v)}
         >
           <View className="flex-1">
-            <Text className="text-title text-gray-900" numberOfLines={2}>
-              {clubName || t('club.title')}
-            </Text>
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="people" size={18} color="#2563eb" />
+              <Text className="text-title text-gray-900 flex-shrink" numberOfLines={2}>
+                {clubName || t('club.title')}
+              </Text>
+            </View>
             {hasMembers ? (
-              <Text className="text-caption text-muted mt-0.5">
-                {t('club.members', { count: members.length, ranked: rankedCount })}
+              <Text className="text-caption text-muted mt-0.5 ml-[26px]">
+                {members.length} {t('club.memberCount')} · {rankedCount} {t('club.rankedCount')}
               </Text>
             ) : null}
           </View>
