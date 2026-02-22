@@ -113,7 +113,17 @@
     "noRankings": "Aucune donn\u00e9e de classement",
     "cpph": "CPPH",
     "error": "Impossible de charger le profil",
-    "retry": "R\u00e9essayer"
+    "retry": "Réessayer",
+    "h2h": "Face à face",
+    "h2hAgainst": "Adversaire",
+    "h2hTogether": "Partenaire",
+    "h2hWins": "{{count}}V",
+    "h2hLosses": "{{count}}D",
+    "h2hNeverFaced": "Vous ne vous êtes jamais affrontés",
+    "h2hNeverTeamed": "Vous n'avez jamais joué ensemble",
+    "h2hLastPlayed": "Dernier match : {{date}}",
+    "seeAllMatches": "Voir tous les matchs",
+    "matchesTitle": "{{name}} · Matchs"
   },
   "club": {
     "tab": "Club",

@@ -113,7 +113,17 @@
     "noRankings": "No ranking data",
     "cpph": "CPPH",
     "error": "Unable to load profile",
-    "retry": "Retry"
+    "retry": "Retry",
+    "h2h": "Head-to-Head",
+    "h2hAgainst": "Against",
+    "h2hTogether": "Together",
+    "h2hWins": "{{count}}W",
+    "h2hLosses": "{{count}}L",
+    "h2hNeverFaced": "You've never faced each other",
+    "h2hNeverTeamed": "You've never teamed up",
+    "h2hLastPlayed": "Last played: {{date}}",
+    "seeAllMatches": "See all matches",
+    "matchesTitle": "{{name}} · Matches"
   },
   "club": {
     "tab": "Club",
