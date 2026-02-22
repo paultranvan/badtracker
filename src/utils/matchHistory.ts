@@ -105,11 +105,11 @@ function parsePoints(value: unknown): number | undefined {
  */
 function parseSetScores(value: unknown): string[] | undefined {
   if (typeof value !== 'string' || !value.trim()) return undefined;
-  // Split on spaces or commas
+  // Split on " / " first (detail API format: "21-17 / 21-18"), then spaces/commas
   const sets = value
-    .split(/[\s,]+/)
+    .split(/\s*\/\s*|\s*,\s*|\s+/)
     .map((s) => s.trim())
-    .filter((s) => s.length > 0);
+    .filter((s) => /^\d+-\d+$/.test(s));
   return sets.length > 0 ? sets : undefined;
 }
 

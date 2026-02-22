@@ -353,6 +353,50 @@ export async function getPlayerProfile(
 // ============================================================
 
 /**
+ * Enrich result items with detailed match data (opponent names, set scores, etc.)
+ * by calling /result/detail for each item in parallel.
+ *
+ * Each detail call requires: date (YYYY-MM-DD), discipline (number), bracketId.
+ * Items missing these IDs are returned unchanged.
+ * Detail failures are silently ignored (the item keeps its original data).
+ */
+async function enrichWithDetails(
+  items: Array<Record<string, unknown>>,
+  personId: string
+): Promise<Array<Record<string, unknown>>> {
+  const session = requireSession();
+
+  // Fetch details in parallel, with a concurrency limit to avoid flooding
+  const detailPromises = items.map(async (item) => {
+    const date = item.date as string | null;
+    const disciplineId = item.disciplineId as number | null;
+    const bracketId = item.bracketId as number | null;
+
+    // Skip items without required IDs
+    if (!date || disciplineId == null || bracketId == null) return item;
+
+    try {
+      const dateOnly = date.includes('T') ? date.split('T')[0] : date;
+      const detail = await bridgePost(
+        `/api/person/${personId}/result/detail`,
+        { date: dateOnly, discipline: disciplineId, bracketId },
+        session.accessToken,
+        session.personId
+      );
+
+      if (!detail || typeof detail !== 'object') return item;
+      const d = detail as Record<string, unknown>;
+
+      return { ...item, _detail: d };
+    } catch {
+      return item;
+    }
+  });
+
+  return Promise.all(detailPromises);
+}
+
+/**
  * Get match results for a player by licence number.
  * Uses myffbad.fr /api/person/{personId}/result/actual endpoint which returns
  * richer data with all IDs populated (eventId, disciplineId, bracketId, roundId)
@@ -388,14 +432,147 @@ export async function getResultsByLicence(
       return { Retour: 'No results' };
     }
 
-    // Transform to ResultItem format expected by consumers
-    const items = (results as Array<Record<string, unknown>>).map(transformResultItem);
+    // Fetch match details in parallel for items that have the required IDs
+    const enrichedResults = await enrichWithDetails(
+      results as Array<Record<string, unknown>>,
+      personId
+    );
+
+    // Expand each result item into individual matches using detail data,
+    // then transform to the ResultItem format expected by consumers
+    const expanded = enrichedResults.flatMap((item) => expandWithDetail(item, personId));
+    const items = expanded.map(transformResultItem);
 
     return { Retour: items };
   } catch (err) {
     if (err instanceof AuthError || err instanceof NetworkError) throw err;
     return { Retour: 'Error fetching results' };
   }
+}
+
+/**
+ * Fetch detailed match data for a single result item.
+ * Uses POST /api/person/{personId}/result/detail with:
+ *   - date: YYYY-MM-DD format (not full ISO)
+ *   - discipline: disciplineId number (field name is "discipline", not "disciplineId")
+ *   - bracketId: bracket identifier from /result/actual
+ *
+ * Returns enriched data: opponent names/licences, set scores, round info, partner.
+ * Returns null if the detail endpoint fails (Hypercube limitation for some matches).
+ */
+export async function getMatchDetail(
+  personId: string,
+  date: string,
+  discipline: number,
+  bracketId: number
+): Promise<Record<string, unknown> | null> {
+  const session = requireSession();
+
+  try {
+    // Format date as YYYY-MM-DD (truncate time portion from ISO string)
+    const dateOnly = date.includes('T') ? date.split('T')[0] : date;
+
+    const data = await bridgePost(
+      `/api/person/${personId}/result/detail`,
+      { date: dateOnly, discipline, bracketId },
+      session.accessToken,
+      session.personId
+    );
+
+    if (!data || typeof data !== 'object') return null;
+    return data as Record<string, unknown>;
+  } catch {
+    // Hypercube service may fail for some matches — this is expected
+    return null;
+  }
+}
+
+/**
+ * Expand a single /result/actual item with its _detail array into individual match items.
+ *
+ * The detail response is an array of matches for that bracket (pool play, knockout rounds, etc.).
+ * Each detail match has top/bottom sides with player info. We find the logged-in user's side
+ * and extract opponent names, partner, set scores, and round info.
+ *
+ * If no detail data exists, returns the original item unchanged (as a single-element array).
+ */
+function expandWithDetail(
+  item: Record<string, unknown>,
+  loggedInPersonId: string
+): Array<Record<string, unknown>> {
+  const detail = item._detail;
+  if (!detail || !Array.isArray(detail) || detail.length === 0) {
+    // No detail data — return item as-is
+    return [item];
+  }
+
+  return (detail as Array<Record<string, unknown>>).map((match) => {
+    const top = match.top as Record<string, unknown> | undefined;
+    const bottom = match.bottom as Record<string, unknown> | undefined;
+
+    if (!top || !bottom) return { ...item };
+
+    const topPersons = top.Persons as Record<string, Record<string, unknown>> | undefined;
+    const bottomPersons = bottom.Persons as Record<string, Record<string, unknown>> | undefined;
+
+    if (!topPersons || !bottomPersons) return { ...item };
+
+    // Determine which side the logged-in user is on
+    const userInTop = loggedInPersonId in topPersons;
+    const userSide = userInTop ? topPersons : bottomPersons;
+    const opponentSide = userInTop ? bottomPersons : topPersons;
+
+    // Extract opponent name(s) and licence(s)
+    const opponentEntries = Object.entries(opponentSide);
+    const opp1 = opponentEntries[0]?.[1];
+    const opp2 = opponentEntries.length > 1 ? opponentEntries[1]?.[1] : undefined;
+
+    // Extract partner (same side, other person — for doubles/mixed)
+    const partnerEntries = Object.entries(userSide).filter(([id]) => id !== loggedInPersonId);
+    const partner = partnerEntries[0]?.[1];
+
+    // Extract set scores — detail gives scoreWinner/scoreLoser arrays
+    const scoreWinner = match.scoreWinner as string[] | undefined;
+    const scoreLoser = match.scoreLoser as string[] | undefined;
+    const userIsWinner = userInTop ? top.IsWinner === '1' : bottom.IsWinner === '1';
+
+    let setScoresStr: string | undefined;
+    if (scoreWinner && scoreLoser && scoreWinner.length > 0) {
+      // Build set scores from the user's perspective
+      const userScores = userIsWinner ? scoreWinner : scoreLoser;
+      const oppScores = userIsWinner ? scoreLoser : scoreWinner;
+      const sets = userScores.map((s, i) => `${s}-${oppScores[i] ?? '?'}`);
+      setScoresStr = sets.join(' / ');
+    }
+
+    // Round info
+    const roundName = match.roundPositionName as string | undefined
+      ?? match.roundName as string | undefined;
+
+    // WinPoints from the user's entry in the detail
+    const userEntry = userSide[loggedInPersonId];
+    const detailWinPoints = userEntry?.WinPoints as number | undefined;
+
+    return {
+      ...item,
+      // Clear parent-level winPoint — it's the aggregate for the whole bracket,
+      // not per-match. Use detail-level WinPoints instead (if available).
+      winPoint: detailWinPoints ?? undefined,
+      // Override with detail data
+      _detailOpponent: opp1?.PersonName as string | undefined,
+      _detailOpponentLicence: opp1?.PersonLicence as string | undefined,
+      _detailOpponent2: opp2?.PersonName as string | undefined,
+      _detailOpponent2Licence: opp2?.PersonLicence as string | undefined,
+      _detailPartner: partner?.PersonName as string | undefined,
+      _detailPartnerLicence: partner?.PersonLicence as string | undefined,
+      _detailSetScores: setScoresStr,
+      _detailScore: match.score as string | undefined,
+      _detailRound: roundName,
+      _detailIsWinner: userIsWinner,
+      // Remove _detail to avoid passing raw data downstream
+      _detail: undefined,
+    };
+  });
 }
 
 /**
@@ -496,9 +673,31 @@ function transformResultItem(raw: Record<string, unknown>): Record<string, unkno
     }
   }
 
+  // Use detail data for opponent, partner, scores, round if available
+  const detailOpponent = raw._detailOpponent as string | undefined;
+  const detailOpponentLicence = raw._detailOpponentLicence as string | undefined;
+  const detailOpponent2 = raw._detailOpponent2 as string | undefined;
+  const detailOpponent2Licence = raw._detailOpponent2Licence as string | undefined;
+  const detailPartner = raw._detailPartner as string | undefined;
+  const detailPartnerLicence = raw._detailPartnerLicence as string | undefined;
+  const detailSetScores = raw._detailSetScores as string | undefined;
+  const detailScore = raw._detailScore as string | undefined;
+  const detailRound = raw._detailRound as string | undefined;
+  const detailIsWinner = raw._detailIsWinner as boolean | undefined;
+
+  // Override win/loss from detail if available (more reliable than winPoint sign)
+  if (detailIsWinner != null) {
+    resultat = detailIsWinner ? 'V' : 'D';
+  }
+
+  // Use detail score (e.g. "21-17 / 21-18") over winPoint-derived score
+  if (detailScore) {
+    score = detailScore;
+  }
+
   // Clean up interclub opponent names (e.g. "94-CALB-2 contre 94-VSSM-6" → "CALB-2 vs VSSM-6")
   const interclub = parseInterclubSubName(raw.subName as string ?? '');
-  const adversaire = interclub
+  const fallbackAdversaire = interclub
     ? `${interclub.team1} vs ${interclub.team2}`
     : raw.subName;
 
@@ -511,10 +710,17 @@ function transformResultItem(raw: Record<string, unknown>): Record<string, unkno
     Points: winPoint,
     Resultat: resultat,
     Score: score,
-    Adversaire: adversaire,
+    Adversaire: detailOpponent ?? fallbackAdversaire,
+    AdversaireLicence: detailOpponentLicence,
+    Adversaire2: detailOpponent2,
+    Adversaire2Licence: detailOpponent2Licence,
+    Partenaire: detailPartner,
+    PartenaireLicence: detailPartnerLicence,
+    Sets: detailSetScores,
+    Tour: detailRound,
     // Keep original date for season computation
     _rawDate: raw.date,
-    // Pass through all original fields
+    // Pass through all original fields (except _detail* which are consumed above)
     ...raw,
   };
 }
