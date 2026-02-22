@@ -208,7 +208,11 @@ export default function ClubScreen() {
         onPress={() =>
           router.push({
             pathname: '/player/[licence]',
-            params: { licence: item.licence },
+            params: {
+              licence: item.licence,
+              personId: String(item.personId),
+              nom: item.name,
+            },
           })
         }
       />
