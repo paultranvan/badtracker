@@ -19,9 +19,11 @@ import { useSession } from '../../../../src/auth/context';
 import { useBookmarks } from '../../../../src/bookmarks/context';
 import { useConnectivity } from '../../../../src/connectivity/context';
 import { cacheGet, cacheSet } from '../../../../src/cache/storage';
-import { Card, DetailMatchCard } from '../../../../src/components';
+import { Card, DetailMatchCard, StatCard, SectionHeader } from '../../../../src/components';
 import type { BookmarkedPlayer } from '../../../../src/bookmarks/storage';
 import { useHeadToHead } from '../../../../src/hooks/useHeadToHead';
+import { useMatchHistory } from '../../../../src/hooks/useMatchHistory';
+import { getRankLabel, getBestRanking } from '../../../../src/utils/rankings';
 import {
   groupByTournamentNested,
   computeWinLossStats,
@@ -31,7 +33,7 @@ import {
 } from '../../../../src/utils/matchHistory';
 
 // ============================================================
-// Discipline colors (matches dashboard)
+// Discipline config (same as dashboard)
 // ============================================================
 
 const disciplineColors: Record<string, string> = {
@@ -40,40 +42,14 @@ const disciplineColors: Record<string, string> = {
   mixte: '#f59e0b',
 };
 
-// ============================================================
-// Ranking Card Sub-component
-// ============================================================
-
-function RankingCardItem({
-  disciplineKey,
-  discipline,
-  classement,
-  cpph,
-  cpphLabel,
-}: {
-  disciplineKey: string;
-  discipline: string;
-  classement: string;
-  cpph?: number;
-  cpphLabel: string;
-}) {
-  return (
-    <Card
-      className="p-4 mb-2 border-t-[3px]"
-      style={{ borderTopColor: disciplineColors[disciplineKey] || '#e5e7eb' }}
-    >
-      <View className="flex-row justify-between items-center">
-        <Text className="text-body font-medium text-gray-700">{discipline}</Text>
-        <Text className="text-[18px] font-bold text-primary">{classement}</Text>
-      </View>
-      {cpph != null && (
-        <Text className="text-caption text-muted mt-1">
-          {cpphLabel}: {cpph.toFixed(1)}
-        </Text>
-      )}
-    </Card>
-  );
-}
+const disciplines: Array<{
+  key: 'simple' | 'double' | 'mixte';
+  translationKey: string;
+}> = [
+  { key: 'simple', translationKey: 'player.simple' },
+  { key: 'double', translationKey: 'player.double' },
+  { key: 'mixte', translationKey: 'player.mixte' },
+];
 
 // ============================================================
 // H2H Discipline Row (level 2 accordion)
@@ -398,6 +374,9 @@ export default function PlayerProfileScreen() {
     !isOwnProfile && licence ? licence : null
   );
 
+  // Match history for stats (best ranking comes from profile, win rate from matches)
+  const matchHistory = useMatchHistory(personId);
+
   const handleBookmarkToggle = async () => {
     if (!player) return;
     if (bookmarked) {
@@ -554,6 +533,7 @@ export default function PlayerProfileScreen() {
   // ----------------------------------------------------------
   const { simple, double, mixte } = player.rankings;
   const hasRankings = simple || double || mixte;
+  const bestRanking = getBestRanking(player.rankings);
 
   return (
     <ScrollView className="flex-1 bg-white" contentContainerStyle={{ padding: 16 }}>
@@ -594,54 +574,58 @@ export default function PlayerProfileScreen() {
         </View>
       </View>
 
-      {/* Rankings section */}
-      <View className="mb-6">
-        <Text className="text-[18px] font-semibold text-gray-900 mb-3">{t('player.rankings')}</Text>
-
-        {hasRankings ? (
-          <>
-            {simple ? (
-              <RankingCardItem
-                disciplineKey="simple"
-                discipline={t('player.simple')}
-                classement={simple.classement}
-                cpph={simple.cpph}
-                cpphLabel={t('player.cpph')}
-              />
-            ) : null}
-            {double ? (
-              <RankingCardItem
-                disciplineKey="double"
-                discipline={t('player.double')}
-                classement={double.classement}
-                cpph={double.cpph}
-                cpphLabel={t('player.cpph')}
-              />
-            ) : null}
-            {mixte ? (
-              <RankingCardItem
-                disciplineKey="mixte"
-                discipline={t('player.mixte')}
-                classement={mixte.classement}
-                cpph={mixte.cpph}
-                cpphLabel={t('player.cpph')}
-              />
-            ) : null}
-          </>
-        ) : (
-          <Text className="text-body text-muted italic">{t('player.noRankings')}</Text>
-        )}
-      </View>
-
-      {/* Ranking evolution link */}
+      {/* Quick Stats Row */}
       {hasRankings && (
-        <Pressable
-          className="flex-row items-center justify-center py-3 mt-2 active:opacity-60"
-          onPress={() => router.push('/ranking-chart')}
-        >
-          <Ionicons name="trending-up" size={18} color="#2563eb" />
-          <Text className="text-body font-medium text-primary ml-2">Ranking evolution</Text>
-        </Pressable>
+        <View className="flex-row gap-2 mb-5">
+          <StatCard
+            value={bestRanking ? bestRanking.classement : t('dashboard.unranked')}
+            label={t('dashboard.bestRanking')}
+            icon="trophy-outline"
+            iconColor="#d97706"
+            highlight
+          />
+          <StatCard
+            value={String(matchHistory.stats.total)}
+            label={t('dashboard.matchesPlayed')}
+            icon="fitness-outline"
+          />
+          <StatCard
+            value={`${matchHistory.stats.winPercentage}%`}
+            label={t('dashboard.winRate')}
+            icon="analytics-outline"
+          />
+        </View>
+      )}
+
+      {/* Rankings Section */}
+      <SectionHeader title={t('dashboard.rankings')} />
+      {hasRankings ? (
+        <View className="flex-row gap-2 mb-5">
+          {disciplines.map(({ key, translationKey }) => {
+            const ranking = player.rankings[key];
+            const classement = getRankLabel(ranking?.classement);
+            const cpph = ranking?.cpph;
+            const isBest = key === bestRanking?.discipline;
+
+            return (
+              <Card
+                key={key}
+                className={`flex-1 items-center p-3 border-t-[3px] ${isBest ? 'shadow-md' : ''}`}
+                style={{ borderTopColor: disciplineColors[key] }}
+              >
+                <Text className="text-caption text-muted mb-1 uppercase">{t(translationKey)}</Text>
+                <Text className={`text-[22px] font-bold mb-0.5 ${isBest ? 'text-primary' : 'text-gray-700'}`}>
+                  {classement}
+                </Text>
+                {cpph != null && (
+                  <Text className="text-caption text-muted">{cpph.toFixed(1)} pts</Text>
+                )}
+              </Card>
+            );
+          })}
+        </View>
+      ) : (
+        <Text className="text-body text-muted italic mb-5">{t('player.noRankings')}</Text>
       )}
 
       {/* Head-to-Head section (only for other players) */}
