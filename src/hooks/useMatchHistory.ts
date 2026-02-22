@@ -65,7 +65,7 @@ export type { MatchItem, TournamentSection, DisciplineGroup, WinLossStats, Disci
  * Two-level caching: result list (5 min TTL), match details (24h TTL).
  * Details are loaded lazily when a discipline group is expanded.
  */
-export function useMatchHistory(): MatchHistoryData {
+export function useMatchHistory(targetPersonId?: string): MatchHistoryData {
   const { session } = useSession();
   const { isConnected } = useConnectivity();
 
@@ -87,7 +87,7 @@ export function useMatchHistory(): MatchHistoryData {
   const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
 
   const licence = session?.licence;
-  const personId = session?.personId;
+  const personId = targetPersonId ?? session?.personId;
   const hasCachedData = useRef(false);
   const prevConnected = useRef(isConnected);
 
@@ -97,7 +97,7 @@ export function useMatchHistory(): MatchHistoryData {
 
   const fetchData = useCallback(
     async (isRefresh = false) => {
-      if (!licence) {
+      if (!personId) {
         setIsLoading(false);
         return;
       }
@@ -111,11 +111,11 @@ export function useMatchHistory(): MatchHistoryData {
 
       // Step 1: Read from cache (with TTL)
       if (!isRefresh) {
-        const cached = await cacheGetWithTTL<MatchItem[]>(`matches:${licence}`, RESULT_CACHE_TTL);
+        const cached = await cacheGetWithTTL<MatchItem[]>(`matches:${personId}`, RESULT_CACHE_TTL);
         if (cached) {
           setAllMatches(cached);
           // Restore raw items for lazy detail loading
-          const cachedRaw = await cacheGetWithTTL<Array<Record<string, unknown>>>(`matches-raw:${licence}`, RESULT_CACHE_TTL);
+          const cachedRaw = await cacheGetWithTTL<Array<Record<string, unknown>>>(`matches-raw:${personId}`, RESULT_CACHE_TTL);
           if (cachedRaw) rawResultItems.current = cachedRaw;
           hasCachedData.current = true;
           if (!isConnected) {
@@ -124,7 +124,7 @@ export function useMatchHistory(): MatchHistoryData {
           }
         } else if (!isConnected) {
           // Try non-TTL cache as fallback when offline
-          const stale = await cacheGet<MatchItem[]>(`matches:${licence}`);
+          const stale = await cacheGet<MatchItem[]>(`matches:${personId}`);
           if (stale) {
             setAllMatches(stale);
             hasCachedData.current = true;
@@ -139,7 +139,7 @@ export function useMatchHistory(): MatchHistoryData {
 
       // Step 2: Fetch from API (no detail enrichment — just result list)
       try {
-        const response = await getResultsByLicence(licence);
+        const response = await getResultsByLicence(licence ?? '', personId);
         const retour = response.Retour;
 
         if (Array.isArray(retour)) {
@@ -150,10 +150,10 @@ export function useMatchHistory(): MatchHistoryData {
           // Store raw API items for lazy detail loading
           rawResultItems.current = response._rawItems ?? [];
           // Update cache with TTL
-          cacheSetWithTTL(`matches:${licence}`, matches);
+          cacheSetWithTTL(`matches:${personId}`, matches);
           // Also cache raw items for detail loading after cache restore
           if (response._rawItems) {
-            cacheSetWithTTL(`matches-raw:${licence}`, response._rawItems);
+            cacheSetWithTTL(`matches-raw:${personId}`, response._rawItems);
           }
           hasCachedData.current = true;
         } else {
@@ -177,7 +177,7 @@ export function useMatchHistory(): MatchHistoryData {
         setIsRefreshing(false);
       }
     },
-    [licence, isConnected]
+    [licence, personId, isConnected]
   );
 
   // Initial load
@@ -199,11 +199,11 @@ export function useMatchHistory(): MatchHistoryData {
 
   // Auto-refresh when connectivity returns
   useEffect(() => {
-    if (!prevConnected.current && isConnected && licence) {
+    if (!prevConnected.current && isConnected && personId) {
       fetchData(true);
     }
     prevConnected.current = isConnected;
-  }, [isConnected, licence, fetchData]);
+  }, [isConnected, personId, fetchData]);
 
   // ----------------------------------------------------------
   // Derived state (memoized)
