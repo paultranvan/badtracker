@@ -58,10 +58,11 @@ export default function RankingChartScreen() {
     return chartData.disciplines
       .filter((d) => visibleDisciplines[d.discipline] && d.points.length > 0)
       .map((d) => {
-        const data = d.points.map((point) => {
+        const labelInterval = Math.max(1, Math.ceil(d.points.length / 6));
+        const data = d.points.map((point, idx) => {
           const item: Record<string, unknown> = {
             value: point.value - yAxisOffset,
-            label: point.label,
+            label: idx % labelInterval === 0 ? point.label : '',
           };
 
           if (point.isMilestone) {
@@ -228,7 +229,8 @@ export default function RankingChartScreen() {
             rulesType="solid"
             rulesColor="#f3f4f6"
             yAxisTextStyle={{ color: '#6b7280', fontSize: 11 }}
-            xAxisLabelTextStyle={{ color: '#6b7280', fontSize: 10 }}
+            xAxisLabelTextStyle={{ color: '#6b7280', fontSize: 9, width: 50, textAlign: 'center' }}
+            labelsExtraHeight={20}
             xAxisColor="#e5e7eb"
             yAxisColor="#e5e7eb"
             hideRules={false}
