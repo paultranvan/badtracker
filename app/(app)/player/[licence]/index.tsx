@@ -13,14 +13,14 @@ import Toast from 'react-native-toast-message';
 import {
   getPlayerProfile,
   type PlayerProfile,
-} from '../../../src/api/ffbad';
-import { useSession } from '../../../src/auth/context';
-import { useBookmarks } from '../../../src/bookmarks/context';
-import { useConnectivity } from '../../../src/connectivity/context';
-import { cacheGet, cacheSet } from '../../../src/cache/storage';
-import { Card } from '../../../src/components';
-import type { BookmarkedPlayer } from '../../../src/bookmarks/storage';
-import { useHeadToHead, type H2HStats, type H2HMatch } from '../../../src/hooks/useHeadToHead';
+} from '../../../../src/api/ffbad';
+import { useSession } from '../../../../src/auth/context';
+import { useBookmarks } from '../../../../src/bookmarks/context';
+import { useConnectivity } from '../../../../src/connectivity/context';
+import { cacheGet, cacheSet } from '../../../../src/cache/storage';
+import { Card } from '../../../../src/components';
+import type { BookmarkedPlayer } from '../../../../src/bookmarks/storage';
+import { useHeadToHead, type H2HStats, type H2HMatch } from '../../../../src/hooks/useHeadToHead';
 
 // ============================================================
 // Discipline colors (matches dashboard)
