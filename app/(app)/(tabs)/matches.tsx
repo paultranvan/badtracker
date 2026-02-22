@@ -19,6 +19,7 @@ import Animated, {
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { useSession } from '../../../src/auth/context';
 import {
   useMatchHistory,
   type MatchItem,
@@ -72,6 +73,8 @@ type RenderItem =
 
 export default function MatchHistoryScreen() {
   const { t } = useTranslation();
+  const { session } = useSession();
+  const playerName = session ? `${session.prenom} ${session.nom}` : undefined;
   const scrollY = useSharedValue(0);
 
   // Level 1: expanded tournaments (show discipline rows)
@@ -236,10 +239,10 @@ export default function MatchHistoryScreen() {
             </View>
           );
         }
-        return <MatchCard match={item.match} />;
+        return <MatchCard match={item.match} playerName={playerName} />;
       }
     }
-  }, [expandedTournaments, expandedDisciplines, loadingDetails, detailCache, t]);
+  }, [expandedTournaments, expandedDisciplines, loadingDetails, detailCache, t, playerName]);
 
   // ----------------------------------------------------------
   // Loading state
@@ -540,9 +543,10 @@ function DisciplineRow({ discipline, tournament, t, isExpanded, isLoading, onTog
 
 interface MatchCardProps {
   match: MatchItem;
+  playerName?: string;
 }
 
-function MatchCard({ match }: MatchCardProps) {
+function MatchCard({ match, playerName }: MatchCardProps) {
   const isWin = match.isWin === true;
   const isLoss = match.isWin === false;
 
@@ -592,7 +596,7 @@ function MatchCard({ match }: MatchCardProps) {
               </Text>
             ) : (
               <Text className={`text-[13px] ${isWin ? 'font-bold text-gray-900' : 'text-gray-700'}`}>
-                {'\u2022 You'}
+                {playerName ?? 'You'}
               </Text>
             )}
           </View>
