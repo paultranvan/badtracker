@@ -20,8 +20,8 @@ Added below the Rankings section on the player profile screen. Hidden when viewi
 
 Two-tab segment control:
 
-- **⚔️ Against** — matches where you were opponents
-- **🤝 Together** — matches where you were partners (doubles/mixed only)
+- **Against** — matches where you were opponents
+- **Together** — matches where you were partners (doubles/mixed only)
 
 Each tab shows:
 - Aggregate W-L count with win rate bar (green/red split)
@@ -32,11 +32,11 @@ Each tab shows:
 ### Visual Design
 
 **Segment control:**
-- `⚔️ Against (4)` / `🤝 Together (7)` — count shown inline
+- Two pills: `⚔️ Against (4)` / `🤝 Together (7)` — count shown inline
 - Active pill: filled primary blue, white text
 - Inactive pill: gray border, muted text
 
-**Summary card:**
+**Summary card (Against tab):**
 
 ```
 ┌─────────────────────────────────────────┐
@@ -54,7 +54,7 @@ Each tab shows:
 └─────────────────────────────────────────┘
 ```
 
-For "Together" tab — same layout but only D and M mini-cards (can't play singles together).
+**Summary card (Together tab):**
 
 ```
 ┌─────────────────────────────────────────┐
@@ -64,7 +64,7 @@ For "Together" tab — same layout but only D and M mini-cards (can't play singl
 │  ████████████░░░░░░  71%                │
 │                                         │
 │  ┌─────┐  ┌─────┐                      │
-│  │D 3-1│  │M 2-1│                      │
+│  │D 3-1│  │M 2-1│                      │  no Singles (can't play together)
 │  │green│  │amber│                      │
 │  └─────┘  └─────┘                      │
 │                                         │
@@ -74,7 +74,7 @@ For "Together" tab — same layout but only D and M mini-cards (can't play singl
 
 **Match list items:**
 - Left border colored by discipline (blue=S, green=D, amber=M)
-- Win: green accent + ✓ badge. Loss: red accent + ✗ badge
+- Win: green accent + checkmark badge. Loss: red accent + cross badge
 - Shows: date, tournament name, score, points gained/lost
 - Against tab: "vs Paul TRAN-VAN"
 - Together tab: "with Paul TRAN-VAN vs [opponents]"
@@ -100,7 +100,7 @@ Identical to the user's Matches tab:
 - `StatsHeader` with collapsible win rate bar
 - Discipline filter chips with counts: All / Singles / Doubles / Mixed
 - Season picker (horizontal scroll)
-- Two-level accordion: Tournament → Discipline → `DetailMatchCard`
+- Two-level accordion: Tournament > Discipline > `DetailMatchCard`
 - Lazy detail loading with spinners
 - Pull-to-refresh
 
