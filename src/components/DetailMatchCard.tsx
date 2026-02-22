@@ -5,9 +5,10 @@ import { type MatchItem, splitSetScores } from '../utils/matchHistory';
 interface DetailMatchCardProps {
   match: MatchItem;
   nested?: boolean;
+  playerName?: string;
 }
 
-export function DetailMatchCard({ match, nested = true }: DetailMatchCardProps) {
+export function DetailMatchCard({ match, nested = true, playerName }: DetailMatchCardProps) {
   const isWin = match.isWin === true;
   const isLoss = match.isWin === false;
 
@@ -18,7 +19,7 @@ export function DetailMatchCard({ match, nested = true }: DetailMatchCardProps) 
 
   // Points display
   const pointsText = match.pointsImpact != null && match.pointsImpact !== 0
-    ? `~${match.pointsImpact > 0 ? '+' : ''}${match.pointsImpact.toFixed(1)}`
+    ? `${match.pointsImpact > 0 ? '+' : ''}${match.pointsImpact.toFixed(1)}`
     : null;
   const pointsColor = match.pointsImpact != null && match.pointsImpact >= 0 ? 'text-win' : 'text-loss';
 
@@ -57,7 +58,7 @@ export function DetailMatchCard({ match, nested = true }: DetailMatchCardProps) 
               </Text>
             ) : (
               <Text className={`text-[13px] ${isWin ? 'font-bold text-gray-900' : 'text-gray-700'}`}>
-                {'\u2022 You'}
+                {playerName ?? 'You'}
               </Text>
             )}
           </View>
