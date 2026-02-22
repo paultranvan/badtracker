@@ -405,15 +405,16 @@ async function enrichWithDetails(
  * Also returns _rawItems for lazy detail loading later.
  */
 export async function getResultsByLicence(
-  licence: string
+  licence: string,
+  knownPersonId?: string
 ): Promise<ResultByLicenceResponse & { _rawItems?: Array<Record<string, unknown>> }> {
   const session = requireSession();
 
-  // For current user, use their personId
-  const personId = licence === session.licence ? session.personId : null;
+  // Use provided personId, or fall back to current user's personId if licence matches
+  const personId = knownPersonId ?? (licence === session.licence ? session.personId : null);
 
   if (!personId) {
-    // For other players, we'd need their personId — return empty for now
+    // For other players without a known personId, we can't fetch results
     return { Retour: [] };
   }
 
@@ -421,7 +422,7 @@ export async function getResultsByLicence(
     const data = await bridgeGet(
       `/api/person/${personId}/result/Decade`,
       session.accessToken,
-      personId
+      session.personId  // Always the logged-in user's personId
     );
 
     if (!data) {
