@@ -556,9 +556,16 @@ function expandWithDetail(
       setScoresStr = sets.join(' / ');
     }
 
-    // Round info
-    const roundName = match.roundPositionName as string | undefined
-      ?? match.roundName as string | undefined;
+    // Combine roundName + roundPositionName for pool-stage matches
+    // e.g. roundName="Poule", roundPositionName="1" → "Poule 1"
+    const baseRoundName = match.roundName as string | undefined;
+    const roundPosition = match.roundPositionName as string | undefined;
+    let roundName: string | undefined;
+    if (baseRoundName && roundPosition) {
+      roundName = `${baseRoundName} ${roundPosition}`;
+    } else {
+      roundName = roundPosition ?? baseRoundName;
+    }
 
     // WinPoints from the user's entry in the detail
     const userEntry = userSide[loggedInPersonId];
