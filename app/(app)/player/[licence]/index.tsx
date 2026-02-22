@@ -198,7 +198,7 @@ function HeadToHeadSection({
           onPress={() => setH2hTab('against')}
         >
           <Text className={`text-body font-medium ${h2hTab === 'against' ? 'text-white' : 'text-gray-700'}`}>
-            {t('player.h2hAgainst')} ({againstCount})
+            ⚔️ {t('player.h2hAgainst')} ({againstCount})
           </Text>
         </Pressable>
         <Pressable
@@ -208,7 +208,7 @@ function HeadToHeadSection({
           onPress={() => setH2hTab('together')}
         >
           <Text className={`text-body font-medium ${h2hTab === 'together' ? 'text-white' : 'text-gray-700'}`}>
-            {t('player.h2hTogether')} ({togetherCount})
+            🤝 {t('player.h2hTogether')} ({togetherCount})
           </Text>
         </Pressable>
       </View>
@@ -219,7 +219,7 @@ function HeadToHeadSection({
         <Card className="p-4">
           {/* Summary */}
           <Text className="text-body text-gray-500 mb-1">
-            {h2hTab === 'against' ? t('player.h2hAgainst') : t('player.h2hTogether')} {playerName}
+            {h2hTab === 'against' ? `⚔️ ${t('player.h2hAgainst')}` : `🤝 ${t('player.h2hTogether')}`} {playerName}
           </Text>
           <View className="flex-row items-baseline gap-2">
             <Text className="text-[22px] font-bold text-win">
@@ -261,7 +261,7 @@ function HeadToHeadSection({
       ) : (
         <Card className="p-4 items-center">
           <Text className="text-body text-gray-400">
-            {h2hTab === 'against' ? t('player.h2hNeverFaced') : t('player.h2hNeverTeamed')}
+            {h2hTab === 'against' ? `⚔️ ${t('player.h2hNeverFaced')}` : `🤝 ${t('player.h2hNeverTeamed')}`}
           </Text>
         </Card>
       )}
@@ -597,7 +597,7 @@ export default function PlayerProfileScreen() {
             }
           }}
         >
-          <Text className="text-body font-medium text-primary">{t('player.seeAllMatches')} ›</Text>
+          <Text className="text-body font-medium text-primary">📋 {t('player.seeAllMatches')} ›</Text>
         </Pressable>
       )}
     </ScrollView>
