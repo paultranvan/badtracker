@@ -26,7 +26,7 @@ import {
   type DisciplineGroup,
   type DisciplineFilter,
 } from '../../../src/hooks/useMatchHistory';
-import { splitSetScores, type SplitScore } from '../../../src/utils/matchHistory';
+import { splitSetScores } from '../../../src/utils/matchHistory';
 
 // ============================================================
 // Constants
@@ -226,7 +226,7 @@ export default function MatchHistoryScreen() {
             </View>
           );
         }
-        return <MatchCard match={item.match} t={t} />;
+        return <MatchCard match={item.match} />;
       }
     }
   }, [expandedTournaments, expandedDisciplines, loadingDetails, detailCache, t]);
@@ -524,139 +524,127 @@ function DisciplineRow({ discipline, tournament, t, isExpanded, isLoading, onTog
 }
 
 // ============================================================
-// Match Card (level 3 — expanded detail)
+// Match Card (level 3 — compact myffbad.fr-inspired)
 // ============================================================
 
 interface MatchCardProps {
   match: MatchItem;
-  t: (key: string, opts?: Record<string, unknown>) => string;
 }
 
-function MatchCard({ match, t }: MatchCardProps) {
+function MatchCard({ match }: MatchCardProps) {
   const isWin = match.isWin === true;
   const isLoss = match.isWin === false;
 
-  const badgeBg = isWin ? 'bg-win' : isLoss ? 'bg-loss' : 'bg-gray-300';
-  const badgeText = isWin ? t('matchHistory.victory') : isLoss ? t('matchHistory.defeat') : '?';
+  // Border and indicator colors
+  const borderColor = isWin ? 'border-l-win' : isLoss ? 'border-l-loss' : 'border-l-gray-300';
+  const emoji = isWin ? '\ud83d\udc4d' : isLoss ? '\ud83d\udc4e' : '';
+  const emojiColor = isWin ? 'text-win' : 'text-loss';
 
-  const pointsText = match.pointsImpact != null
-    ? (match.pointsImpact >= 0 ? `+${match.pointsImpact.toFixed(1)}` : match.pointsImpact.toFixed(1)) + ' pts'
+  // Points display
+  const pointsText = match.pointsImpact != null && match.pointsImpact !== 0
+    ? `~${match.pointsImpact > 0 ? '+' : ''}${match.pointsImpact.toFixed(1)}`
     : null;
-  const pointsClass = match.pointsImpact != null && match.pointsImpact >= 0 ? 'text-win' : 'text-loss';
+  const pointsColor = match.pointsImpact != null && match.pointsImpact >= 0 ? 'text-win' : 'text-loss';
 
+  // Parse set scores
   const scores = splitSetScores(match);
+
+  // Build team names
+  const userTeamName = match.partner ? match.partner : null;
+
+  // Opponent team
   const opponentName = match.opponent
-    ? match.opponent + (match.opponent2 ? ` / ${match.opponent2}` : '')
-    : '-';
+    ? match.opponent + (match.opponent2 ? `  /  ${match.opponent2}` : '')
+    : null;
 
   return (
-    <View className={`mx-3 my-1 rounded-xl border ${isWin ? 'border-win/30 bg-win/5' : isLoss ? 'border-loss/30 bg-loss/5' : 'border-gray-200 bg-gray-50'} p-3`}>
-      {/* Header: Date + Round + W/L badge */}
-      <View className="flex-row justify-between items-center mb-2">
-        <View className="flex-row items-center gap-2">
-          {match.date ? (
-            <Text className="text-[13px] text-muted">{match.date}</Text>
-          ) : null}
-          {match.round ? (
-            <Text className="text-caption text-muted">{'\u2022'} {match.round}</Text>
-          ) : null}
-        </View>
-        <View className={`px-2.5 py-1 rounded-full ${badgeBg}`}>
-          <Text className="text-[11px] font-bold text-white">{badgeText}</Text>
-        </View>
-      </View>
-
-      {/* Partner (doubles/mixed only) */}
-      {match.partner ? (
-        <View className="flex-row items-center mb-1.5">
-          <Ionicons name="people-outline" size={14} color="#64748b" style={{ marginRight: 6 }} />
-          <Text className="text-[14px] font-medium text-gray-700" numberOfLines={1}>
-            {match.partner}
+    <View className={`ml-10 mr-3 border-l-[3px] ${borderColor} border-b border-b-gray-100`}>
+      <View className="px-3 py-2">
+        {/* Header: Round + Points */}
+        <View className="flex-row justify-between items-center mb-1">
+          <Text className="text-[12px] text-muted" numberOfLines={1}>
+            {match.round ?? match.date ?? ''}
           </Text>
-        </View>
-      ) : null}
-
-      {/* Opponent */}
-      <View className="flex-row items-center mb-2">
-        <Text className="text-[13px] text-gray-400 mr-1.5">{t('matchHistory.vs')}</Text>
-        {match.opponentLicence ? (
-          <Pressable onPress={() => router.push(`/player/${match.opponentLicence}`)}>
-            <Text className="text-[14px] font-medium text-primary" numberOfLines={1}>
-              {opponentName}
-            </Text>
-          </Pressable>
-        ) : (
-          <Text className="text-[14px] font-medium text-gray-700" numberOfLines={1}>
-            {opponentName}
-          </Text>
-        )}
-      </View>
-
-      {/* Score + Points row */}
-      {scores ? (
-        <View>
-          {/* Tennis-style scoreboard rows */}
-          <ScoreboardRow scores={scores} side="user" />
-          <ScoreboardRow scores={scores} side="opponent" />
           {pointsText ? (
-            <View className={`self-end mt-1 px-2.5 py-1 rounded-lg ${match.pointsImpact != null && match.pointsImpact >= 0 ? 'bg-win/10' : 'bg-loss/10'}`}>
-              <Text className={`text-[14px] font-bold ${pointsClass}`} style={{ fontVariant: ['tabular-nums'] }}>
-                {pointsText}
-              </Text>
-            </View>
+            <Text className={`text-[12px] font-semibold ${pointsColor}`} style={{ fontVariant: ['tabular-nums'] }}>
+              {pointsText}
+            </Text>
           ) : null}
         </View>
-      ) : (
-        <View className="flex-row justify-between items-center">
-          {match.score && !match.score.includes('pts') ? (
-            <Text className="text-[14px] font-bold text-gray-900" style={{ fontVariant: ['tabular-nums'] }}>
-              {match.score}
-            </Text>
-          ) : (
-            <View />
-          )}
-          {pointsText ? (
-            <View className={`px-2.5 py-1 rounded-lg ${match.pointsImpact != null && match.pointsImpact >= 0 ? 'bg-win/10' : 'bg-loss/10'}`}>
-              <Text className={`text-[14px] font-bold ${pointsClass}`} style={{ fontVariant: ['tabular-nums'] }}>
-                {pointsText}
+
+        {/* User team row */}
+        <View className="flex-row items-center justify-between mb-0.5">
+          <View className="flex-row items-center flex-1 mr-2">
+            {userTeamName ? (
+              <Text className={`text-[13px] ${isWin ? 'font-bold text-gray-900' : 'text-gray-700'} flex-1`} numberOfLines={1}>
+                {userTeamName}
               </Text>
-            </View>
-          ) : null}
-        </View>
-      )}
-    </View>
-  );
-}
-
-// ============================================================
-// Scoreboard Row (tennis-style score boxes)
-// ============================================================
-
-interface ScoreboardRowProps {
-  scores: SplitScore[];
-  side: 'user' | 'opponent';
-}
-
-function ScoreboardRow({ scores, side }: ScoreboardRowProps) {
-  return (
-    <View className="flex-row gap-1 mb-0.5">
-      {scores.map((s, i) => {
-        const val = side === 'user' ? s.userScore : s.opponentScore;
-        const wonSet = side === 'user' ? s.userWonSet : !s.userWonSet;
-        return (
-          <View
-            key={i}
-            className={`w-7 h-7 rounded-sm items-center justify-center ${wonSet ? 'bg-gray-800' : 'bg-gray-100'}`}
-          >
-            <Text
-              className={`text-[13px] font-semibold ${wonSet ? 'text-white' : 'text-gray-400'}`}
-              style={{ fontVariant: ['tabular-nums'] }}
-            >
-              {val}
-            </Text>
+            ) : (
+              <Text className={`text-[13px] ${isWin ? 'font-bold text-gray-900' : 'text-gray-700'}`}>
+                {'\u2022 You'}
+              </Text>
+            )}
           </View>
-        );
-      })}
+          {/* User scores */}
+          {scores ? (
+            <View className="flex-row gap-1">
+              {scores.map((s, i) => (
+                <Text
+                  key={i}
+                  className={`text-[13px] w-5 text-center ${s.userWonSet ? 'font-bold text-gray-900' : 'text-gray-400'}`}
+                  style={{ fontVariant: ['tabular-nums'] }}
+                >
+                  {s.userScore}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+        </View>
+
+        {/* Opponent team row */}
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center flex-1 mr-2">
+            {opponentName ? (
+              match.opponentLicence ? (
+                <Pressable className="flex-1" onPress={() => router.push(`/player/${match.opponentLicence}`)}>
+                  <Text className={`text-[13px] ${isLoss ? 'font-bold text-gray-900' : 'text-gray-700'}`} numberOfLines={1}>
+                    {opponentName}
+                  </Text>
+                </Pressable>
+              ) : (
+                <Text className={`text-[13px] ${isLoss ? 'font-bold text-gray-900' : 'text-gray-700'} flex-1`} numberOfLines={1}>
+                  {opponentName}
+                </Text>
+              )
+            ) : (
+              <Text className="text-[13px] text-gray-400">-</Text>
+            )}
+            {/* Win/loss emoji */}
+            {emoji ? (
+              <Text className={`text-[13px] ml-1.5 ${emojiColor}`}>{emoji}</Text>
+            ) : null}
+          </View>
+          {/* Opponent scores */}
+          {scores ? (
+            <View className="flex-row gap-1">
+              {scores.map((s, i) => (
+                <Text
+                  key={i}
+                  className={`text-[13px] w-5 text-center ${!s.userWonSet ? 'font-bold text-gray-900' : 'text-gray-400'}`}
+                  style={{ fontVariant: ['tabular-nums'] }}
+                >
+                  {s.opponentScore}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+        </View>
+
+        {/* Duration (if available) */}
+        {match.duration ? (
+          <Text className="text-[11px] text-muted mt-0.5 self-end">{match.duration}</Text>
+        ) : null}
+      </View>
     </View>
   );
 }
