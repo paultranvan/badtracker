@@ -38,6 +38,29 @@ export interface MatchSection {
 }
 
 /**
+ * A discipline group within a tournament section (level 2 accordion).
+ */
+export interface DisciplineGroup {
+  discipline: 'simple' | 'double' | 'mixte';
+  wins: number;
+  losses: number;
+  points: number;
+  matches: MatchItem[];
+  /** Raw result items for lazy detail loading — kept from API response */
+  _rawItems?: Array<Record<string, unknown>>;
+}
+
+/**
+ * A tournament section with nested discipline groups (two-level accordion).
+ */
+export interface TournamentSection {
+  title: string;
+  date: string;
+  totalPoints: number;
+  disciplines: DisciplineGroup[];
+}
+
+/**
  * Win/loss statistics computed from a set of matches.
  */
 export interface WinLossStats {
@@ -114,11 +137,11 @@ function parsePoints(value: unknown): number | undefined {
  */
 function parseSetScores(value: unknown): string[] | undefined {
   if (typeof value !== 'string' || !value.trim()) return undefined;
-  // Split on spaces or commas
+  // Split on " / " first (detail API format: "21-17 / 21-18"), then spaces/commas
   const sets = value
-    .split(/[\s,]+/)
+    .split(/\s*\/\s*|\s*,\s*|\s+/)
     .map((s) => s.trim())
-    .filter((s) => s.length > 0);
+    .filter((s) => /^\d+-\d+$/.test(s));
   return sets.length > 0 ? sets : undefined;
 }
 
@@ -178,7 +201,6 @@ export function toFullMatchItem(
  * Matches within sections are kept in their original order.
  */
 export function groupByTournament(matches: MatchItem[]): MatchSection[] {
-  if (!Array.isArray(matches)) return [];
   const groups = new Map<string, MatchItem[]>();
 
   for (const match of matches) {
@@ -302,6 +324,20 @@ export function getSeasonFromDate(dateStr: string): string {
 }
 
 /**
+ * Get the current French badminton season based on today's date.
+ * Season runs September through August.
+ */
+export function getCurrentSeason(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-indexed
+  if (month >= 8) {
+    return `${year}-${year + 1}`;
+  }
+  return `${year - 1}-${year}`;
+}
+
+/**
  * Get all available seasons from match dates, sorted descending (most recent first).
  */
 export function getAvailableSeasons(matches: MatchItem[]): string[] {
@@ -345,6 +381,122 @@ export function getDisciplineCounts(
   }
 
   return counts;
+}
+
+// ============================================================
+// Nested Grouping (two-level accordion)
+// ============================================================
+
+const DISCIPLINE_ORDER: Array<'simple' | 'double' | 'mixte'> = ['simple', 'double', 'mixte'];
+
+/**
+ * Detect if a tournament name refers to Interclub competitions.
+ * Interclubs span multiple months, so their sort date should be the latest match date.
+ */
+function isInterclub(name: string): boolean {
+  return /interclub/i.test(name);
+}
+
+/**
+ * Parse a date string (ISO or DD/MM/YYYY) to a comparable ISO string for sorting.
+ * Returns empty string if unparseable.
+ */
+function toSortableDate(dateStr: string | undefined): string {
+  if (!dateStr) return '';
+  // ISO format
+  if (dateStr.includes('-') && dateStr.length >= 10) return dateStr.slice(0, 10);
+  // French format DD/MM/YYYY
+  const fr = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (fr) return `${fr[3]}-${fr[2].padStart(2, '0')}-${fr[1].padStart(2, '0')}`;
+  return '';
+}
+
+/**
+ * Group matches into a two-level structure: Tournament → Discipline → Matches.
+ *
+ * Tournaments are sorted by date descending. For interclubs, the sort date is
+ * the latest match date within that tournament.
+ * Disciplines within each tournament are in fixed order: Simple, Double, Mixed.
+ */
+export function groupByTournamentNested(matches: MatchItem[]): TournamentSection[] {
+  if (!Array.isArray(matches)) return [];
+  // Group by tournament name
+  const groups = new Map<string, MatchItem[]>();
+  for (const match of matches) {
+    const key = match.tournament ?? 'unknown';
+    const existing = groups.get(key);
+    if (existing) {
+      existing.push(match);
+    } else {
+      groups.set(key, [match]);
+    }
+  }
+
+  const sections: TournamentSection[] = [];
+
+  for (const [tournament, tournamentMatches] of groups) {
+    const title = tournament === 'unknown' ? '' : tournament;
+    const interclub = isInterclub(title);
+
+    // Compute tournament date
+    let date: string;
+    if (interclub) {
+      // Use latest match date for interclubs
+      const sortableDates = tournamentMatches
+        .map((m) => toSortableDate(m._rawDate ?? m.date))
+        .filter(Boolean);
+      const latestISO = sortableDates.sort().reverse()[0] ?? '';
+      // Format back to DD/MM/YYYY for display
+      if (latestISO) {
+        const [y, mo, d] = latestISO.split('-');
+        date = `${d}/${mo}/${y}`;
+      } else {
+        date = tournamentMatches[0]?.tournamentDate ?? tournamentMatches[0]?.date ?? '';
+      }
+    } else {
+      date = tournamentMatches[0]?.tournamentDate ?? tournamentMatches[0]?.date ?? '';
+    }
+
+    // Group by discipline
+    const byDisc = new Map<'simple' | 'double' | 'mixte', MatchItem[]>();
+    for (const m of tournamentMatches) {
+      if (!m.discipline) continue;
+      const existing = byDisc.get(m.discipline);
+      if (existing) {
+        existing.push(m);
+      } else {
+        byDisc.set(m.discipline, [m]);
+      }
+    }
+
+    const disciplines: DisciplineGroup[] = [];
+    for (const disc of DISCIPLINE_ORDER) {
+      const discMatches = byDisc.get(disc);
+      if (!discMatches) continue;
+
+      const wins = discMatches.filter((m) => m.isWin === true).length;
+      const losses = discMatches.filter((m) => m.isWin === false).length;
+      const points = discMatches.reduce((sum, m) => sum + (m.pointsImpact ?? 0), 0);
+
+      disciplines.push({ discipline: disc, wins, losses, points, matches: discMatches });
+    }
+
+    const totalPoints = disciplines.reduce((sum, d) => sum + d.points, 0);
+
+    sections.push({ title, date, totalPoints, disciplines });
+  }
+
+  // Sort by date descending
+  sections.sort((a, b) => {
+    const dateA = toSortableDate(a.date);
+    const dateB = toSortableDate(b.date);
+    if (!dateA && !dateB) return 0;
+    if (!dateA) return 1;
+    if (!dateB) return -1;
+    return dateB.localeCompare(dateA);
+  });
+
+  return sections;
 }
 
 // ============================================================

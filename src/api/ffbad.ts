@@ -353,12 +353,61 @@ export async function getPlayerProfile(
 // ============================================================
 
 /**
+ * Enrich result items with detailed match data (opponent names, set scores, etc.)
+ * by calling /result/detail for each item in parallel.
+ *
+ * Each detail call requires: date (YYYY-MM-DD), discipline (number), bracketId.
+ * Items missing these IDs are returned unchanged.
+ * Detail failures are silently ignored (the item keeps its original data).
+ */
+async function enrichWithDetails(
+  items: Array<Record<string, unknown>>,
+  personId: string
+): Promise<Array<Record<string, unknown>>> {
+  const session = requireSession();
+
+  // Fetch details in parallel, with a concurrency limit to avoid flooding
+  const detailPromises = items.map(async (item) => {
+    const date = item.date as string | null;
+    const disciplineId = item.disciplineId as number | null;
+    const bracketId = item.bracketId as number | null;
+
+    // Skip items without required IDs
+    if (!date || disciplineId == null || bracketId == null) return item;
+
+    try {
+      const dateOnly = date.includes('T') ? date.split('T')[0] : date;
+      const detail = await bridgePost(
+        `/api/person/${personId}/result/detail`,
+        { date: dateOnly, discipline: disciplineId, bracketId },
+        session.accessToken,
+        session.personId
+      );
+
+      if (!detail || typeof detail !== 'object') return item;
+      const d = detail as Record<string, unknown>;
+
+      return { ...item, _detail: d };
+    } catch {
+      return item;
+    }
+  });
+
+  return Promise.all(detailPromises);
+}
+
+/**
  * Get match results for a player by licence number.
- * Uses myffbad.fr /api/person/{personId}/result endpoint.
+ * Uses myffbad.fr /api/person/{personId}/result/Decade endpoint which returns
+ * 10 years of results with all IDs populated (eventId, disciplineId, bracketId, roundId)
+ * and discipline names like "SIMPLE HOMMES", "DOUBLE HOMMES", "MIXTE".
+ *
+ * Returns raw result items WITHOUT detail enrichment — details are fetched lazily.
+ * Also returns _rawItems for lazy detail loading later.
  */
 export async function getResultsByLicence(
   licence: string
-): Promise<ResultByLicenceResponse> {
+): Promise<ResultByLicenceResponse & { _rawItems?: Array<Record<string, unknown>> }> {
   const session = requireSession();
 
   // For current user, use their personId
@@ -371,7 +420,7 @@ export async function getResultsByLicence(
 
   try {
     const data = await bridgeGet(
-      `/api/person/${personId}/result`,
+      `/api/person/${personId}/result/Decade`,
       session.accessToken,
       personId
     );
@@ -386,14 +435,156 @@ export async function getResultsByLicence(
       return { Retour: 'No results' };
     }
 
-    // Transform to ResultItem format expected by consumers
-    const items = (results as Array<Record<string, unknown>>).map(transformResultItem);
+    const rawItems = results as Array<Record<string, unknown>>;
 
-    return { Retour: items };
+    // Transform to the ResultItem format expected by consumers (no detail enrichment)
+    const items = rawItems.map(transformResultItem);
+
+    return { Retour: items, _rawItems: rawItems };
   } catch (err) {
     if (err instanceof AuthError || err instanceof NetworkError) throw err;
     return { Retour: 'Error fetching results' };
   }
+}
+
+/**
+ * Fetch detail data for a set of result items (on-demand, when a discipline group is expanded).
+ * Calls /result/detail for each item in parallel, then expands into individual matches.
+ *
+ * Items missing required IDs (date, disciplineId, bracketId) are returned as-is.
+ */
+export async function getMatchDetailsForBrackets(
+  items: Array<Record<string, unknown>>,
+  personId: string
+): Promise<Array<Record<string, unknown>>> {
+  const enriched = await enrichWithDetails(items, personId);
+  const expanded = enriched.flatMap((item) => expandWithDetail(item, personId));
+  return expanded.map(transformResultItem);
+}
+
+/**
+ * Fetch detailed match data for a single result item.
+ * Uses POST /api/person/{personId}/result/detail with:
+ *   - date: YYYY-MM-DD format (not full ISO)
+ *   - discipline: disciplineId number (field name is "discipline", not "disciplineId")
+ *   - bracketId: bracket identifier from /result/actual
+ *
+ * Returns enriched data: opponent names/licences, set scores, round info, partner.
+ * Returns null if the detail endpoint fails (Hypercube limitation for some matches).
+ */
+export async function getMatchDetail(
+  personId: string,
+  date: string,
+  discipline: number,
+  bracketId: number
+): Promise<Record<string, unknown> | null> {
+  const session = requireSession();
+
+  try {
+    // Format date as YYYY-MM-DD (truncate time portion from ISO string)
+    const dateOnly = date.includes('T') ? date.split('T')[0] : date;
+
+    const data = await bridgePost(
+      `/api/person/${personId}/result/detail`,
+      { date: dateOnly, discipline, bracketId },
+      session.accessToken,
+      session.personId
+    );
+
+    if (!data || typeof data !== 'object') return null;
+    return data as Record<string, unknown>;
+  } catch {
+    // Hypercube service may fail for some matches — this is expected
+    return null;
+  }
+}
+
+/**
+ * Expand a single /result/actual item with its _detail array into individual match items.
+ *
+ * The detail response is an array of matches for that bracket (pool play, knockout rounds, etc.).
+ * Each detail match has top/bottom sides with player info. We find the logged-in user's side
+ * and extract opponent names, partner, set scores, and round info.
+ *
+ * If no detail data exists, returns the original item unchanged (as a single-element array).
+ */
+function expandWithDetail(
+  item: Record<string, unknown>,
+  loggedInPersonId: string
+): Array<Record<string, unknown>> {
+  const detail = item._detail;
+  if (!detail || !Array.isArray(detail) || detail.length === 0) {
+    // No detail data — return item as-is
+    return [item];
+  }
+
+  return (detail as Array<Record<string, unknown>>).map((match) => {
+    const top = match.top as Record<string, unknown> | undefined;
+    const bottom = match.bottom as Record<string, unknown> | undefined;
+
+    if (!top || !bottom) return { ...item };
+
+    const topPersons = top.Persons as Record<string, Record<string, unknown>> | undefined;
+    const bottomPersons = bottom.Persons as Record<string, Record<string, unknown>> | undefined;
+
+    if (!topPersons || !bottomPersons) return { ...item };
+
+    // Determine which side the logged-in user is on
+    const userInTop = loggedInPersonId in topPersons;
+    const userSide = userInTop ? topPersons : bottomPersons;
+    const opponentSide = userInTop ? bottomPersons : topPersons;
+
+    // Extract opponent name(s) and licence(s)
+    const opponentEntries = Object.entries(opponentSide);
+    const opp1 = opponentEntries[0]?.[1];
+    const opp2 = opponentEntries.length > 1 ? opponentEntries[1]?.[1] : undefined;
+
+    // Extract partner (same side, other person — for doubles/mixed)
+    const partnerEntries = Object.entries(userSide).filter(([id]) => id !== loggedInPersonId);
+    const partner = partnerEntries[0]?.[1];
+
+    // Extract set scores — detail gives scoreWinner/scoreLoser arrays
+    const scoreWinner = match.scoreWinner as string[] | undefined;
+    const scoreLoser = match.scoreLoser as string[] | undefined;
+    const userIsWinner = userInTop ? top.IsWinner === '1' : bottom.IsWinner === '1';
+
+    let setScoresStr: string | undefined;
+    if (scoreWinner && scoreLoser && scoreWinner.length > 0) {
+      // Build set scores from the user's perspective
+      const userScores = userIsWinner ? scoreWinner : scoreLoser;
+      const oppScores = userIsWinner ? scoreLoser : scoreWinner;
+      const sets = userScores.map((s, i) => `${s}-${oppScores[i] ?? '?'}`);
+      setScoresStr = sets.join(' / ');
+    }
+
+    // Round info
+    const roundName = match.roundPositionName as string | undefined
+      ?? match.roundName as string | undefined;
+
+    // WinPoints from the user's entry in the detail
+    const userEntry = userSide[loggedInPersonId];
+    const detailWinPoints = userEntry?.WinPoints as number | undefined;
+
+    return {
+      ...item,
+      // Clear parent-level winPoint — it's the aggregate for the whole bracket,
+      // not per-match. Use detail-level WinPoints instead (if available).
+      winPoint: detailWinPoints ?? undefined,
+      // Override with detail data
+      _detailOpponent: opp1?.PersonName as string | undefined,
+      _detailOpponentLicence: opp1?.PersonLicence as string | undefined,
+      _detailOpponent2: opp2?.PersonName as string | undefined,
+      _detailOpponent2Licence: opp2?.PersonLicence as string | undefined,
+      _detailPartner: partner?.PersonName as string | undefined,
+      _detailPartnerLicence: partner?.PersonLicence as string | undefined,
+      _detailSetScores: setScoresStr,
+      _detailScore: match.score as string | undefined,
+      _detailRound: roundName,
+      _detailIsWinner: userIsWinner,
+      // Remove _detail to avoid passing raw data downstream
+      _detail: undefined,
+    };
+  });
 }
 
 /**
@@ -415,13 +606,37 @@ function formatDateFR(dateStr: string | null | undefined): string | undefined {
  * myffbad.fr event names often contain discipline keywords or use naming patterns
  * like "SH" (Simple Homme), "DD" (Double Dame), "MX" (Mixte), etc.
  */
+/**
+ * Map a full discipline string from myffbad.fr to a short code.
+ * E.g. "SIMPLE HOMMES" → "S", "DOUBLE HOMMES" → "D", "MIXTE" → "M"
+ */
+function mapDisciplineCode(disc: string): string | undefined {
+  const upper = disc.toUpperCase();
+  if (upper.includes('SIMPLE')) return 'S';
+  if (upper.includes('DOUBLE')) return 'D';
+  if (upper.includes('MIXTE')) return 'M';
+  return undefined;
+}
+
 function inferDisciplineFromName(name: string | undefined, subName: string | undefined): string | undefined {
   const text = `${name ?? ''} ${subName ?? ''}`.toUpperCase();
   // Check for common discipline indicators in tournament/matchup names
-  if (/\bSIMPLE\b|\bSH\b|\bSD\b/.test(text)) return 'S';
-  if (/\bDOUBLE\b|\bDH\b|\bDD\b/.test(text)) return 'D';
-  if (/\bMIXTE\b|\bMX\b|\bDMX\b/.test(text)) return 'M';
+  // Includes Interclub patterns: SH1, SD2, DH1, DD2, MX1, DMX1, etc.
+  if (/\bSIMPLE\b|\bSH\d?\b|\bSD\d?\b/.test(text)) return 'S';
+  if (/\bDOUBLE\b|\bDH\d?\b|\bDD\d?\b/.test(text)) return 'D';
+  if (/\bMIXTE\b|\bMX\d?\b|\bDMX\d?\b/.test(text)) return 'M';
   return undefined;
+}
+
+/**
+ * Parse interclub subName patterns like "94-CALB-2 contre 94-VBC-3"
+ * into a cleaner "CALB-2 vs VBC-3" format.
+ */
+function parseInterclubSubName(subName: string): { team1: string; team2: string } | null {
+  // Pattern: "XX-ABCD-N contre XX-EFGH-N" where XX=department, ABCD=club code, N=team number
+  const match = subName.match(/^\d{2,3}-([A-Z]+)-(\d+)\s+contre\s+\d{2,3}-([A-Z]+)-(\d+)$/i);
+  if (!match) return null;
+  return { team1: `${match[1]}-${match[2]}`, team2: `${match[3]}-${match[4]}` };
 }
 
 /**
@@ -443,9 +658,12 @@ function transformResultItem(raw: Record<string, unknown>): Record<string, unkno
   // Format the date for display (ISO → DD/MM/YYYY)
   const formattedDate = formatDateFR(raw.date as string | null | undefined);
 
-  // Try to get discipline from API field, or infer from event name
-  const discipline = (raw.discipline as string | null) ??
-    inferDisciplineFromName(raw.name as string | undefined, raw.subName as string | undefined);
+  // Map discipline from API (e.g. "SIMPLE HOMMES" → "S", "DOUBLE HOMMES" → "D", "MIXTE" → "M")
+  // or infer from event name as fallback
+  const rawDisc = raw.discipline as string | null;
+  const discipline = rawDisc
+    ? mapDisciplineCode(rawDisc)
+    : inferDisciplineFromName(raw.name as string | undefined, raw.subName as string | undefined);
 
   // Show winPoint as score indicator (e.g. "+43 pts" or "-7 pts")
   let score: string | undefined;
@@ -468,19 +686,54 @@ function transformResultItem(raw: Record<string, unknown>): Record<string, unkno
     }
   }
 
+  // Use detail data for opponent, partner, scores, round if available
+  const detailOpponent = raw._detailOpponent as string | undefined;
+  const detailOpponentLicence = raw._detailOpponentLicence as string | undefined;
+  const detailOpponent2 = raw._detailOpponent2 as string | undefined;
+  const detailOpponent2Licence = raw._detailOpponent2Licence as string | undefined;
+  const detailPartner = raw._detailPartner as string | undefined;
+  const detailPartnerLicence = raw._detailPartnerLicence as string | undefined;
+  const detailSetScores = raw._detailSetScores as string | undefined;
+  const detailScore = raw._detailScore as string | undefined;
+  const detailRound = raw._detailRound as string | undefined;
+  const detailIsWinner = raw._detailIsWinner as boolean | undefined;
+
+  // Override win/loss from detail if available (more reliable than winPoint sign)
+  if (detailIsWinner != null) {
+    resultat = detailIsWinner ? 'V' : 'D';
+  }
+
+  // Use detail score (e.g. "21-17 / 21-18") over winPoint-derived score
+  if (detailScore) {
+    score = detailScore;
+  }
+
+  // Clean up interclub opponent names (e.g. "94-CALB-2 contre 94-VSSM-6" → "CALB-2 vs VSSM-6")
+  const interclub = parseInterclubSubName(raw.subName as string ?? '');
+  const fallbackAdversaire = interclub
+    ? `${interclub.team1} vs ${interclub.team2}`
+    : raw.subName;
+
   return {
     Date: formattedDate,
+    DateCompetition: formattedDate,
     Epreuve: raw.name,
     Competition: raw.name,
     Discipline: discipline,
     Points: winPoint,
     Resultat: resultat,
     Score: score,
-    // subName often contains the matchup (e.g. "94-CALB-2 contre 94-VSSM-6")
-    Adversaire: raw.subName,
+    Adversaire: detailOpponent ?? fallbackAdversaire,
+    AdversaireLicence: detailOpponentLicence,
+    Adversaire2: detailOpponent2,
+    Adversaire2Licence: detailOpponent2Licence,
+    Partenaire: detailPartner,
+    PartenaireLicence: detailPartnerLicence,
+    Sets: detailSetScores,
+    Tour: detailRound,
     // Keep original date for season computation
     _rawDate: raw.date,
-    // Pass through all original fields
+    // Pass through all original fields (except _detail* which are consumed above)
     ...raw,
   };
 }
@@ -668,73 +921,115 @@ export async function getClubInfo(
  * Returns empty array if no members endpoint is found.
  */
 export async function getClubLeaderboard(
-  clubId: string
+  clubId: string,
+  clubInitials?: string
 ): Promise<ClubRankingResponse> {
   const session = requireSession();
 
   try {
-    // Try to get club members from various endpoints
-    // Non-existent endpoints return HTML (the SPA shell) instead of 404
-    const memberEndpoints = [
-      `/api/club/${clubId}/ranking/`,
-      `/api/club/${clubId}/members/`,
-      `/api/club/${clubId}/players/`,
-    ];
+    // Get club initials if not provided (needed for player search)
+    let initials = clubInitials;
+    if (!initials) {
+      const info = await getClubInfo(clubId);
+      initials = info?.initials || '';
+    }
 
-    let membersData: unknown = null;
-    for (const endpoint of memberEndpoints) {
+    if (!initials) {
+      return { Retour: [] };
+    }
+
+    // Fetch all pages of club members
+    let allPersons: Array<Record<string, unknown>> = [];
+    let currentPage = 0;
+    let totalPages = 1;
+
+    while (currentPage < totalPages) {
+      const result = await bridgePost(
+        '/api/search/',
+        { type: 'PERSON', text: initials, page: currentPage },
+        session.accessToken,
+        session.personId
+      );
+
+      if (!result || typeof result === 'string') break;
+
+      const data = result as Record<string, unknown>;
+      const persons = (data.persons ?? data.results ?? data.data ?? []) as Array<Record<string, unknown>>;
+
+      if (!Array.isArray(persons) || persons.length === 0) break;
+
+      allPersons = allPersons.concat(persons);
+
+      const reportedTotal = Number(data.totalPage ?? data.totalPages ?? 1);
+      if (reportedTotal > totalPages) {
+        totalPages = reportedTotal;
+      }
+
+      currentPage++;
+    }
+
+    if (allPersons.length === 0) {
+      return { Retour: [] };
+    }
+
+    // Deduplicate by licence (pages may overlap)
+    const seen = new Set<string>();
+    allPersons = allPersons.filter((raw) => {
+      const licence = String(raw.personLicence ?? raw.licence ?? '');
+      if (!licence || seen.has(licence)) return false;
+      seen.add(licence);
+      return true;
+    });
+
+    // Inject current user if missing from search results
+    if (!seen.has(session.licence)) {
       try {
-        const result = await bridgeGet(endpoint, session.accessToken, session.personId);
-        if (typeof result === 'string') continue;
-        if (result && typeof result === 'object') {
-          membersData = result;
-          break;
+        const userResult = await bridgePost(
+          '/api/search/',
+          { type: 'PERSON', text: session.licence },
+          session.accessToken,
+          session.personId
+        );
+        if (userResult && typeof userResult !== 'string') {
+          const userData = userResult as Record<string, unknown>;
+          const userPersons = (userData.persons ?? userData.results ?? []) as Array<Record<string, unknown>>;
+          const userMatch = userPersons.find(
+            (p) => String(p.personLicence ?? p.licence ?? '') === session.licence
+          );
+          if (userMatch) {
+            allPersons.push(userMatch);
+          }
         }
       } catch {
-        // Try next
+        // Silently ignore — user just won't appear in leaderboard
       }
     }
 
-    if (!membersData) {
-      return { Retour: [] };
-    }
+    // Map player search results to the expected leaderboard format.
+    // The search API returns nested objects:
+    //   { name, licence, rank: { simpleSubLevel, doubleSubLevel, mixteSubLevel },
+    //     club: { id, name, acronym }, ... }
+    const items = allPersons.map((raw) => {
+      const rank = (raw.rank as Record<string, unknown>) ?? {};
+      const club = (raw.club as Record<string, unknown>) ?? {};
+      const fullName = String(raw.personName ?? raw.name ?? '');
+      // Name format from search API is "LASTNAME Firstname"
+      const nameParts = fullName.split(' ');
+      const nom = nameParts[0] || '';
+      const prenom = nameParts.slice(1).join(' ') || '';
 
-    // Handle both array and object-with-numeric-keys responses
-    let members: Array<Record<string, unknown>>;
-    if (Array.isArray(membersData)) {
-      members = membersData as Array<Record<string, unknown>>;
-    } else if (typeof membersData === 'object') {
-      const obj = membersData as Record<string, unknown>;
-      const arr = obj.members ?? obj.players ?? obj.joueurs ?? obj.results ?? obj.data;
-      if (Array.isArray(arr)) {
-        members = arr as Array<Record<string, unknown>>;
-      } else {
-        const keys = Object.keys(obj).filter((k) => /^\d+$/.test(k));
-        if (keys.length > 0) {
-          members = keys.sort((a, b) => parseInt(a) - parseInt(b))
-            .map((k) => obj[k] as Record<string, unknown>);
-        } else {
-          return { Retour: [] };
-        }
-      }
-    } else {
-      return { Retour: [] };
-    }
-
-    const items = members.map((raw) => ({
-      Licence: String(raw.licence ?? raw.licenceNumber ?? raw.id ?? ''),
-      Nom: String(raw.lastName ?? raw.nom ?? raw.name ?? ''),
-      Prenom: String(raw.firstName ?? raw.prenom ?? ''),
-      Club: clubId,
-      NomClub: '',
-      ClassementSimple: String(raw.simpleSubLevel ?? raw.ClassementSimple ?? ''),
-      ClassementDouble: String(raw.doubleSubLevel ?? raw.ClassementDouble ?? ''),
-      ClassementMixte: String(raw.mixteSubLevel ?? raw.ClassementMixte ?? ''),
-      CPPHSimple: raw.simpleRate ?? raw.CPPHSimple,
-      CPPHDouble: raw.doubleRate ?? raw.CPPHDouble,
-      CPPHMixte: raw.mixteRate ?? raw.CPPHMixte,
-      ...raw,
-    }));
+      return {
+        Licence: String(raw.personLicence ?? raw.licence ?? ''),
+        Nom: nom,
+        Prenom: prenom,
+        Sex: raw.sex === 'HOMME' ? 'M' : raw.sex === 'FEMME' ? 'F' : String(raw.sex ?? ''),
+        Club: String(club.id ?? clubId),
+        NomClub: String(club.name ?? ''),
+        ClassementSimple: String(rank.simpleSubLevel ?? ''),
+        ClassementDouble: String(rank.doubleSubLevel ?? ''),
+        ClassementMixte: String(rank.mixteSubLevel ?? ''),
+      };
+    });
 
     return { Retour: items } as ClubRankingResponse;
   } catch (err) {
@@ -781,3 +1076,4 @@ export async function getClubList(): Promise<ClubListResponse> {
     return { Retour: 'Error fetching club list' };
   }
 }
+

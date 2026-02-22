@@ -1,10 +1,12 @@
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
-  SectionList,
+  FlatList,
   RefreshControl,
   Pressable,
   ActivityIndicator,
+  LayoutAnimation,
   type NativeSyntheticEvent,
   type NativeScrollEvent,
 } from 'react-native';
@@ -16,12 +18,15 @@ import Animated, {
 } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 import {
   useMatchHistory,
   type MatchItem,
-  type MatchSection,
+  type TournamentSection,
+  type DisciplineGroup,
   type DisciplineFilter,
 } from '../../../src/hooks/useMatchHistory';
+import { splitSetScores, type SplitScore } from '../../../src/utils/matchHistory';
 
 // ============================================================
 // Constants
@@ -40,6 +45,27 @@ const DISCIPLINE_FILTERS: Array<{
   { key: 'mixte', labelKey: 'matchHistory.mixte' },
 ];
 
+const DISC_LABELS: Record<string, string> = {
+  simple: 'matchHistory.simple',
+  double: 'matchHistory.double',
+  mixte: 'matchHistory.mixte',
+};
+
+const DISC_LETTERS: Record<string, string> = {
+  simple: 'S',
+  double: 'D',
+  mixte: 'M',
+};
+
+// ============================================================
+// Flat list item types for the two-level accordion
+// ============================================================
+
+type RenderItem =
+  | { type: 'tournament'; tournament: TournamentSection; key: string }
+  | { type: 'discipline'; tournament: TournamentSection; discipline: DisciplineGroup; key: string }
+  | { type: 'match'; match: MatchItem; discipline: DisciplineGroup; tournament: TournamentSection; key: string };
+
 // ============================================================
 // Main Screen
 // ============================================================
@@ -48,8 +74,50 @@ export default function MatchHistoryScreen() {
   const { t } = useTranslation();
   const scrollY = useSharedValue(0);
 
+  // Level 1: expanded tournaments (show discipline rows)
+  const [expandedTournaments, setExpandedTournaments] = useState<Set<string>>(new Set());
+  // Level 2: expanded disciplines (show match cards) — key format: "tournament:discipline"
+  const [expandedDisciplines, setExpandedDisciplines] = useState<Set<string>>(new Set());
+
+  const toggleTournament = (title: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedTournaments((prev) => {
+      const next = new Set(prev);
+      if (next.has(title)) {
+        next.delete(title);
+        // Collapse all disciplines within this tournament
+        setExpandedDisciplines((dp) => {
+          const nextDp = new Set(dp);
+          for (const key of dp) {
+            if (key.startsWith(`${title}:`)) nextDp.delete(key);
+          }
+          return nextDp;
+        });
+      } else {
+        next.add(title);
+      }
+      return next;
+    });
+  };
+
+  const toggleDiscipline = (tournamentTitle: string, disc: DisciplineGroup) => {
+    const key = `${tournamentTitle}:${disc.discipline}`;
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedDisciplines((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+        // Trigger lazy detail loading
+        loadDetails(tournamentTitle, disc);
+      }
+      return next;
+    });
+  };
+
   const {
-    sections,
+    tournaments,
     allMatches,
     stats,
     disciplineCounts,
@@ -59,12 +127,54 @@ export default function MatchHistoryScreen() {
     isLoading,
     isRefreshing,
     error,
+    detailCache,
+    loadingDetails,
     setDiscipline,
     setSeason,
     refresh,
+    loadDetails,
   } = useMatchHistory();
 
-  // Scroll handler — updates shared value for Reanimated UI-thread animation
+  // Build flat list of render items based on expand state
+  const renderItems: RenderItem[] = [];
+  for (const tournament of tournaments) {
+    const tKey = tournament.title || t('matchHistory.tournamentUnknown');
+    renderItems.push({ type: 'tournament', tournament, key: `t:${tKey}` });
+
+    if (expandedTournaments.has(tKey)) {
+      for (const disc of tournament.disciplines) {
+        const dKey = `${tKey}:${disc.discipline}`;
+        renderItems.push({ type: 'discipline', tournament, discipline: disc, key: `d:${dKey}` });
+
+        if (expandedDisciplines.has(dKey)) {
+          // Use detail-enriched matches if available, otherwise basic matches
+          const detailMatches = detailCache.get(dKey);
+          const matches = detailMatches ?? disc.matches;
+          for (const match of matches) {
+            renderItems.push({
+              type: 'match',
+              match,
+              discipline: disc,
+              tournament,
+              key: `m:${dKey}:${match.id}`,
+            });
+          }
+          // Show spinner if details are still loading
+          if (loadingDetails.has(dKey) && !detailMatches) {
+            renderItems.push({
+              type: 'match',
+              match: { id: `loading-${dKey}`, _isLoadingPlaceholder: true } as MatchItem & { _isLoadingPlaceholder?: boolean },
+              discipline: disc,
+              tournament,
+              key: `m:${dKey}:loading`,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Scroll handler
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     scrollY.value = event.nativeEvent.contentOffset.y;
   };
@@ -83,6 +193,42 @@ export default function MatchHistoryScreen() {
       Extrapolation.CLAMP,
     ),
   }));
+
+  const renderItem = useCallback(({ item }: { item: RenderItem }) => {
+    switch (item.type) {
+      case 'tournament':
+        return (
+          <TournamentHeader
+            tournament={item.tournament}
+            t={t}
+            isExpanded={expandedTournaments.has(item.tournament.title || t('matchHistory.tournamentUnknown'))}
+            onToggle={() => toggleTournament(item.tournament.title || t('matchHistory.tournamentUnknown'))}
+          />
+        );
+      case 'discipline':
+        return (
+          <DisciplineRow
+            discipline={item.discipline}
+            tournament={item.tournament}
+            t={t}
+            isExpanded={expandedDisciplines.has(`${item.tournament.title || t('matchHistory.tournamentUnknown')}:${item.discipline.discipline}`)}
+            isLoading={loadingDetails.has(`${item.tournament.title || t('matchHistory.tournamentUnknown')}:${item.discipline.discipline}`)}
+            onToggle={() => toggleDiscipline(item.tournament.title || t('matchHistory.tournamentUnknown'), item.discipline)}
+          />
+        );
+      case 'match': {
+        const m = item.match as MatchItem & { _isLoadingPlaceholder?: boolean };
+        if (m._isLoadingPlaceholder) {
+          return (
+            <View className="py-4 items-center">
+              <ActivityIndicator size="small" color="#2563eb" />
+            </View>
+          );
+        }
+        return <MatchCard match={item.match} t={t} />;
+      }
+    }
+  }, [expandedTournaments, expandedDisciplines, loadingDetails, detailCache, t]);
 
   // ----------------------------------------------------------
   // Loading state
@@ -133,26 +279,34 @@ export default function MatchHistoryScreen() {
         <StatsHeader stats={stats} t={t} />
       </Animated.View>
 
-      {/* Discipline Filter Chips — only show when discipline data is available */}
-      {(disciplineCounts.simple > 0 || disciplineCounts.double > 0 || disciplineCounts.mixte > 0) && (
-        <View className="flex-row gap-2 px-4 py-2.5 border-b border-gray-100">
-          {DISCIPLINE_FILTERS.map(({ key, labelKey }) => {
-            const count = disciplineCounts[key];
-            const isActive = activeDiscipline === key;
-            return (
-              <Pressable
-                key={key}
-                className={`px-3 py-1.5 rounded-full border ${isActive ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}
-                onPress={() => setDiscipline(key)}
-              >
-                <Text className={`text-[13px] font-medium ${isActive ? 'text-white' : 'text-gray-700'}`}>
-                  {t(labelKey)} ({count})
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      )}
+      {/* Discipline Filter Chips */}
+      <View className="flex-row gap-2 px-4 py-2.5 border-b border-gray-100">
+        {DISCIPLINE_FILTERS.map(({ key, labelKey }) => {
+          const count = disciplineCounts[key];
+          const isActive = activeDiscipline === key;
+          const isDisabled = key !== 'all' && count === 0;
+          return (
+            <Pressable
+              key={key}
+              className={`px-3 py-1.5 rounded-full border ${
+                isActive ? 'bg-primary border-primary' :
+                isDisabled ? 'bg-gray-50 border-gray-100' :
+                'bg-white border-gray-200'
+              }`}
+              onPress={() => !isDisabled && setDiscipline(key)}
+              disabled={isDisabled}
+            >
+              <Text className={`text-[13px] font-medium ${
+                isActive ? 'text-white' :
+                isDisabled ? 'text-gray-300' :
+                'text-gray-700'
+              }`}>
+                {t(labelKey)} ({count})
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
 
       {/* Season Picker */}
       {availableSeasons.length > 0 && (
@@ -184,14 +338,10 @@ export default function MatchHistoryScreen() {
       )}
 
       {/* Match List */}
-      <SectionList
-        sections={sections}
-        keyExtractor={(item) => item.id}
-        renderSectionHeader={({ section }) => (
-          <TournamentHeader section={section} t={t} />
-        )}
-        renderItem={({ item }) => <MatchCardItem match={item} t={t} />}
-        stickySectionHeadersEnabled={true}
+      <FlatList
+        data={renderItems}
+        keyExtractor={(item) => item.key}
+        renderItem={renderItem}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -249,48 +399,130 @@ function StatsHeader({ stats, t }: StatsHeaderProps) {
 }
 
 // ============================================================
-// Tournament Section Header
+// Tournament Section Header (level 1)
 // ============================================================
 
 interface TournamentHeaderProps {
-  section: MatchSection;
+  tournament: TournamentSection;
   t: (key: string) => string;
+  isExpanded: boolean;
+  onToggle: () => void;
 }
 
-function TournamentHeader({ section, t }: TournamentHeaderProps) {
-  const title = section.title || t('matchHistory.tournamentUnknown');
+function TournamentHeader({ tournament, t, isExpanded, onToggle }: TournamentHeaderProps) {
+  const title = tournament.title || t('matchHistory.tournamentUnknown');
+  const pts = tournament.totalPoints;
+  const pointsText = pts !== 0 ? (pts > 0 ? `+${pts.toFixed(1)}` : pts.toFixed(1)) + ' pts' : '';
+  const pointsColor = pts > 0 ? 'text-win' : pts < 0 ? 'text-loss' : 'text-gray-400';
+
   return (
-    <View className="flex-row justify-between items-center px-4 py-2.5 bg-slate-50 border-l-[3px] border-l-primary border-b border-b-gray-200">
+    <Pressable
+      className="flex-row justify-between items-center px-4 py-2.5 bg-slate-50 border-l-[3px] border-l-primary border-b border-b-gray-200 active:bg-slate-100"
+      onPress={onToggle}
+    >
       <Text className="text-body font-semibold text-gray-900 flex-1 mr-2" numberOfLines={1}>
         {title}
       </Text>
-      {section.date ? (
-        <Text className="text-caption text-muted">{section.date}</Text>
-      ) : null}
-    </View>
+      <View className="flex-row items-center gap-2">
+        {tournament.date ? (
+          <Text className="text-caption text-muted">{tournament.date}</Text>
+        ) : null}
+        {pointsText ? (
+          <Text className={`text-caption font-semibold ${pointsColor}`} style={{ fontVariant: ['tabular-nums'] }}>
+            {pointsText}
+          </Text>
+        ) : null}
+        <Ionicons
+          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+          size={16}
+          color="#64748b"
+        />
+      </View>
+    </Pressable>
   );
 }
 
 // ============================================================
-// Match Card Sub-component (inline details, no accordion)
+// Discipline Row (level 2)
 // ============================================================
 
-interface MatchCardItemProps {
+interface DisciplineRowProps {
+  discipline: DisciplineGroup;
+  tournament: TournamentSection;
+  t: (key: string) => string;
+  isExpanded: boolean;
+  isLoading: boolean;
+  onToggle: () => void;
+}
+
+function DisciplineRow({ discipline, t, isExpanded, isLoading, onToggle }: DisciplineRowProps) {
+  const disc = discipline.discipline;
+  const letter = DISC_LETTERS[disc] ?? '?';
+  const labelKey = DISC_LABELS[disc] ?? disc;
+
+  const discColors: Record<string, string> = { simple: 'bg-blue-100', double: 'bg-emerald-100', mixte: 'bg-amber-100' };
+  const discTextColors: Record<string, string> = { simple: 'text-singles', double: 'text-doubles', mixte: 'text-mixed' };
+  const discBg = discColors[disc] ?? 'bg-gray-200';
+  const discText = discTextColors[disc] ?? 'text-gray-500';
+
+  const pts = discipline.points;
+  const pointsText = pts !== 0 ? (pts > 0 ? `+${pts.toFixed(1)}` : pts.toFixed(1)) + ' pts' : '';
+  const pointsColor = pts > 0 ? 'text-win' : pts < 0 ? 'text-loss' : 'text-gray-400';
+
+  return (
+    <Pressable
+      className="flex-row justify-between items-center pl-8 pr-4 py-2 bg-white border-b border-b-gray-100 active:bg-gray-50"
+      onPress={onToggle}
+    >
+      <View className="flex-row items-center gap-2 flex-1">
+        <View className={`w-6 h-6 rounded-full items-center justify-center ${discBg}`}>
+          <Text className={`text-[11px] font-bold ${discText}`}>{letter}</Text>
+        </View>
+        <Text className="text-[14px] font-medium text-gray-800">{t(labelKey)}</Text>
+        {discipline.wins > 0 && (
+          <View className="bg-win/20 px-1.5 py-0.5 rounded">
+            <Text className="text-[11px] font-semibold text-win">{discipline.wins}W</Text>
+          </View>
+        )}
+        {discipline.losses > 0 && (
+          <View className="bg-loss/20 px-1.5 py-0.5 rounded">
+            <Text className="text-[11px] font-semibold text-loss">{discipline.losses}L</Text>
+          </View>
+        )}
+      </View>
+      <View className="flex-row items-center gap-2">
+        {pointsText ? (
+          <Text className={`text-caption font-semibold ${pointsColor}`} style={{ fontVariant: ['tabular-nums'] }}>
+            {pointsText}
+          </Text>
+        ) : null}
+        {isLoading ? (
+          <ActivityIndicator size="small" color="#2563eb" />
+        ) : (
+          <Ionicons
+            name={isExpanded ? 'chevron-up' : 'chevron-down'}
+            size={14}
+            color="#94a3b8"
+          />
+        )}
+      </View>
+    </Pressable>
+  );
+}
+
+// ============================================================
+// Match Card (level 3 — expanded detail)
+// ============================================================
+
+interface MatchCardProps {
   match: MatchItem;
   t: (key: string, opts?: Record<string, unknown>) => string;
 }
 
-function MatchCardItem({ match, t }: MatchCardItemProps) {
-  const disciplineLetter =
-    match.discipline === 'simple' ? 'S'
-      : match.discipline === 'double' ? 'D'
-        : match.discipline === 'mixte' ? 'M'
-          : '';
-
+function MatchCard({ match, t }: MatchCardProps) {
   const isWin = match.isWin === true;
   const isLoss = match.isWin === false;
 
-  const borderClass = isWin ? 'border-l-win' : isLoss ? 'border-l-loss' : 'border-l-gray-300';
   const badgeBg = isWin ? 'bg-win' : isLoss ? 'bg-loss' : 'bg-gray-300';
   const badgeText = isWin ? t('matchHistory.victory') : isLoss ? t('matchHistory.defeat') : '?';
 
@@ -299,71 +531,119 @@ function MatchCardItem({ match, t }: MatchCardItemProps) {
     : null;
   const pointsClass = match.pointsImpact != null && match.pointsImpact >= 0 ? 'text-win' : 'text-loss';
 
-  // Discipline badge colors
-  const discColors: Record<string, string> = { simple: 'bg-blue-100', double: 'bg-emerald-100', mixte: 'bg-amber-100' };
-  const discTextColors: Record<string, string> = { simple: 'text-singles', double: 'text-doubles', mixte: 'text-mixed' };
-  const discBg = discColors[match.discipline ?? ''] || 'bg-gray-200';
-  const discText = discTextColors[match.discipline ?? ''] || 'text-gray-500';
+  const scores = splitSetScores(match);
+  const opponentName = match.opponent
+    ? match.opponent + (match.opponent2 ? ` / ${match.opponent2}` : '')
+    : '-';
 
   return (
-    <View className={`px-4 py-2.5 border-l-[3px] ${borderClass} border-b border-b-gray-50`}>
-      {/* Row 1: discipline badge + round + result badge */}
-      <View className="flex-row justify-between items-center mb-1">
-        <View className="flex-row items-center gap-2 flex-1">
-          {disciplineLetter ? (
-            <View className={`w-5 h-5 rounded-full items-center justify-center ${discBg}`}>
-              <Text className={`text-[10px] font-bold ${discText}`}>{disciplineLetter}</Text>
-            </View>
+    <View className={`mx-3 my-1 rounded-xl border ${isWin ? 'border-win/30 bg-win/5' : isLoss ? 'border-loss/30 bg-loss/5' : 'border-gray-200 bg-gray-50'} p-3`}>
+      {/* Header: Date + Round + W/L badge */}
+      <View className="flex-row justify-between items-center mb-2">
+        <View className="flex-row items-center gap-2">
+          {match.date ? (
+            <Text className="text-[13px] text-muted">{match.date}</Text>
           ) : null}
           {match.round ? (
-            <Text className="text-caption text-muted" numberOfLines={1}>{match.round}</Text>
+            <Text className="text-caption text-muted">{'\u2022'} {match.round}</Text>
           ) : null}
         </View>
-        <View className={`w-7 h-7 rounded-full items-center justify-center ${badgeBg}`}>
-          <Text className="text-caption font-bold text-white">{badgeText}</Text>
+        <View className={`px-2.5 py-1 rounded-full ${badgeBg}`}>
+          <Text className="text-[11px] font-bold text-white">{badgeText}</Text>
         </View>
       </View>
 
-      {/* Row 2: Players */}
-      <View className="mb-1">
-        {match.partner ? (
-          <Text className="text-[14px] font-medium text-gray-700 mb-0.5" numberOfLines={1}>
-            {t('matchHistory.partner', { name: match.partner })}
+      {/* Partner (doubles/mixed only) */}
+      {match.partner ? (
+        <View className="flex-row items-center mb-1.5">
+          <Ionicons name="people-outline" size={14} color="#64748b" style={{ marginRight: 6 }} />
+          <Text className="text-[14px] font-medium text-gray-700" numberOfLines={1}>
+            {match.partner}
           </Text>
-        ) : null}
-        {match.opponent ? (
-          <View className="flex-row items-center">
-            <Text className="text-[13px] text-gray-400">{t('matchHistory.vs')} </Text>
-            {match.opponentLicence ? (
-              <Pressable onPress={() => router.push(`/player/${match.opponentLicence}`)}>
-                <Text className="text-[14px] font-medium text-primary" numberOfLines={1}>
-                  {match.opponent}{match.opponent2 ? ` / ${match.opponent2}` : ''}
-                </Text>
-              </Pressable>
-            ) : (
-              <Text className="text-[14px] text-gray-700" numberOfLines={1}>
-                {match.opponent}{match.opponent2 ? ` / ${match.opponent2}` : ''}
-              </Text>
-            )}
-          </View>
-        ) : null}
+        </View>
+      ) : null}
+
+      {/* Opponent */}
+      <View className="flex-row items-center mb-2">
+        <Text className="text-[13px] text-gray-400 mr-1.5">{t('matchHistory.vs')}</Text>
+        {match.opponentLicence ? (
+          <Pressable onPress={() => router.push(`/player/${match.opponentLicence}`)}>
+            <Text className="text-[14px] font-medium text-primary" numberOfLines={1}>
+              {opponentName}
+            </Text>
+          </Pressable>
+        ) : (
+          <Text className="text-[14px] font-medium text-gray-700" numberOfLines={1}>
+            {opponentName}
+          </Text>
+        )}
       </View>
 
-      {/* Row 3: Scores + points */}
-      <View className="flex-row justify-between items-center mt-0.5">
-        {match.setScores && match.setScores.length > 0 ? (
-          <Text className="text-[14px] font-semibold text-gray-900" style={{ fontVariant: ['tabular-nums'] }}>
-            {match.setScores.join('  ')}
-          </Text>
-        ) : match.score ? (
-          <Text className="text-[14px] font-semibold text-gray-900" style={{ fontVariant: ['tabular-nums'] }}>
-            {match.score}
-          </Text>
-        ) : <View />}
-        {pointsText ? (
-          <Text className={`text-[13px] font-semibold ${pointsClass}`}>{pointsText}</Text>
-        ) : null}
-      </View>
+      {/* Score + Points row */}
+      {scores ? (
+        <View>
+          {/* Tennis-style scoreboard rows */}
+          <ScoreboardRow scores={scores} side="user" />
+          <ScoreboardRow scores={scores} side="opponent" />
+          {pointsText ? (
+            <View className={`self-end mt-1 px-2.5 py-1 rounded-lg ${match.pointsImpact != null && match.pointsImpact >= 0 ? 'bg-win/10' : 'bg-loss/10'}`}>
+              <Text className={`text-[14px] font-bold ${pointsClass}`} style={{ fontVariant: ['tabular-nums'] }}>
+                {pointsText}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      ) : (
+        <View className="flex-row justify-between items-center">
+          {match.score && !match.score.includes('pts') ? (
+            <Text className="text-[14px] font-bold text-gray-900" style={{ fontVariant: ['tabular-nums'] }}>
+              {match.score}
+            </Text>
+          ) : (
+            <View />
+          )}
+          {pointsText ? (
+            <View className={`px-2.5 py-1 rounded-lg ${match.pointsImpact != null && match.pointsImpact >= 0 ? 'bg-win/10' : 'bg-loss/10'}`}>
+              <Text className={`text-[14px] font-bold ${pointsClass}`} style={{ fontVariant: ['tabular-nums'] }}>
+                {pointsText}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ============================================================
+// Scoreboard Row (tennis-style score boxes)
+// ============================================================
+
+interface ScoreboardRowProps {
+  scores: SplitScore[];
+  side: 'user' | 'opponent';
+}
+
+function ScoreboardRow({ scores, side }: ScoreboardRowProps) {
+  return (
+    <View className="flex-row gap-1 mb-0.5">
+      {scores.map((s, i) => {
+        const val = side === 'user' ? s.userScore : s.opponentScore;
+        const wonSet = side === 'user' ? s.userWonSet : !s.userWonSet;
+        return (
+          <View
+            key={i}
+            className={`w-7 h-7 rounded-sm items-center justify-center ${wonSet ? 'bg-gray-800' : 'bg-gray-100'}`}
+          >
+            <Text
+              className={`text-[13px] font-semibold ${wonSet ? 'text-white' : 'text-gray-400'}`}
+              style={{ fontVariant: ['tabular-nums'] }}
+            >
+              {val}
+            </Text>
+          </View>
+        );
+      })}
     </View>
   );
 }
