@@ -86,6 +86,8 @@ export default function RankingChartScreen() {
           dataPointsColor: d.color,
           startFillColor: `${d.color}15`,
           endFillColor: `${d.color}05`,
+          curved: true,
+          curvature: 0.15,
         };
       });
   }, [chartData, visibleDisciplines, yAxisOffset]);
@@ -192,7 +194,6 @@ export default function RankingChartScreen() {
           <LineChart
             dataSet={dataSets}
             height={280}
-            stepChart
             maxValue={chartConfig.maxValue}
             noOfSections={chartConfig.noOfSections}
             yAxisLabelTexts={chartConfig.yAxisLabelTexts}
