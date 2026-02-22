@@ -744,6 +744,8 @@ function transformResultItem(raw: Record<string, unknown>): Record<string, unkno
     : raw.subName;
 
   return {
+    // Spread raw first so explicit fields below take precedence
+    ...raw,
     Date: formattedDate,
     DateCompetition: formattedDate,
     Epreuve: raw.name,
@@ -762,8 +764,6 @@ function transformResultItem(raw: Record<string, unknown>): Record<string, unkno
     Tour: detailRound,
     // Keep original date for season computation
     _rawDate: raw.date,
-    // Pass through all original fields (except _detail* which are consumed above)
-    ...raw,
   };
 }
 

@@ -26,8 +26,10 @@ export function DetailMatchCard({ match, nested = true, playerName }: DetailMatc
   // Parse set scores
   const scores = splitSetScores(match);
 
-  // Build team names
-  const userTeamName = match.partner ? match.partner : null;
+  // Build team names — for doubles/mixed show "Player / Partner"
+  const userTeamName = match.partner
+    ? playerName ? `${playerName}  /  ${match.partner}` : match.partner
+    : null;
 
   // Opponent team
   const opponentName = match.opponent

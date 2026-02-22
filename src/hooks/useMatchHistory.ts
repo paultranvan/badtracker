@@ -227,10 +227,38 @@ export function useMatchHistory(): MatchHistoryData {
     [filteredMatches]
   );
 
-  const stats = useMemo(
-    () => computeWinLossStats(filteredMatches),
-    [filteredMatches]
-  );
+  // Compute stats using detail-level data when available.
+  // Detail cache has individual match results (win/loss per match),
+  // while allMatches has bracket-level results (aggregate winPoint per bracket).
+  // A bracket with winPoint > 0 might still contain individual losses.
+  const stats = useMemo(() => {
+    // Collect all detail-level matches for the current filter
+    const detailMatches: MatchItem[] = [];
+    const coveredBracketIds = new Set<string>();
+
+    for (const tournament of tournaments) {
+      const title = tournament.title;
+      for (const disc of tournament.disciplines) {
+        const cacheKey = `${title}:${disc.discipline}`;
+        const cached = detailCache.get(cacheKey);
+        if (cached && cached.length > 0) {
+          // Use detail-level matches (individual wins/losses)
+          detailMatches.push(...cached);
+          // Mark bracket-level matches as covered
+          for (const m of disc.matches) {
+            coveredBracketIds.add(m.id);
+          }
+        }
+      }
+    }
+
+    // Add bracket-level matches that don't have detail data yet
+    const uncoveredMatches = filteredMatches.filter(
+      (m) => !coveredBracketIds.has(m.id)
+    );
+
+    return computeWinLossStats([...detailMatches, ...uncoveredMatches]);
+  }, [filteredMatches, tournaments, detailCache]);
 
   // Counts from season-filtered matches (so they update with season)
   const disciplineCounts = useMemo(
@@ -337,11 +365,37 @@ export function useMatchHistory(): MatchHistoryData {
     // This is handled reactively via disciplineCounts check in the UI
   }, []);
 
+  // Ref for auto-load tracking (declared before refresh so refresh can clear it)
+  const autoLoadTriggered = useRef(new Set<string>());
+  const loadDetailsRef = useRef(loadDetails);
+  loadDetailsRef.current = loadDetails;
+
   const refresh = useCallback(async () => {
     // Clear detail cache on refresh
     setDetailCache(new Map());
+    autoLoadTriggered.current.clear();
     await fetchData(true);
   }, [fetchData]);
+
+  // ----------------------------------------------------------
+  // Auto-load details for all visible tournaments (accurate stats)
+  // Bracket-level data can classify a bracket as "win" even when
+  // individual matches within it were lost. Auto-loading details
+  // ensures stats reflect actual match-level win/loss.
+  // ----------------------------------------------------------
+
+  useEffect(() => {
+    if (!personId || isLoading) return;
+    for (const tournament of tournaments) {
+      for (const disc of tournament.disciplines) {
+        const key = `${tournament.title}:${disc.discipline}`;
+        if (!autoLoadTriggered.current.has(key)) {
+          autoLoadTriggered.current.add(key);
+          loadDetailsRef.current(tournament.title, disc);
+        }
+      }
+    }
+  }, [tournaments, personId, isLoading]);
 
   // ----------------------------------------------------------
   // Auto-reset discipline if it has 0 matches after season change

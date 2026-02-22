@@ -376,6 +376,7 @@ export default function MatchHistoryScreen() {
         contentContainerStyle={{ paddingBottom: 32 }}
         extraData={detailCache}
         onScroll={handleScroll}
+        scrollEventThrottle={16}
       />
     </View>
   );
