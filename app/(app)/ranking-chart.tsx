@@ -55,24 +55,53 @@ export default function RankingChartScreen() {
   const dataSets = useMemo(() => {
     if (!chartData) return [];
 
-    return chartData.disciplines
-      .filter((d) => visibleDisciplines[d.discipline] && d.points.length > 0)
-      .map((d) => {
-        const data = d.points.map((point) => {
+    const visible = chartData.disciplines.filter(
+      (d) => visibleDisciplines[d.discipline] && d.points.length > 0,
+    );
+    const maxPoints = Math.max(...visible.map((d) => d.points.length), 1);
+    const labelInterval = Math.max(1, Math.ceil(maxPoints / 6));
+
+    return visible.map((d) => {
+        const data = d.points.map((point, idx) => {
           const item: Record<string, unknown> = {
             value: point.value - yAxisOffset,
-            label: point.label,
+            label: idx % labelInterval === 0 ? point.label : '',
           };
 
           if (point.isMilestone) {
             item.showDataPoint = true;
-            item.dataPointRadius = 7;
+            item.dataPointRadius = 6;
+            item.dataPointsHeight = 14;
+            item.dataPointsWidth = 14;
             item.customDataPoint = () => (
               <View
-                className="w-3.5 h-3.5 rounded-full border-2 border-white"
-                style={{ backgroundColor: d.color }}
+                style={{
+                  width: 14,
+                  height: 14,
+                  borderRadius: 7,
+                  backgroundColor: d.color,
+                  borderWidth: 2.5,
+                  borderColor: '#ffffff',
+                }}
               />
             );
+            item.dataPointLabelComponent = () => (
+              <View
+                style={{
+                  backgroundColor: d.color,
+                  paddingHorizontal: 5,
+                  paddingVertical: 2,
+                  borderRadius: 4,
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: '#ffffff', fontSize: 9, fontWeight: '700' }}>
+                  {point.rank}
+                </Text>
+              </View>
+            );
+            item.dataPointLabelShiftY = -24;
+            item.dataPointLabelShiftX = -10;
           }
 
           return item;
@@ -86,6 +115,8 @@ export default function RankingChartScreen() {
           dataPointsColor: d.color,
           startFillColor: `${d.color}15`,
           endFillColor: `${d.color}05`,
+          curved: true,
+          curvature: 0.15,
         };
       });
   }, [chartData, visibleDisciplines, yAxisOffset]);
@@ -192,7 +223,6 @@ export default function RankingChartScreen() {
           <LineChart
             dataSet={dataSets}
             height={280}
-            stepChart
             maxValue={chartConfig.maxValue}
             noOfSections={chartConfig.noOfSections}
             yAxisLabelTexts={chartConfig.yAxisLabelTexts}
@@ -202,7 +232,8 @@ export default function RankingChartScreen() {
             rulesType="solid"
             rulesColor="#f3f4f6"
             yAxisTextStyle={{ color: '#6b7280', fontSize: 11 }}
-            xAxisLabelTextStyle={{ color: '#6b7280', fontSize: 10 }}
+            xAxisLabelTextStyle={{ color: '#6b7280', fontSize: 9, width: 50, textAlign: 'center' }}
+            labelsExtraHeight={20}
             xAxisColor="#e5e7eb"
             yAxisColor="#e5e7eb"
             hideRules={false}
