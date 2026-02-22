@@ -2,17 +2,15 @@ import { useState, useCallback } from 'react';
 import {
   View,
   Text,
-  FlatList,
   RefreshControl,
   Pressable,
   ActivityIndicator,
   LayoutAnimation,
-  type NativeSyntheticEvent,
-  type NativeScrollEvent,
 } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
+  useAnimatedScrollHandler,
   interpolate,
   Extrapolation,
 } from 'react-native-reanimated';
@@ -188,9 +186,11 @@ export default function MatchHistoryScreen() {
   }
 
   // Scroll handler
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    scrollY.value = event.nativeEvent.contentOffset.y;
-  };
+  const handleScroll = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
 
   const headerAnimatedStyle = useAnimatedStyle(() => ({
     height: interpolate(
@@ -352,7 +352,7 @@ export default function MatchHistoryScreen() {
       )}
 
       {/* Match List */}
-      <FlatList
+      <Animated.FlatList
         data={renderItems}
         keyExtractor={(item) => item.key}
         renderItem={renderItem}
@@ -370,7 +370,6 @@ export default function MatchHistoryScreen() {
         contentContainerStyle={{ paddingBottom: 32 }}
         extraData={detailCache}
         onScroll={handleScroll}
-        scrollEventThrottle={16}
       />
     </View>
   );
