@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,30 +10,29 @@ import {
 import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { usePlayerSearch } from '../../../src/hooks/usePlayerSearch';
-import { useBookmarks } from '../../../src/bookmarks/context';
-import { useConnectivity } from '../../../src/connectivity/context';
-import { PlayerRow } from '../../../src/components';
+import { usePlayerSearch } from '@/hooks/usePlayerSearch';
+import { useBookmarks } from '@/bookmarks/context';
+import { useConnectivity } from '@/connectivity/context';
+import { PlayerRow } from '@/components';
+import type { BookmarkedPlayer } from '@/bookmarks/storage';
 
-export default function SearchScreen() {
+export default function PlayersScreen() {
   const { t } = useTranslation();
   const { query, setQuery, results, isLoading, error } = usePlayerSearch();
-  const { isBookmarked } = useBookmarks();
+  const { bookmarks, isBookmarked } = useBookmarks();
   const { isConnected } = useConnectivity();
 
-  // When offline, show disabled state per user decision
-  if (!isConnected) {
-    return (
-      <View className="flex-1 bg-white">
-        <View className="flex-1 items-center justify-center px-6">
-          <Ionicons name="cloud-offline-outline" size={48} color="#d1d5db" style={{ marginBottom: 12 }} />
-          <Text className="text-body text-muted text-center">{t('offline.searchDisabled')}</Text>
-        </View>
-      </View>
-    );
-  }
+  const isSearching = query.length > 0;
 
-  const renderItem = useCallback(
+  const sortedBookmarks = useMemo(() => {
+    return [...bookmarks].sort((a, b) => {
+      const nameA = `${a.nom} ${a.prenom}`.toLowerCase();
+      const nameB = `${b.nom} ${b.prenom}`.toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+  }, [bookmarks]);
+
+  const renderSearchItem = useCallback(
     ({ item }: { item: (typeof results)[number] }) => (
       <PlayerRow
         name={`${item.Nom} ${item.Prenom}`}
@@ -58,11 +57,34 @@ export default function SearchScreen() {
     [isBookmarked],
   );
 
+  const renderBookmarkItem = useCallback(
+    ({ item }: { item: BookmarkedPlayer }) => (
+      <PlayerRow
+        name={`${item.nom} ${item.prenom}`}
+        ranks={item.rankings}
+        isBookmarked
+        onPress={() =>
+          router.push({
+            pathname: '/player/[licence]',
+            params: { licence: item.licence },
+          })
+        }
+      />
+    ),
+    [],
+  );
+
+  const separator = () => <View className="h-px bg-gray-100 mx-4" />;
+
   return (
     <View className="flex-1 bg-white">
       {/* Search input */}
       <View className="px-4 pt-4 pb-2 bg-white border-b border-gray-200">
-        <View className="flex-row items-center bg-gray-50 rounded-full px-4 py-2 border border-gray-200">
+        <View
+          className={`flex-row items-center bg-gray-50 rounded-full px-4 py-2 border border-gray-200 ${
+            !isConnected ? 'opacity-50' : ''
+          }`}
+        >
           <Ionicons name="search" size={18} color="#9ca3af" />
           <TextInput
             className="flex-1 ml-2 text-body text-gray-900"
@@ -73,6 +95,7 @@ export default function SearchScreen() {
             autoCorrect={false}
             autoCapitalize="none"
             returnKeyType="search"
+            editable={isConnected}
           />
           {query.length > 0 && (
             <Pressable onPress={() => setQuery('')} hitSlop={8}>
@@ -82,32 +105,47 @@ export default function SearchScreen() {
         </View>
       </View>
 
-      {/* Results area */}
+      {/* Content area */}
       <View className="flex-1">
-        {isLoading ? (
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" color="#2563eb" />
-          </View>
-        ) : error ? (
-          <View className="flex-1 items-center justify-center px-6">
-            <Text className="text-body text-loss text-center">{error}</Text>
-          </View>
-        ) : results.length > 0 ? (
+        {isSearching ? (
+          isLoading ? (
+            <View className="flex-1 items-center justify-center">
+              <ActivityIndicator size="large" color="#2563eb" />
+            </View>
+          ) : error ? (
+            <View className="flex-1 items-center justify-center px-6">
+              <Text className="text-body text-loss text-center">{error}</Text>
+            </View>
+          ) : results.length > 0 ? (
+            <FlatList
+              data={results}
+              keyExtractor={(item) => item.Licence}
+              renderItem={renderSearchItem}
+              ItemSeparatorComponent={separator}
+              contentContainerStyle={{ paddingVertical: 8 }}
+            />
+          ) : query.length >= 3 ? (
+            <View className="flex-1 items-center justify-center px-6">
+              <Ionicons name="search-outline" size={48} color="#d1d5db" style={{ marginBottom: 12 }} />
+              <Text className="text-body text-muted text-center">{t('search.noResults')}</Text>
+            </View>
+          ) : (
+            <View className="flex-1 items-center justify-center px-6">
+              <Text className="text-body text-gray-400 text-center">{t('search.minChars')}</Text>
+            </View>
+          )
+        ) : sortedBookmarks.length > 0 ? (
           <FlatList
-            data={results}
-            keyExtractor={(item) => item.Licence}
-            renderItem={renderItem}
-            ItemSeparatorComponent={() => <View className="h-px bg-gray-100 mx-4" />}
+            data={sortedBookmarks}
+            keyExtractor={(item) => item.licence}
+            renderItem={renderBookmarkItem}
+            ItemSeparatorComponent={separator}
             contentContainerStyle={{ paddingVertical: 8 }}
           />
-        ) : query.length >= 3 ? (
-          <View className="flex-1 items-center justify-center px-6">
-            <Ionicons name="search-outline" size={48} color="#d1d5db" style={{ marginBottom: 12 }} />
-            <Text className="text-body text-muted text-center">{t('search.noResults')}</Text>
-          </View>
         ) : (
           <View className="flex-1 items-center justify-center px-6">
-            <Text className="text-body text-gray-400 text-center">{t('search.minChars')}</Text>
+            <Ionicons name="star-outline" size={48} color="#d1d5db" style={{ marginBottom: 12 }} />
+            <Text className="text-body text-gray-400 text-center">{t('players.noFavourites')}</Text>
           </View>
         )}
       </View>
