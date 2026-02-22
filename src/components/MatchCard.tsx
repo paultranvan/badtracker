@@ -7,6 +7,7 @@ interface MatchCardProps {
   badgeLabel: string;
   opponent: string;
   event?: string;
+  date?: string;
   score?: string;
   discipline?: string;
   onPress?: () => void;
@@ -18,6 +19,7 @@ export function MatchCard({
   badgeLabel,
   opponent,
   event,
+  date,
   score,
   onPress,
   expanded,
@@ -41,9 +43,9 @@ export function MatchCard({
         <Text className="text-body font-medium text-gray-900" numberOfLines={1}>
           {opponent}
         </Text>
-        {event && (
+        {(event || date) && (
           <Text className="text-[12px] text-muted mt-0.5" numberOfLines={1}>
-            {event}
+            {date && event ? `${date} — ${event}` : date || event}
           </Text>
         )}
       </View>

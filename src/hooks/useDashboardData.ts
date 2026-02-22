@@ -35,6 +35,10 @@ export interface QuickStats {
 export interface DashboardData {
   profile: PlayerProfile | null;
   recentMatches: MatchItem[];
+  /** Last 3 individual matches from detail data (sorted by date desc) */
+  recentDetailMatches: MatchItem[];
+  /** True while detail data is still loading for recent matches */
+  detailsLoading: boolean;
   quickStats: QuickStats | null;
   isLoading: boolean;
   isRefreshing: boolean;
@@ -359,6 +363,31 @@ export function useDashboardData(): DashboardData {
     };
   }, [quickStats, detailStatsCache, tournaments, allMatches]);
 
+  // Derive last 3 individual matches from detail data (sorted by date desc)
+  const recentDetailMatches = useMemo(() => {
+    if (detailStatsCache.size === 0) return [];
+    const allDetail: MatchItem[] = [];
+    for (const matches of detailStatsCache.values()) {
+      allDetail.push(...matches);
+    }
+    // Sort by raw date descending (most recent first)
+    allDetail.sort((a, b) => {
+      const da = a._rawDate ?? '';
+      const db = b._rawDate ?? '';
+      return db.localeCompare(da);
+    });
+    // Re-assign unique IDs (original IDs can collide across different cache entries)
+    return allDetail.slice(0, 3).map((m, i) => ({ ...m, id: `recent-${i}` }));
+  }, [detailStatsCache]);
+
+  // Track whether details are still loading
+  const detailsLoading = useMemo(() => {
+    if (allMatches.length === 0) return false;
+    // Details are loading if we have tournaments but haven't finished loading all of them
+    const totalGroups = tournaments.reduce((sum, t) => sum + t.disciplines.length, 0);
+    return totalGroups > 0 && detailStatsCache.size < totalGroups;
+  }, [allMatches.length, tournaments, detailStatsCache.size]);
+
   const refresh = useCallback(async () => {
     setDetailStatsCache(new Map());
     autoLoadTriggered.current.clear();
@@ -368,6 +397,8 @@ export function useDashboardData(): DashboardData {
   return {
     profile,
     recentMatches,
+    recentDetailMatches,
+    detailsLoading,
     quickStats: enrichedQuickStats,
     isLoading,
     isRefreshing,

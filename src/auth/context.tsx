@@ -101,8 +101,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
           if (stored.personId && stored.accessToken) {
             setSession({
               licence: stored.licence,
-              nom: '',
-              prenom: '',
+              nom: stored.nom ?? '',
+              prenom: stored.prenom ?? '',
               personId: stored.personId,
               accessToken: stored.accessToken,
             });
@@ -132,16 +132,16 @@ export function SessionProvider({ children }: PropsWithChildren) {
           if (stored.personId && stored.accessToken) {
             setSession({
               licence: stored.licence,
-              nom: '',
-              prenom: '',
+              nom: stored.nom ?? '',
+              prenom: stored.prenom ?? '',
               personId: stored.personId,
               accessToken: stored.accessToken,
             });
           } else {
             setSession({
               licence: stored.licence,
-              nom: '',
-              prenom: '',
+              nom: stored.nom ?? '',
+              prenom: stored.prenom ?? '',
               personId: '',
               accessToken: '',
             });
@@ -156,13 +156,15 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
           setSession(result);
 
-          // Update stored credentials with fresh personId/accessToken
+          // Update stored credentials with fresh personId/accessToken/name
           await storeCredentials(
             stored.licence,
             stored.password,
             true,
             result.personId,
-            result.accessToken
+            result.accessToken,
+            result.nom,
+            result.prenom
           );
         }
       } catch (error) {
@@ -184,8 +186,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
             });
             setSession({
               licence: stored.licence,
-              nom: '',
-              prenom: '',
+              nom: stored.nom ?? '',
+              prenom: stored.prenom ?? '',
               personId: stored.personId,
               accessToken: stored.accessToken,
             });
@@ -235,7 +237,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
         password,
         remember,
         userInfo.personId,
-        userInfo.accessToken
+        userInfo.accessToken,
+        userInfo.nom,
+        userInfo.prenom
       );
 
       // Set session

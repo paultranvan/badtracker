@@ -14,8 +14,6 @@ import { useDashboardData } from '../../../src/hooks/useDashboardData';
 import { getRankLabel } from '../../../src/utils/rankings';
 import { useSession } from '../../../src/auth/context';
 import { StatCard, SectionHeader, MatchCard, Card, DetailMatchCard } from '../../../src/components';
-import { getMatchDetailsForBrackets } from '../../../src/api/ffbad';
-import { toFullMatchItem, type MatchItem } from '../../../src/utils/matchHistory';
 
 // ============================================================
 // Discipline config
@@ -46,18 +44,16 @@ export default function DashboardScreen() {
   const {
     profile,
     recentMatches,
+    recentDetailMatches,
+    detailsLoading,
     quickStats,
     isLoading,
     isRefreshing,
     error,
     refresh,
-    rawItems,
-    personId,
   } = useDashboardData();
 
   const [expandedMatch, setExpandedMatch] = useState<string | null>(null);
-  const [detailCache, setDetailCache] = useState<Map<string, MatchItem[]>>(new Map());
-  const [loadingDetail, setLoadingDetail] = useState<string | null>(null);
 
   // ----------------------------------------------------------
   // Loading state
@@ -97,71 +93,18 @@ export default function DashboardScreen() {
   // ----------------------------------------------------------
   // Match detail expansion
   // ----------------------------------------------------------
-  const loadMatchDetail = async (matchId: string, match: MatchItem) => {
-    if (detailCache.has(matchId)) return;
-    if (!personId) return;
-
-    // Match raw items by tournament name and discipline
-    const discMap: Record<string, string> = {
-      simple: 'SIMPLE',
-      double: 'DOUBLE',
-      mixte: 'MIXTE',
-    };
-    const discKey = match.discipline ? discMap[match.discipline] : null;
-
-    const matchRaw = rawItems.filter((item) => {
-      const name = item.name as string | undefined;
-      const disc = item.discipline as string | undefined;
-      if (!name) return false;
-      const nameMatch = name === match.tournament;
-      const discMatch = !discKey || !disc || disc.toUpperCase().includes(discKey);
-      return nameMatch && discMatch;
-    });
-
-    // Deduplicate by bracket identity
-    const seen = new Set<string>();
-    const uniqueRaw = matchRaw.filter((item) => {
-      const date = (item.date as string) ?? '';
-      const bracketId = String(item.bracketId ?? '');
-      const disciplineId = String(item.disciplineId ?? '');
-      const key = `${date}|${bracketId}|${disciplineId}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-
-    if (uniqueRaw.length === 0) return;
-
-    setLoadingDetail(matchId);
-    try {
-      const detailed = await getMatchDetailsForBrackets(uniqueRaw, personId);
-      const matches = detailed.map((item, i) =>
-        toFullMatchItem(item as Record<string, unknown>, i)
-      );
-      setDetailCache((prev) => new Map(prev).set(matchId, matches));
-    } catch {
-      // Silently fail — show basic card
-    } finally {
-      setLoadingDetail(null);
-    }
-  };
-
-  const toggleMatchExpand = (matchId: string, match: MatchItem) => {
+  const toggleMatchExpand = (matchId: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    if (expandedMatch === matchId) {
-      setExpandedMatch(null);
-    } else {
-      setExpandedMatch(matchId);
-      loadMatchDetail(matchId, match);
-    }
+    setExpandedMatch(expandedMatch === matchId ? null : matchId);
   };
 
   const handleRefresh = () => {
     setExpandedMatch(null);
-    setDetailCache(new Map());
-    setLoadingDetail(null);
     refresh();
   };
+
+  // Use detail-level matches when available, fall back to bracket-level
+  const displayMatches = recentDetailMatches.length > 0 ? recentDetailMatches : recentMatches;
 
   // ----------------------------------------------------------
   // Ranking data
@@ -247,44 +190,42 @@ export default function DashboardScreen() {
 
       {/* Recent Matches Section */}
       <SectionHeader title={t('dashboard.recentMatches')} />
-      {recentMatches.length === 0 ? (
+      {displayMatches.length === 0 && !detailsLoading ? (
         <Text className="text-body text-gray-400 italic mb-4">{t('dashboard.noMatches')}</Text>
+      ) : displayMatches.length === 0 && detailsLoading ? (
+        <View className="py-4 items-center mb-3">
+          <ActivityIndicator size="small" color="#2563eb" />
+        </View>
       ) : (
         <View className="mb-3">
-          {recentMatches.map((match, index) => {
+          {displayMatches.map((match) => {
             let badgeLabel = '?';
             if (match.isWin === true) badgeLabel = t('dashboard.victory');
             else if (match.isWin === false) badgeLabel = t('dashboard.defeat');
 
             const matchId = match.id;
             const isExpanded = expandedMatch === matchId;
-            const details = detailCache.get(matchId);
-            const isDetailLoading = loadingDetail === matchId;
+
+            // Points display for the collapsed card
+            const pts = match.pointsImpact;
+            const pointsText = pts != null && pts !== 0
+              ? `${pts > 0 ? '+' : ''}${pts.toFixed(1)} pts`
+              : undefined;
 
             return (
               <View key={matchId}>
                 <MatchCard
                   isWin={match.isWin ?? null}
                   badgeLabel={badgeLabel}
-                  opponent={match.opponent ?? '-'}
-                  event={match.tournament}
-                  score={match.score}
-                  onPress={() => toggleMatchExpand(matchId, match)}
+                  opponent={match.tournament ?? '-'}
+                  date={match.date}
+                  score={pointsText}
+                  onPress={() => toggleMatchExpand(matchId)}
                   expanded={isExpanded}
                 />
                 {isExpanded && (
                   <View className="bg-gray-50">
-                    {isDetailLoading && !details ? (
-                      <View className="py-3 items-center">
-                        <ActivityIndicator size="small" color="#2563eb" />
-                      </View>
-                    ) : details ? (
-                      details.map((detail) => (
-                        <DetailMatchCard key={detail.id} match={detail} nested={false} />
-                      ))
-                    ) : (
-                      <DetailMatchCard match={match} nested={false} />
-                    )}
+                    <DetailMatchCard match={match} nested={false} playerName={session ? `${session.prenom} ${session.nom}` : undefined} />
                   </View>
                 )}
               </View>

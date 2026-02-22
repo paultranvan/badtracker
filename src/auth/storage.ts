@@ -18,6 +18,8 @@ interface StoredCredentials {
   password: string;
   personId?: string;
   accessToken?: string;
+  nom?: string;
+  prenom?: string;
 }
 
 /**
@@ -34,12 +36,14 @@ export async function storeCredentials(
   password: string,
   remember: boolean,
   personId?: string,
-  accessToken?: string
+  accessToken?: string,
+  nom?: string,
+  prenom?: string
 ): Promise<void> {
   if (remember) {
     await SecureStore.setItemAsync(
       CREDENTIALS_KEY,
-      JSON.stringify({ licence, password, personId, accessToken }),
+      JSON.stringify({ licence, password, personId, accessToken, nom, prenom }),
       {
         keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
       }
