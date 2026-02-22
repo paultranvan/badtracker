@@ -1,10 +1,11 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
   ScrollView,
   ActivityIndicator,
   Pressable,
+  LayoutAnimation,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -18,9 +19,16 @@ import { useSession } from '../../../../src/auth/context';
 import { useBookmarks } from '../../../../src/bookmarks/context';
 import { useConnectivity } from '../../../../src/connectivity/context';
 import { cacheGet, cacheSet } from '../../../../src/cache/storage';
-import { Card } from '../../../../src/components';
+import { Card, DetailMatchCard } from '../../../../src/components';
 import type { BookmarkedPlayer } from '../../../../src/bookmarks/storage';
-import { useHeadToHead, type H2HStats, type H2HMatch } from '../../../../src/hooks/useHeadToHead';
+import { useHeadToHead } from '../../../../src/hooks/useHeadToHead';
+import {
+  groupByTournamentNested,
+  computeWinLossStats,
+  type MatchItem,
+  type TournamentSection,
+  type DisciplineGroup,
+} from '../../../../src/utils/matchHistory';
 
 // ============================================================
 // Discipline colors (matches dashboard)
@@ -68,88 +76,102 @@ function RankingCardItem({
 }
 
 // ============================================================
-// H2H Win Rate Bar
+// H2H Discipline Row (level 2 accordion)
 // ============================================================
 
-function WinRateBar({ wins, losses }: { wins: number; losses: number }) {
-  const total = wins + losses;
-  if (total === 0) return null;
-  const winPct = (wins / total) * 100;
+const DISC_LETTERS: Record<string, string> = { simple: 'S', double: 'D', mixte: 'M' };
+const DISC_COLORS: Record<string, string> = { simple: '#3b82f6', double: '#10b981', mixte: '#f59e0b' };
+const DISC_BG_COLORS: Record<string, string> = { simple: '#dbeafe', double: '#d1fae5', mixte: '#fef3c7' };
 
-  return (
-    <View className="flex-row h-2 rounded-full overflow-hidden bg-gray-100 mt-2">
-      <View style={{ width: `${winPct}%` }} className="bg-win rounded-l-full" />
-      <View style={{ width: `${100 - winPct}%` }} className="bg-loss rounded-r-full" />
-    </View>
-  );
-}
-
-// ============================================================
-// H2H Discipline Mini-Card
-// ============================================================
-
-function DisciplineMiniCard({
-  label,
-  wins,
-  losses,
-  color,
+function H2HDisciplineRow({
+  discipline,
+  isExpanded,
+  onToggle,
 }: {
-  label: string;
-  wins: number;
-  losses: number;
-  color: string;
+  discipline: DisciplineGroup;
+  isExpanded: boolean;
+  onToggle: () => void;
 }) {
-  if (wins === 0 && losses === 0) return null;
+  const { t } = useTranslation();
+  const disc = discipline.discipline;
+  const letter = DISC_LETTERS[disc] ?? '?';
+  const labelKey = disc === 'simple' ? 'matchHistory.simple' : disc === 'double' ? 'matchHistory.double' : 'matchHistory.mixte';
+  const pts = discipline.points;
+  const pointsText = pts !== 0 ? (pts > 0 ? `+${pts.toFixed(1)}` : pts.toFixed(1)) + ' pts' : '';
+  const pointsColor = pts > 0 ? 'text-win' : pts < 0 ? 'text-loss' : 'text-gray-400';
 
   return (
-    <View
-      className="rounded-lg px-3 py-2 items-center border-t-[3px]"
-      style={{ borderTopColor: color, backgroundColor: `${color}10` }}
+    <Pressable
+      className="flex-row justify-between items-center pl-8 pr-4 py-2 bg-white border-b border-b-gray-100 active:bg-gray-50"
+      onPress={onToggle}
     >
-      <Text className="text-caption font-bold text-gray-700">{label}</Text>
-      <Text className="text-body font-semibold text-gray-900 mt-0.5">
-        {wins}-{losses}
-      </Text>
-    </View>
-  );
-}
-
-// ============================================================
-// H2H Match Row
-// ============================================================
-
-function H2HMatchRow({ match }: { match: H2HMatch }) {
-  const discColor = match.discipline === 'simple' ? '#3b82f6'
-    : match.discipline === 'double' ? '#10b981' : '#f59e0b';
-
-  return (
-    <View
-      className="flex-row items-center py-2.5 border-l-[3px] pl-3"
-      style={{ borderLeftColor: discColor }}
-    >
-      <Text className={`text-body font-bold ${match.isWin ? 'text-win' : 'text-loss'} w-5`}>
-        {match.isWin ? '\u2713' : '\u2717'}
-      </Text>
-      <View className="flex-1 ml-1">
-        <Text className="text-body text-gray-900" numberOfLines={1}>
-          {match.tournament}
-        </Text>
-        <Text className="text-caption text-muted mt-0.5">
-          {match.date}
-          {match.opponents ? ` \u00b7 vs ${match.opponents}` : ''}
-        </Text>
+      <View className="flex-row items-center gap-2 flex-1">
+        <View className="w-6 h-6 rounded-full items-center justify-center" style={{ backgroundColor: DISC_BG_COLORS[disc] }}>
+          <Text style={{ color: DISC_COLORS[disc], fontSize: 11, fontWeight: '700' }}>{letter}</Text>
+        </View>
+        <Text className="text-[14px] font-medium text-gray-800">{t(labelKey)}</Text>
+        {discipline.wins > 0 && (
+          <View className="bg-win/20 px-1.5 py-0.5 rounded">
+            <Text className="text-[11px] font-semibold text-win">{discipline.wins}W</Text>
+          </View>
+        )}
+        {discipline.losses > 0 && (
+          <View className="bg-loss/20 px-1.5 py-0.5 rounded">
+            <Text className="text-[11px] font-semibold text-loss">{discipline.losses}L</Text>
+          </View>
+        )}
       </View>
-      <View className="items-end ml-2">
-        {match.score ? (
-          <Text className="text-caption font-medium text-gray-700">{match.score}</Text>
-        ) : null}
-        {match.points != null ? (
-          <Text className={`text-caption font-bold ${match.points >= 0 ? 'text-win' : 'text-loss'}`}>
-            {match.points >= 0 ? '+' : ''}{match.points}
+      <View className="flex-row items-center gap-2">
+        {pointsText ? (
+          <Text className={`text-caption font-semibold ${pointsColor}`} style={{ fontVariant: ['tabular-nums'] }}>
+            {pointsText}
           </Text>
         ) : null}
+        <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={14} color="#94a3b8" />
       </View>
-    </View>
+    </Pressable>
+  );
+}
+
+// ============================================================
+// H2H Tournament Header (level 1 accordion)
+// ============================================================
+
+function H2HTournamentHeader({
+  tournament,
+  isExpanded,
+  onToggle,
+}: {
+  tournament: TournamentSection;
+  isExpanded: boolean;
+  onToggle: () => void;
+}) {
+  const { t } = useTranslation();
+  const title = tournament.title || t('matchHistory.tournamentUnknown');
+  const pts = tournament.totalPoints;
+  const pointsText = pts !== 0 ? (pts > 0 ? `+${pts.toFixed(1)}` : pts.toFixed(1)) + ' pts' : '';
+  const pointsColor = pts > 0 ? 'text-win' : pts < 0 ? 'text-loss' : 'text-gray-400';
+
+  return (
+    <Pressable
+      className="flex-row justify-between items-center px-4 py-2.5 bg-slate-50 border-l-[3px] border-l-primary border-b border-b-gray-200 active:bg-slate-100"
+      onPress={onToggle}
+    >
+      <Text className="text-body font-semibold text-gray-900 flex-1 mr-2" numberOfLines={1}>
+        {title}
+      </Text>
+      <View className="flex-row items-center gap-2">
+        {tournament.date ? (
+          <Text className="text-caption text-muted">{tournament.date}</Text>
+        ) : null}
+        {pointsText ? (
+          <Text className={`text-caption font-semibold ${pointsColor}`} style={{ fontVariant: ['tabular-nums'] }}>
+            {pointsText}
+          </Text>
+        ) : null}
+        <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color="#64748b" />
+      </View>
+    </Pressable>
   );
 }
 
@@ -161,8 +183,6 @@ function HeadToHeadSection({
   playerName,
   h2hTab,
   setH2hTab,
-  against,
-  together,
   againstMatches,
   togetherMatches,
   isLoading,
@@ -171,17 +191,60 @@ function HeadToHeadSection({
   playerName: string;
   h2hTab: 'against' | 'together';
   setH2hTab: (tab: 'against' | 'together') => void;
-  against: H2HStats | null;
-  together: H2HStats | null;
-  againstMatches: H2HMatch[];
-  togetherMatches: H2HMatch[];
+  againstMatches: MatchItem[];
+  togetherMatches: MatchItem[];
   isLoading: boolean;
   t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
-  const activeStats = h2hTab === 'against' ? against : together;
   const activeMatches = h2hTab === 'against' ? againstMatches : togetherMatches;
-  const againstCount = againstMatches.length;
-  const togetherCount = togetherMatches.length;
+  const tournaments = useMemo(() => groupByTournamentNested(activeMatches), [activeMatches]);
+  const stats = useMemo(() => computeWinLossStats(activeMatches), [activeMatches]);
+
+  const [expandedTournaments, setExpandedTournaments] = useState<Set<string>>(new Set());
+  const [expandedDisciplines, setExpandedDisciplines] = useState<Set<string>>(new Set());
+
+  // Reset accordion state when switching tabs
+  useEffect(() => {
+    setExpandedTournaments(new Set());
+    setExpandedDisciplines(new Set());
+  }, [h2hTab]);
+
+  const toggleTournament = (title: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedTournaments((prev) => {
+      const next = new Set(prev);
+      if (next.has(title)) {
+        next.delete(title);
+        // Collapse disciplines within this tournament
+        setExpandedDisciplines((dp) => {
+          const nextDp = new Set(dp);
+          for (const key of dp) {
+            if (key.startsWith(`${title}:`)) nextDp.delete(key);
+          }
+          return nextDp;
+        });
+      } else {
+        next.add(title);
+      }
+      return next;
+    });
+  };
+
+  const toggleDiscipline = (tournamentTitle: string, disc: DisciplineGroup) => {
+    const key = `${tournamentTitle}:${disc.discipline}`;
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedDisciplines((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const hasMatches = activeMatches.length > 0;
 
   return (
     <View className="mb-6">
@@ -198,7 +261,7 @@ function HeadToHeadSection({
           onPress={() => setH2hTab('against')}
         >
           <Text className={`text-body font-medium ${h2hTab === 'against' ? 'text-white' : 'text-gray-700'}`}>
-            ⚔️ {t('player.h2hAgainst')} ({againstCount})
+            ⚔️ {t('player.h2hAgainst')} ({againstMatches.length})
           </Text>
         </Pressable>
         <Pressable
@@ -208,56 +271,74 @@ function HeadToHeadSection({
           onPress={() => setH2hTab('together')}
         >
           <Text className={`text-body font-medium ${h2hTab === 'together' ? 'text-white' : 'text-gray-700'}`}>
-            🤝 {t('player.h2hTogether')} ({togetherCount})
+            🤝 {t('player.h2hTogether')} ({togetherMatches.length})
           </Text>
         </Pressable>
       </View>
 
       {isLoading ? (
         <ActivityIndicator size="small" color="#2563eb" />
-      ) : activeStats ? (
-        <Card className="p-4">
-          {/* Summary */}
-          <Text className="text-body text-gray-500 mb-1">
-            {h2hTab === 'against' ? `⚔️ ${t('player.h2hAgainst')}` : `🤝 ${t('player.h2hTogether')}`} {playerName}
-          </Text>
-          <View className="flex-row items-baseline gap-2">
-            <Text className="text-[22px] font-bold text-win">
-              {t('player.h2hWins', { count: activeStats.wins })}
-            </Text>
-            <Text className="text-[18px] text-gray-400">{'\u00b7'}</Text>
-            <Text className="text-[22px] font-bold text-loss">
-              {t('player.h2hLosses', { count: activeStats.losses })}
-            </Text>
-          </View>
-          <WinRateBar wins={activeStats.wins} losses={activeStats.losses} />
-          <Text className="text-caption text-muted mt-1 text-right">{activeStats.winRate}%</Text>
-
-          {/* Per-discipline */}
-          <View className="flex-row gap-2 mt-3">
-            {h2hTab === 'against' && (
-              <DisciplineMiniCard label="S" wins={activeStats.byDiscipline.simple.wins} losses={activeStats.byDiscipline.simple.losses} color="#3b82f6" />
-            )}
-            <DisciplineMiniCard label="D" wins={activeStats.byDiscipline.double.wins} losses={activeStats.byDiscipline.double.losses} color="#10b981" />
-            <DisciplineMiniCard label="M" wins={activeStats.byDiscipline.mixte.wins} losses={activeStats.byDiscipline.mixte.losses} color="#f59e0b" />
-          </View>
-
-          {/* Last played */}
-          {activeStats.lastPlayed && (
-            <Text className="text-caption text-muted mt-3">
-              {t('player.h2hLastPlayed', { date: activeStats.lastPlayed })}
-            </Text>
-          )}
-
-          {/* Match list */}
-          {activeMatches.length > 0 && (
-            <View className="mt-3 pt-3 border-t border-gray-100">
-              {activeMatches.map((match, i) => (
-                <H2HMatchRow key={`${match.date}-${i}`} match={match} />
-              ))}
+      ) : hasMatches ? (
+        <View>
+          {/* Stats summary */}
+          <View className="flex-row items-center justify-between mb-3 px-1">
+            <View className="flex-row items-baseline gap-2">
+              <Text className="text-[20px] font-bold text-win">
+                {t('player.h2hWins', { count: stats.wins })}
+              </Text>
+              <Text className="text-[16px] text-gray-400">{'\u00b7'}</Text>
+              <Text className="text-[20px] font-bold text-loss">
+                {t('player.h2hLosses', { count: stats.losses })}
+              </Text>
             </View>
-          )}
-        </Card>
+            <Text className="text-caption font-semibold text-muted">{stats.winPercentage}%</Text>
+          </View>
+
+          {/* Win rate bar */}
+          <View className="flex-row h-2 rounded-full overflow-hidden bg-gray-100 mb-3">
+            {stats.wins > 0 && (
+              <View style={{ flex: stats.wins }} className="bg-win rounded-l-full" />
+            )}
+            {stats.losses > 0 && (
+              <View style={{ flex: stats.losses }} className="bg-loss rounded-r-full" />
+            )}
+          </View>
+
+          {/* Tournament accordion */}
+          <View className="rounded-xl overflow-hidden border border-gray-200">
+            {tournaments.map((tournament) => {
+              const tKey = tournament.title || t('matchHistory.tournamentUnknown');
+              const isTournamentExpanded = expandedTournaments.has(tKey);
+
+              return (
+                <View key={`t:${tKey}`}>
+                  <H2HTournamentHeader
+                    tournament={tournament}
+                    isExpanded={isTournamentExpanded}
+                    onToggle={() => toggleTournament(tKey)}
+                  />
+                  {isTournamentExpanded && tournament.disciplines.map((disc) => {
+                    const dKey = `${tKey}:${disc.discipline}`;
+                    const isDisciplineExpanded = expandedDisciplines.has(dKey);
+
+                    return (
+                      <View key={`d:${dKey}`}>
+                        <H2HDisciplineRow
+                          discipline={disc}
+                          isExpanded={isDisciplineExpanded}
+                          onToggle={() => toggleDiscipline(tKey, disc)}
+                        />
+                        {isDisciplineExpanded && disc.matches.map((match) => (
+                          <DetailMatchCard key={`m:${match.id}`} match={match} playerName={playerName} />
+                        ))}
+                      </View>
+                    );
+                  })}
+                </View>
+              );
+            })}
+          </View>
+        </View>
       ) : (
         <Card className="p-4 items-center">
           <Text className="text-body text-gray-400">
@@ -314,7 +395,7 @@ export default function PlayerProfileScreen() {
 
   // Head-to-head: only fetch when viewing someone else's profile
   const h2h = useHeadToHead(
-    !isOwnProfile && personId ? personId : null
+    !isOwnProfile && licence ? licence : null
   );
 
   const handleBookmarkToggle = async () => {
@@ -564,13 +645,11 @@ export default function PlayerProfileScreen() {
       )}
 
       {/* Head-to-Head section (only for other players) */}
-      {!isOwnProfile && personId && (
+      {!isOwnProfile && licence && (
         <HeadToHeadSection
-          playerName={player.nom ?? ''}
+          playerName={session ? `${session.prenom} ${session.nom}` : ''}
           h2hTab={h2hTab}
           setH2hTab={setH2hTab}
-          against={h2h.against}
-          together={h2h.together}
           againstMatches={h2h.againstMatches}
           togetherMatches={h2h.togetherMatches}
           isLoading={h2h.isLoading}
