@@ -280,13 +280,26 @@ export function useMatchHistory(): MatchHistoryData {
         return matchName && matchDisc;
       });
 
-      if (rawItems.length === 0) return discipline.matches;
+      // Deduplicate raw items by bracket identity (date + bracketId + disciplineId)
+      // Multiple raw items can reference the same bracket, causing duplicate expansion
+      const seen = new Set<string>();
+      const uniqueRawItems = rawItems.filter((item) => {
+        const date = (item.date as string) ?? '';
+        const bracketId = String(item.bracketId ?? '');
+        const disciplineId = String(item.disciplineId ?? '');
+        const key = `${date}|${bracketId}|${disciplineId}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      if (uniqueRawItems.length === 0) return discipline.matches;
 
       // Mark as loading
       setLoadingDetails((prev) => new Set(prev).add(detailKey));
 
       try {
-        const detailed = await getMatchDetailsForBrackets(rawItems, personId);
+        const detailed = await getMatchDetailsForBrackets(uniqueRawItems, personId);
         const matches = detailed.map((item, index) =>
           toFullMatchItem(item as Record<string, unknown>, index)
         );
