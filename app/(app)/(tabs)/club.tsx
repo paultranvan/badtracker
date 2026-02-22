@@ -559,18 +559,21 @@ function ClubMemberRow({
       <View className="flex-row items-center gap-2 mt-1.5 ml-11">
         <RankPill
           ranking={item.simple}
+          label="S"
           color="#3b82f6"
           bgColor="#dbeafe"
           isSort={sortDisc === 'simple'}
         />
         <RankPill
           ranking={item.double}
+          label="D"
           color="#10b981"
           bgColor="#d1fae5"
           isSort={sortDisc === 'double'}
         />
         <RankPill
           ranking={item.mixte}
+          label="M"
           color="#f59e0b"
           bgColor="#fef3c7"
           isSort={sortDisc === 'mixte'}
@@ -586,37 +589,63 @@ function ClubMemberRow({
 
 function RankPill({
   ranking,
+  label,
   color,
   bgColor,
   isSort,
 }: {
   ranking: DisciplineRanking | null;
+  label: string;
   color: string;
   bgColor: string;
   isSort: boolean;
 }) {
   if (!ranking || ranking.subLevel === '-') {
     return (
-      <View className="rounded px-1.5 py-0.5 bg-gray-50">
-        <Text className="text-[11px] text-gray-300">NC</Text>
+      <View className="items-center">
+        <View className="rounded-md px-2.5 py-1 bg-gray-50">
+          <Text className="text-[11px] text-gray-300">NC</Text>
+        </View>
+        <Text className="text-[9px] text-gray-300 mt-0.5">{label}</Text>
       </View>
     );
   }
 
   const rateStr = ranking.rate != null ? ` \u00b7 ${ranking.rate}` : '';
 
+  if (isSort) {
+    // Active sort pill: filled with discipline color, white text
+    return (
+      <View className="items-center">
+        <View
+          style={{ backgroundColor: color }}
+          className="rounded-md px-2.5 py-1"
+        >
+          <Text className="text-[11px] font-bold text-white">
+            {ranking.subLevel}{rateStr}
+          </Text>
+        </View>
+        <Text style={{ color }} className="text-[9px] font-bold mt-0.5">{label}</Text>
+      </View>
+    );
+  }
+
+  // Inactive pill: tinted background with colored left border
   return (
-    <View
-      style={{
-        backgroundColor: bgColor,
-        borderLeftColor: color,
-        borderLeftWidth: isSort ? 3 : 2,
-      }}
-      className={`rounded px-1.5 py-0.5 ${isSort ? 'opacity-100' : 'opacity-70'}`}
-    >
-      <Text style={{ color, fontSize: 11, fontWeight: isSort ? '700' : '500' }}>
-        {ranking.subLevel}{rateStr}
-      </Text>
+    <View className="items-center">
+      <View
+        style={{
+          backgroundColor: bgColor,
+          borderLeftColor: color,
+          borderLeftWidth: 2,
+        }}
+        className="rounded-md px-2.5 py-1"
+      >
+        <Text style={{ color, fontSize: 11, fontWeight: '500' }}>
+          {ranking.subLevel}{rateStr}
+        </Text>
+      </View>
+      <Text className="text-[9px] text-gray-400 mt-0.5">{label}</Text>
     </View>
   );
 }
