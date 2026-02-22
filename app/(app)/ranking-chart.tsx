@@ -55,10 +55,13 @@ export default function RankingChartScreen() {
   const dataSets = useMemo(() => {
     if (!chartData) return [];
 
-    return chartData.disciplines
-      .filter((d) => visibleDisciplines[d.discipline] && d.points.length > 0)
-      .map((d) => {
-        const labelInterval = Math.max(1, Math.ceil(d.points.length / 6));
+    const visible = chartData.disciplines.filter(
+      (d) => visibleDisciplines[d.discipline] && d.points.length > 0,
+    );
+    const maxPoints = Math.max(...visible.map((d) => d.points.length), 1);
+    const labelInterval = Math.max(1, Math.ceil(maxPoints / 6));
+
+    return visible.map((d) => {
         const data = d.points.map((point, idx) => {
           const item: Record<string, unknown> = {
             value: point.value - yAxisOffset,
