@@ -1,17 +1,20 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getPlayerProfile,
   getResultsByLicence,
+  getMatchDetailsForBrackets,
   type PlayerProfile,
 } from '../api/ffbad';
 import { NetworkError, ServerError } from '../api/errors';
 import { useSession } from '../auth/context';
 import { getBestRanking } from '../utils/rankings';
-import { cacheGet, cacheSet } from '../cache/storage';
+import { cacheGet, cacheSet, cacheGetWithTTL, cacheSetWithTTL } from '../cache/storage';
 import { useConnectivity } from '../connectivity/context';
 import {
   toFullMatchItem,
+  groupByTournamentNested,
+  computeWinLossStats,
   type MatchItem,
 } from '../utils/matchHistory';
 
@@ -246,14 +249,126 @@ export function useDashboardData(): DashboardData {
     prevConnected.current = isConnected;
   }, [isConnected, licence, fetchData]);
 
+  // ----------------------------------------------------------
+  // Detail-level stats (same approach as useMatchHistory)
+  // Bracket-level winPoint can mask individual losses.
+  // Auto-load details for all brackets and recompute stats.
+  // ----------------------------------------------------------
+
+  const [detailStatsCache, setDetailStatsCache] = useState<Map<string, MatchItem[]>>(new Map());
+  const autoLoadTriggered = useRef(new Set<string>());
+
+  const tournaments = useMemo(
+    () => groupByTournamentNested(allMatches),
+    [allMatches]
+  );
+
+  // Auto-load details for all tournaments
+  useEffect(() => {
+    if (!session?.personId || isLoading || allMatches.length === 0 || rawItems.length === 0) return;
+    const pid = session.personId;
+
+    for (const tournament of tournaments) {
+      for (const disc of tournament.disciplines) {
+        const key = `${tournament.title}:${disc.discipline}`;
+        if (autoLoadTriggered.current.has(key)) continue;
+        autoLoadTriggered.current.add(key);
+
+        // Check persistent cache first, then fetch
+        const persistKey = `detail:${pid}:${key}`;
+        const DETAIL_TTL = 24 * 60 * 60 * 1000;
+
+        (async () => {
+          const persisted = await cacheGetWithTTL<MatchItem[]>(persistKey, DETAIL_TTL);
+          if (persisted) {
+            setDetailStatsCache((prev) => new Map(prev).set(key, persisted));
+            return;
+          }
+
+          // Find matching raw items
+          const matchingRaw = rawItems.filter((item) => {
+            const name = item.name as string | undefined;
+            const d = item.discipline as string | undefined;
+            if (!name || !d) return false;
+            const matchName = name === tournament.title || (tournament.title === '' && name === 'unknown');
+            const discCode = d.toUpperCase();
+            const target = disc.discipline;
+            const matchDisc =
+              (target === 'simple' && discCode.includes('SIMPLE')) ||
+              (target === 'double' && discCode.includes('DOUBLE')) ||
+              (target === 'mixte' && discCode.includes('MIXTE'));
+            return matchName && matchDisc;
+          });
+
+          // Deduplicate
+          const seen = new Set<string>();
+          const unique = matchingRaw.filter((item) => {
+            const k = `${item.date}|${item.bracketId}|${item.disciplineId}`;
+            if (seen.has(k)) return false;
+            seen.add(k);
+            return true;
+          });
+
+          if (unique.length === 0) return;
+
+          try {
+            const detailed = await getMatchDetailsForBrackets(unique, pid);
+            const matches = detailed.map((item, i) =>
+              toFullMatchItem(item as Record<string, unknown>, i)
+            );
+            setDetailStatsCache((prev) => new Map(prev).set(key, matches));
+            cacheSetWithTTL(persistKey, matches);
+          } catch {
+            // Silently fall back to bracket-level data
+          }
+        })();
+      }
+    }
+  }, [tournaments, session?.personId, isLoading, allMatches.length, rawItems]);
+
+  // Recompute quickStats when detail data arrives
+  const enrichedQuickStats = useMemo(() => {
+    if (!quickStats) return null;
+    if (detailStatsCache.size === 0) return quickStats;
+
+    // Merge detail-level matches with uncovered bracket-level matches
+    const detailMatches: MatchItem[] = [];
+    const coveredBracketIds = new Set<string>();
+
+    for (const tournament of tournaments) {
+      for (const disc of tournament.disciplines) {
+        const key = `${tournament.title}:${disc.discipline}`;
+        const cached = detailStatsCache.get(key);
+        if (cached && cached.length > 0) {
+          detailMatches.push(...cached);
+          for (const m of disc.matches) {
+            coveredBracketIds.add(m.id);
+          }
+        }
+      }
+    }
+
+    const uncovered = allMatches.filter((m) => !coveredBracketIds.has(m.id));
+    const all = [...detailMatches, ...uncovered];
+    const stats = computeWinLossStats(all);
+
+    return {
+      ...quickStats,
+      matchCount: stats.total,
+      winRate: stats.winPercentage,
+    };
+  }, [quickStats, detailStatsCache, tournaments, allMatches]);
+
   const refresh = useCallback(async () => {
+    setDetailStatsCache(new Map());
+    autoLoadTriggered.current.clear();
     await fetchData(true);
   }, [fetchData]);
 
   return {
     profile,
     recentMatches,
-    quickStats,
+    quickStats: enrichedQuickStats,
     isLoading,
     isRefreshing,
     error,
