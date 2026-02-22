@@ -565,11 +565,29 @@ function expandWithDetail(
     const userEntry = userSide[loggedInPersonId];
     const detailWinPoints = userEntry?.WinPoints as number | undefined;
 
+    // Detect actual discipline from detail data
+    // If user has a partner, check if API discipline string hints at mixed
+    let detailDiscipline: string | undefined;
+    const parentDisc = (item.discipline as string) ?? '';
+    if (partner) {
+      // Has partner = doubles or mixed
+      if (parentDisc.toUpperCase().includes('MIXTE') || parentDisc.toUpperCase().includes('MX')) {
+        detailDiscipline = 'M';
+      }
+      // Also check match-level discipline info from detail API
+      const discName = (match.disciplineName as string) ?? (match.discipline as string) ?? '';
+      if (discName.toUpperCase().includes('MIXTE') || discName.toUpperCase().includes('MX')) {
+        detailDiscipline = 'M';
+      }
+    }
+
     return {
       ...item,
       // Clear parent-level winPoint — it's the aggregate for the whole bracket,
       // not per-match. Use detail-level WinPoints instead (if available).
       winPoint: detailWinPoints ?? undefined,
+      // Override discipline from detail if detected
+      ...(detailDiscipline ? { _detailDiscipline: detailDiscipline } : {}),
       // Override with detail data
       _detailOpponent: opp1?.PersonName as string | undefined,
       _detailOpponentLicence: opp1?.PersonLicence as string | undefined,
@@ -613,8 +631,8 @@ function formatDateFR(dateStr: string | null | undefined): string | undefined {
 function mapDisciplineCode(disc: string): string | undefined {
   const upper = disc.toUpperCase();
   if (upper.includes('SIMPLE')) return 'S';
+  if (upper.includes('MIXTE')) return 'M';  // Must come before DOUBLE
   if (upper.includes('DOUBLE')) return 'D';
-  if (upper.includes('MIXTE')) return 'M';
   return undefined;
 }
 
@@ -659,11 +677,12 @@ function transformResultItem(raw: Record<string, unknown>): Record<string, unkno
   const formattedDate = formatDateFR(raw.date as string | null | undefined);
 
   // Map discipline from API (e.g. "SIMPLE HOMMES" → "S", "DOUBLE HOMMES" → "D", "MIXTE" → "M")
-  // or infer from event name as fallback
+  // Prefer detail-level discipline override if available (fixes mixed-as-double misclassification)
+  const detailDisc = raw._detailDiscipline as string | undefined;
   const rawDisc = raw.discipline as string | null;
-  const discipline = rawDisc
-    ? mapDisciplineCode(rawDisc)
-    : inferDisciplineFromName(raw.name as string | undefined, raw.subName as string | undefined);
+  const discipline = detailDisc
+    ?? (rawDisc ? mapDisciplineCode(rawDisc) : undefined)
+    ?? inferDisciplineFromName(raw.name as string | undefined, raw.subName as string | undefined);
 
   // Show winPoint as score indicator (e.g. "+43 pts" or "-7 pts")
   let score: string | undefined;
