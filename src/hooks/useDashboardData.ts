@@ -10,19 +10,14 @@ import { useSession } from '../auth/context';
 import { getBestRanking } from '../utils/rankings';
 import { cacheGet, cacheSet } from '../cache/storage';
 import { useConnectivity } from '../connectivity/context';
+import {
+  toFullMatchItem,
+  type MatchItem,
+} from '../utils/matchHistory';
 
 // ============================================================
 // Types
 // ============================================================
-
-export interface MatchPreview {
-  date?: string;
-  opponent?: string;
-  score?: string;
-  event?: string;
-  round?: string;
-  isWin?: boolean;
-}
 
 export interface QuickStats {
   bestRanking: {
@@ -36,20 +31,23 @@ export interface QuickStats {
 
 export interface DashboardData {
   profile: PlayerProfile | null;
-  recentMatches: MatchPreview[];
+  recentMatches: MatchItem[];
   quickStats: QuickStats | null;
   isLoading: boolean;
   isRefreshing: boolean;
   error: string | null;
   refresh: () => Promise<void>;
+  rawItems: Array<Record<string, unknown>>;
+  personId: string | null;
 }
 
 // Cache shape for dashboard data
 interface CachedDashboard {
   profile: PlayerProfile;
-  recentMatches: MatchPreview[];
+  recentMatches: MatchItem[];
   quickStats: QuickStats | null;
-  allMatches: MatchPreview[];
+  allMatches: MatchItem[];
+  rawItems: Array<Record<string, unknown>>;
 }
 
 // ============================================================
@@ -57,46 +55,11 @@ interface CachedDashboard {
 // ============================================================
 
 /**
- * Map a raw result item from the FFBaD API to a MatchPreview.
- * The ResultItem schema has all optional fields with .passthrough().
- */
-function toMatchPreview(raw: Record<string, unknown>): MatchPreview {
-  const score = (raw.Score as string) ?? undefined;
-
-  // Try to determine win/loss from score or result indicator
-  // FFBaD may include a result field — check common field names
-  let isWin: boolean | undefined;
-  const resultField =
-    (raw.Resultat as string) ??
-    (raw.Result as string) ??
-    (raw.VD as string) ??
-    undefined;
-
-  if (resultField) {
-    const upper = resultField.toUpperCase().trim();
-    if (upper === 'V' || upper === 'VICTOIRE' || upper === 'WIN') {
-      isWin = true;
-    } else if (upper === 'D' || upper === 'DEFAITE' || upper === 'LOSS') {
-      isWin = false;
-    }
-  }
-
-  return {
-    date: (raw.Date as string) ?? undefined,
-    opponent: (raw.Adversaire as string) ?? undefined,
-    score,
-    event: (raw.Epreuve as string) ?? undefined,
-    round: (raw.Tour as string) ?? undefined,
-    isWin,
-  };
-}
-
-/**
  * Compute quick stats from profile rankings and match data.
  */
 function computeQuickStats(
   profile: PlayerProfile,
-  allMatches: MatchPreview[]
+  allMatches: MatchItem[]
 ): QuickStats {
   const bestRanking = getBestRanking(profile.rankings);
   const matchCount = allMatches.length;
@@ -126,8 +89,9 @@ export function useDashboardData(): DashboardData {
   const { isConnected } = useConnectivity();
 
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
-  const [recentMatches, setRecentMatches] = useState<MatchPreview[]>([]);
-  const [allMatches, setAllMatches] = useState<MatchPreview[]>([]);
+  const [recentMatches, setRecentMatches] = useState<MatchItem[]>([]);
+  const [allMatches, setAllMatches] = useState<MatchItem[]>([]);
+  const [rawItems, setRawItems] = useState<Array<Record<string, unknown>>>([]);
   const [quickStats, setQuickStats] = useState<QuickStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -158,6 +122,7 @@ export function useDashboardData(): DashboardData {
           setProfile(cached.profile);
           setRecentMatches(cached.recentMatches);
           setAllMatches(cached.allMatches);
+          setRawItems(cached.rawItems ?? []);
           setQuickStats(cached.quickStats);
           hasCachedData.current = true;
           // If offline, stop here — use cached data only
@@ -201,23 +166,26 @@ export function useDashboardData(): DashboardData {
         }
 
         // Handle matches result (non-critical — partial failure OK)
-        let matchPreviews: MatchPreview[] = [];
+        let matchItems: MatchItem[] = [];
+        let rawApiItems: Array<Record<string, unknown>> = [];
         if (matchesResult.status === 'fulfilled') {
           const retour = matchesResult.value.Retour;
           if (Array.isArray(retour)) {
-            matchPreviews = retour.map((item) =>
-              toMatchPreview(item as Record<string, unknown>)
+            matchItems = retour.map((item, index) =>
+              toFullMatchItem(item as Record<string, unknown>, index)
             );
+            rawApiItems = matchesResult.value._rawItems ?? [];
           }
         }
 
-        setAllMatches(matchPreviews);
-        setRecentMatches(matchPreviews.slice(0, 3));
+        setAllMatches(matchItems);
+        setRecentMatches(matchItems.slice(0, 3));
+        setRawItems(rawApiItems);
 
         // Compute quick stats if we have profile data
         let stats: QuickStats | null = null;
         if (loadedProfile) {
-          stats = computeQuickStats(loadedProfile, matchPreviews);
+          stats = computeQuickStats(loadedProfile, matchItems);
           setQuickStats(stats);
         }
 
@@ -225,9 +193,10 @@ export function useDashboardData(): DashboardData {
         if (loadedProfile) {
           cacheSet(`dashboard:${licence}`, {
             profile: loadedProfile,
-            recentMatches: matchPreviews.slice(0, 3),
+            recentMatches: matchItems.slice(0, 3),
             quickStats: stats,
-            allMatches: matchPreviews,
+            allMatches: matchItems,
+            rawItems: rawApiItems,
           });
           hasCachedData.current = true;
         }
@@ -289,5 +258,7 @@ export function useDashboardData(): DashboardData {
     isRefreshing,
     error,
     refresh,
+    rawItems,
+    personId: session?.personId ?? null,
   };
 }

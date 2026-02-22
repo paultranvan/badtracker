@@ -183,7 +183,7 @@ export default function DashboardScreen() {
                 isWin={match.isWin}
                 badgeLabel={badgeLabel}
                 opponent={match.opponent ?? '-'}
-                event={match.event}
+                event={match.tournament}
                 score={match.score}
               />
             );
