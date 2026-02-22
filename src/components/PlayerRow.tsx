@@ -5,6 +5,7 @@ interface PlayerRowProps {
   name: string;
   club?: string;
   rank?: string;
+  ranks?: { simple?: string; double?: string; mixte?: string };
   licence?: string;
   isBookmarked?: boolean;
   position?: number;
@@ -12,10 +13,17 @@ interface PlayerRowProps {
   onPress?: () => void;
 }
 
+const disciplineColors: Record<string, string> = {
+  simple: '#3b82f6',
+  double: '#10b981',
+  mixte: '#f59e0b',
+};
+
 export function PlayerRow({
   name,
   club,
   rank,
+  ranks,
   licence,
   isBookmarked,
   position,
@@ -48,11 +56,30 @@ export function PlayerRow({
           <Text className="text-[11px] text-gray-400 mt-0.5">{licence}</Text>
         )}
       </View>
-      {rank && (
+      {ranks ? (
+        <View className="flex-row mr-2">
+          {(Object.keys(disciplineColors) as Array<keyof typeof disciplineColors>).map((key) => {
+            const value = ranks[key as keyof typeof ranks];
+            if (!value) return null;
+            const color = disciplineColors[key];
+            return (
+              <View
+                key={key}
+                className="rounded-md px-1.5 py-0.5 mr-1"
+                style={{ backgroundColor: color + '20' }}
+              >
+                <Text style={{ color }} className="text-[11px] font-bold">
+                  {value}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      ) : rank ? (
         <View className="bg-gray-100 rounded-md px-2 py-1 mr-2">
           <Text className="text-caption font-bold text-gray-700">{rank}</Text>
         </View>
-      )}
+      ) : null}
       {isBookmarked && (
         <Ionicons name="star" size={16} color="#f59e0b" style={{ marginRight: 4 }} />
       )}

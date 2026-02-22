@@ -52,12 +52,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="search"
+        name="players"
         options={{
-          title: t('search.tab'),
-          tabBarLabel: t('search.tab'),
+          title: t('players.tab'),
+          tabBarLabel: t('players.tab'),
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="search-outline" size={size} color={color} />
+            <Ionicons name="people-outline" size={size} color={color} />
           ),
         }}
       />
@@ -67,7 +67,7 @@ export default function TabLayout() {
           title: t('club.tab'),
           tabBarLabel: t('club.tab'),
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="people-outline" size={size} color={color} />
+            <Ionicons name="shield-outline" size={size} color={color} />
           ),
         }}
       />
