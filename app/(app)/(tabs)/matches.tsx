@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import {
   View,
   Text,
+  ScrollView,
   RefreshControl,
   Pressable,
   ActivityIndicator,
@@ -324,30 +325,36 @@ export default function MatchHistoryScreen() {
 
       {/* Season Picker */}
       {availableSeasons.length > 0 && (
-        <View className="flex-row items-center gap-2 px-4 py-2 border-b border-gray-100">
-          <Text className="text-[13px] font-medium text-muted">{t('matchHistory.season')} :</Text>
-          <Pressable
-            className={`px-3 py-1.5 rounded-full border ${activeSeason === null ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}
-            onPress={() => setSeason(null)}
+        <View className="border-b border-gray-100">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8, alignItems: 'center' }}
           >
-            <Text className={`text-[13px] font-medium ${activeSeason === null ? 'text-white' : 'text-gray-700'}`}>
-              {t('matchHistory.allSeasons')}
-            </Text>
-          </Pressable>
-          {availableSeasons.map((season) => {
-            const isActive = activeSeason === season;
-            return (
-              <Pressable
-                key={season}
-                className={`px-3 py-1.5 rounded-full border ${isActive ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}
-                onPress={() => setSeason(season)}
-              >
-                <Text className={`text-[13px] font-medium ${isActive ? 'text-white' : 'text-gray-700'}`}>
-                  {season}
-                </Text>
-              </Pressable>
-            );
-          })}
+            <Text className="text-[13px] font-medium text-muted">{t('matchHistory.season')} :</Text>
+            <Pressable
+              className={`px-3 py-1.5 rounded-full border ${activeSeason === null ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}
+              onPress={() => setSeason(null)}
+            >
+              <Text className={`text-[13px] font-medium ${activeSeason === null ? 'text-white' : 'text-gray-700'}`}>
+                {t('matchHistory.allSeasons')}
+              </Text>
+            </Pressable>
+            {availableSeasons.map((season) => {
+              const isActive = activeSeason === season;
+              return (
+                <Pressable
+                  key={season}
+                  className={`px-3 py-1.5 rounded-full border ${isActive ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}
+                  onPress={() => setSeason(season)}
+                >
+                  <Text className={`text-[13px] font-medium ${isActive ? 'text-white' : 'text-gray-700'}`}>
+                    {season}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         </View>
       )}
 
