@@ -463,7 +463,7 @@ function DisciplineRow({ discipline, tournament, t, isExpanded, isLoading, onTog
   const labelKey = DISC_LABELS[disc] ?? disc;
 
   // Compute live win/loss from detailCache if available (after expansion)
-  const tKey = tournament.title || 'Unknown tournament';
+  const tKey = tournament.title || t('matchHistory.tournamentUnknown');
   const detailKey = `${tKey}:${disc}`;
   const detailMatches = detailCache.get(detailKey);
   const wins = detailMatches
