@@ -485,6 +485,12 @@ export default function ClubScreen() {
 // Club Member Row Component
 // ============================================================
 
+const PODIUM_COLORS: Record<number, { bg: string; text: string }> = {
+  1: { bg: '#FEF3C7', text: '#D97706' },  // gold
+  2: { bg: '#F3F4F6', text: '#6B7280' },  // silver
+  3: { bg: '#FED7AA', text: '#C2410C' },  // bronze
+};
+
 function ClubMemberRow({
   item,
   isCurrentUser,
@@ -509,8 +515,18 @@ function ClubMemberRow({
     >
       {/* Line 1: Position, sex, name, category, points */}
       <View className="flex-row items-center">
-        <View className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center mr-3">
-          <Text className="text-caption font-bold text-gray-600">
+        <View
+          className="w-8 h-8 rounded-full items-center justify-center mr-3"
+          style={{
+            backgroundColor: PODIUM_COLORS[item.position]?.bg ?? '#F3F4F6',
+          }}
+        >
+          <Text
+            className="text-caption font-bold"
+            style={{
+              color: PODIUM_COLORS[item.position]?.text ?? '#6B7280',
+            }}
+          >
             {item.position}
           </Text>
         </View>
@@ -524,7 +540,10 @@ function ClubMemberRow({
           {abbreviateCategory(item.category)}
         </Text>
         {displayRate != null ? (
-          <Text className="text-body font-bold text-gray-800" style={{ fontVariant: ['tabular-nums'] }}>
+          <Text
+            className={`font-bold text-gray-800 ${item.position <= 3 ? 'text-[17px]' : 'text-body'}`}
+            style={{ fontVariant: ['tabular-nums'] }}
+          >
             {displayRate}
           </Text>
         ) : (
