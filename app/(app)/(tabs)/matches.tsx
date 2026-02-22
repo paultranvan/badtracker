@@ -79,7 +79,10 @@ export default function MatchHistoryScreen() {
   // Level 2: expanded disciplines (show match cards) — key format: "tournament:discipline"
   const [expandedDisciplines, setExpandedDisciplines] = useState<Set<string>>(new Set());
 
-  const toggleTournament = (title: string) => {
+  const toggleTournament = (tournament: TournamentSection) => {
+    const title = tournament.title || t('matchHistory.tournamentUnknown');
+    const wasExpanded = expandedTournaments.has(title);
+
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedTournaments((prev) => {
       const next = new Set(prev);
@@ -98,6 +101,13 @@ export default function MatchHistoryScreen() {
       }
       return next;
     });
+
+    // Pre-load details for all disciplines when expanding
+    if (!wasExpanded) {
+      for (const disc of tournament.disciplines) {
+        loadDetails(title, disc);
+      }
+    }
   };
 
   const toggleDiscipline = (tournamentTitle: string, disc: DisciplineGroup) => {
@@ -202,7 +212,7 @@ export default function MatchHistoryScreen() {
             tournament={item.tournament}
             t={t}
             isExpanded={expandedTournaments.has(item.tournament.title || t('matchHistory.tournamentUnknown'))}
-            onToggle={() => toggleTournament(item.tournament.title || t('matchHistory.tournamentUnknown'))}
+            onToggle={() => toggleTournament(item.tournament)}
           />
         );
       case 'discipline':
@@ -355,6 +365,7 @@ export default function MatchHistoryScreen() {
           <Text className="text-body text-gray-400 italic text-center py-10 px-6">{emptyMessage}</Text>
         }
         contentContainerStyle={{ paddingBottom: 32 }}
+        extraData={detailCache}
         onScroll={handleScroll}
         scrollEventThrottle={16}
       />
@@ -542,7 +553,7 @@ function MatchCard({ match }: MatchCardProps) {
 
   // Points display
   const pointsText = match.pointsImpact != null && match.pointsImpact !== 0
-    ? `~${match.pointsImpact > 0 ? '+' : ''}${match.pointsImpact.toFixed(1)}`
+    ? `${match.pointsImpact > 0 ? '+' : ''}${match.pointsImpact.toFixed(1)}`
     : null;
   const pointsColor = match.pointsImpact != null && match.pointsImpact >= 0 ? 'text-win' : 'text-loss';
 
