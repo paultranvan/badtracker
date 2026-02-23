@@ -14,12 +14,14 @@ import { usePlayerSearch } from '@/hooks/usePlayerSearch';
 import { useBookmarks } from '@/bookmarks/context';
 import { useConnectivity } from '@/connectivity/context';
 import { PlayerRow } from '@/components';
+import { useBookmarkH2HCounts } from '@/hooks/useBookmarkH2HCounts';
 import type { BookmarkedPlayer } from '@/bookmarks/storage';
 
 export default function PlayersScreen() {
   const { t } = useTranslation();
   const { query, setQuery, results, isLoading, error } = usePlayerSearch();
   const { bookmarks, isBookmarked } = useBookmarks();
+  const h2hCounts = useBookmarkH2HCounts(bookmarks);
   const { isConnected } = useConnectivity();
 
   const isSearching = query.length > 0;
@@ -63,15 +65,20 @@ export default function PlayersScreen() {
         name={`${item.nom} ${item.prenom}`}
         ranks={item.rankings}
         isBookmarked
+        h2hCounts={h2hCounts.get(item.licence)}
         onPress={() =>
           router.push({
             pathname: '/player/[licence]',
-            params: { licence: item.licence },
+            params: {
+              licence: item.licence,
+              nom: item.nom,
+              prenom: item.prenom,
+            },
           })
         }
       />
     ),
-    [],
+    [h2hCounts],
   );
 
   const separator = () => <View className="h-px bg-gray-100 mx-4" />;

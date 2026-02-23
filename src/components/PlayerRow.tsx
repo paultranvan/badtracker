@@ -7,6 +7,7 @@ interface PlayerRowProps {
   rank?: string;
   ranks?: { simple?: string; double?: string; mixte?: string };
   licence?: string;
+  h2hCounts?: { against: number; together: number };
   isBookmarked?: boolean;
   position?: number;
   isCurrentUser?: boolean;
@@ -25,6 +26,7 @@ export function PlayerRow({
   rank,
   ranks,
   licence,
+  h2hCounts,
   isBookmarked,
   position,
   isCurrentUser,
@@ -54,6 +56,22 @@ export function PlayerRow({
         )}
         {licence && !club && (
           <Text className="text-[11px] text-gray-400 mt-0.5">{licence}</Text>
+        )}
+        {h2hCounts && (h2hCounts.against > 0 || h2hCounts.together > 0) && (
+          <View className="flex-row mt-1 gap-1.5">
+            {h2hCounts.against > 0 && (
+              <View className="flex-row items-center bg-loss/10 rounded px-1.5 py-0.5">
+                <Text className="text-[11px]">{'\u2694\uFE0F'}</Text>
+                <Text className="text-[11px] font-semibold text-loss ml-0.5">{h2hCounts.against}</Text>
+              </View>
+            )}
+            {h2hCounts.together > 0 && (
+              <View className="flex-row items-center bg-primary/10 rounded px-1.5 py-0.5">
+                <Text className="text-[11px]">{'\uD83E\uDD1D'}</Text>
+                <Text className="text-[11px] font-semibold text-primary ml-0.5">{h2hCounts.together}</Text>
+              </View>
+            )}
+          </View>
         )}
       </View>
       {ranks ? (

@@ -26,7 +26,7 @@ export interface HeadToHeadData {
  * Read all detail cache entries for a given personId from AsyncStorage.
  * Detail keys follow pattern: detail:{personId}:{tournament}:{discipline}
  */
-async function readAllDetailCache(personId: string): Promise<MatchItem[]> {
+export async function readAllDetailCache(personId: string): Promise<MatchItem[]> {
   const prefix = `${CACHE_PREFIX}detail:${personId}:`;
   const allKeys = await AsyncStorage.getAllKeys();
   const detailKeys = allKeys.filter((k) => k.startsWith(prefix));
@@ -87,7 +87,7 @@ async function fetchAndLoadAllDetails(
  * Filter match items for a specific opponent/partner by licence.
  * Returns raw MatchItem arrays so the UI can group them with groupByTournamentNested.
  */
-function filterMatchesForLicence(
+export function filterMatchesForLicence(
   allMatches: MatchItem[],
   targetLicence: string
 ): { against: MatchItem[]; together: MatchItem[] } {
