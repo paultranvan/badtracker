@@ -1,9 +1,11 @@
 import React, {
+  useCallback,
   useEffect,
   useRef,
+  useState,
   type PropsWithChildren,
 } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { Platform, View, StyleSheet } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { NetworkError, ServerError, AuthError } from './errors';
 
@@ -46,6 +48,8 @@ function generateId(): string {
 }
 
 const REQUEST_TIMEOUT_MS = 15000;
+const BRIDGE_READY_TIMEOUT_MS = 8000;
+const MAX_RELOAD_ATTEMPTS = 1;
 
 // ============================================================
 // JS injected into the WebView
@@ -436,6 +440,18 @@ export function isBridgeReady(): boolean {
 }
 
 /**
+ * Force-resolve the ready promise without marking the bridge as functional.
+ * This unblocks callers waiting on the bridge so they can hit their own
+ * timeout/fallback logic instead of hanging forever.
+ */
+function forceResolveReady(): void {
+  if (readyPromiseResolve) {
+    readyPromiseResolve();
+    readyPromiseResolve = null;
+  }
+}
+
+/**
  * Wait for the bridge to become ready.
  */
 export function waitForBridge(): Promise<void> {
@@ -467,18 +483,74 @@ export function resetBridge(): void {
 
 export function WebViewBridgeProvider({ children }: PropsWithChildren) {
   const ref = useRef<WebView>(null);
+  const reloadCount = useRef(0);
+  const readyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Changing the key forces React to unmount/remount the WebView entirely,
+  // which is needed when Android kills the renderer process.
+  const [webViewKey, setWebViewKey] = useState(0);
+
+  const startReadyTimeout = useCallback(() => {
+    if (readyTimer.current) clearTimeout(readyTimer.current);
+    readyTimer.current = setTimeout(() => {
+      if (bridgeReady) return;
+
+      if (reloadCount.current < MAX_RELOAD_ATTEMPTS && webViewRef) {
+        // First timeout: try reloading the WebView
+        reloadCount.current++;
+        webViewRef.reload();
+        // Give it another chance with a fresh timer
+        readyTimer.current = setTimeout(() => {
+          if (!bridgeReady) {
+            // Still not ready after reload — unblock waiters
+            forceResolveReady();
+          }
+        }, BRIDGE_READY_TIMEOUT_MS);
+      } else {
+        // Already retried or no ref — unblock waiters
+        forceResolveReady();
+      }
+    }, BRIDGE_READY_TIMEOUT_MS);
+  }, []);
 
   useEffect(() => {
+    reloadCount.current = 0;
+    startReadyTimeout();
+
     return () => {
+      if (readyTimer.current) clearTimeout(readyTimer.current);
       webViewRef = null;
       bridgeReady = false;
     };
+  }, [webViewKey, startReadyTimeout]);
+
+  const handleError = useCallback(() => {
+    if (bridgeReady) return;
+    if (reloadCount.current < MAX_RELOAD_ATTEMPTS && webViewRef) {
+      reloadCount.current++;
+      webViewRef.reload();
+    } else {
+      forceResolveReady();
+    }
+  }, []);
+
+  const handleRenderProcessGone = useCallback(() => {
+    // Android killed the WebView renderer — reject pending requests and remount
+    for (const [, pending] of pendingRequests) {
+      clearTimeout(pending.timer);
+      pending.reject(new NetworkError('WebView render process gone'));
+    }
+    pendingRequests.clear();
+    bridgeReady = false;
+    readyPromise = createReadyPromise();
+    reloadCount.current = 0;
+    setWebViewKey((k) => k + 1);
   }, []);
 
   return (
     <>
       <View style={styles.hidden} pointerEvents="none">
         <WebView
+          key={webViewKey}
           ref={(r) => {
             ref.current = r;
             webViewRef = r;
@@ -486,6 +558,9 @@ export function WebViewBridgeProvider({ children }: PropsWithChildren) {
           source={{ uri: 'https://myffbad.fr' }}
           injectedJavaScript={INJECTED_JS}
           onMessage={handleMessage}
+          onError={handleError}
+          onHttpError={handleError}
+          {...(Platform.OS === 'android' ? { onRenderProcessGone: handleRenderProcessGone } : {})}
           javaScriptEnabled={true}
           domStorageEnabled={true}
           thirdPartyCookiesEnabled={true}

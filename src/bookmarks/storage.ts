@@ -8,6 +8,7 @@ export interface BookmarkedPlayer {
   licence: string;
   nom: string;
   prenom: string;
+  personId?: string;
   rankings: {
     simple?: string; // classement string e.g. "P11"
     double?: string;
@@ -64,5 +65,19 @@ export function updateBookmarkRankings(
 ): BookmarkedPlayer[] {
   return all.map((b) =>
     b.licence === licence ? { ...b, rankings } : b
+  );
+}
+
+/**
+ * Returns a new bookmarks array with personId set for the given licence.
+ * Only updates if the bookmark exists and doesn't already have a personId.
+ */
+export function updateBookmarkPersonId(
+  licence: string,
+  personId: string,
+  all: BookmarkedPlayer[]
+): BookmarkedPlayer[] {
+  return all.map((b) =>
+    b.licence === licence && !b.personId ? { ...b, personId } : b
   );
 }

@@ -73,6 +73,7 @@ export default function PlayersScreen() {
               licence: item.licence,
               nom: item.nom,
               prenom: item.prenom,
+              ...(item.personId ? { personId: item.personId } : {}),
             },
           })
         }

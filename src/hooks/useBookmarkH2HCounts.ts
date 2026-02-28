@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from '../auth/context';
-import { readAllDetailCache, filterMatchesForLicence } from './useHeadToHead';
+import { getOpponentList } from '../api/ffbad';
+import { cacheGetWithTTL, cacheSetWithTTL } from '../cache/storage';
 import type { BookmarkedPlayer } from '../bookmarks/storage';
 
 export interface H2HCounts {
@@ -8,9 +9,11 @@ export interface H2HCounts {
   together: number;
 }
 
+const OPPONENT_LIST_TTL = 10 * 60 * 1000; // 10 minutes
+
 /**
- * Scans the match detail cache to compute confrontation/partner counts
- * for each bookmarked player. No API calls — uses cached data only.
+ * Fetches the logged-in user's opponent list from the API to compute
+ * accurate full-history match counts for each bookmarked player.
  */
 export function useBookmarkH2HCounts(
   bookmarks: BookmarkedPlayer[]
@@ -27,14 +30,40 @@ export function useBookmarkH2HCounts(
     let cancelled = false;
 
     (async () => {
-      const allMatches = await readAllDetailCache(session.personId);
-      if (cancelled || allMatches.length === 0) return;
+      const cacheKey = `opponentList:${session.personId}`;
+
+      // Try cache first
+      let opponents = await cacheGetWithTTL<
+        Array<{ PersonLicence: string; MatchCount: number }>
+      >(cacheKey, OPPONENT_LIST_TTL);
+
+      // Fetch from API if not cached
+      if (!opponents) {
+        try {
+          opponents = await getOpponentList();
+          if (opponents.length > 0) {
+            cacheSetWithTTL(cacheKey, opponents);
+          }
+        } catch {
+          return; // Silently fail — badges just won't show
+        }
+      }
+
+      if (cancelled || !opponents || opponents.length === 0) return;
+
+      // Build licence → matchCount lookup
+      const byLicence = new Map<string, number>();
+      for (const opp of opponents) {
+        if (opp.PersonLicence) {
+          byLicence.set(opp.PersonLicence.trim(), opp.MatchCount ?? 0);
+        }
+      }
 
       const result = new Map<string, H2HCounts>();
       for (const b of bookmarks) {
-        const { against, together } = filterMatchesForLicence(allMatches, b.licence);
-        if (against.length > 0 || together.length > 0) {
-          result.set(b.licence, { against: against.length, together: together.length });
+        const against = byLicence.get(b.licence.trim()) ?? 0;
+        if (against > 0) {
+          result.set(b.licence, { against, together: 0 });
         }
       }
 

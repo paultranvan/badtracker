@@ -263,6 +263,7 @@ export async function searchPlayersByName(
  */
 export interface PlayerProfile {
   licence: string;
+  personId?: string;
   nom: string;
   prenom: string;
   club?: string;
@@ -325,6 +326,7 @@ export async function getPlayerProfile(
 
   return {
     licence: data.Licence,
+    personId: (raw.personId as string) ?? knownPersonId,
     nom: data.Nom,
     prenom: data.Prenom,
     club: data.Club,
@@ -1002,6 +1004,44 @@ export async function getClubTops(
   }
 
   return successful;
+}
+
+/**
+ * Opponent list item from /api/person/{personId}/opponentList.
+ */
+export interface OpponentListItem {
+  PersonId: string;
+  PersonName: string;
+  PersonLicence: string;
+  MatchCount: number;
+  LastDate: string;
+}
+
+/**
+ * Fetch the logged-in user's full opponent list with match counts.
+ *
+ * GET /api/person/{personId}/opponentList
+ *
+ * Returns all opponents across the full match history, each with MatchCount.
+ */
+export async function getOpponentList(): Promise<OpponentListItem[]> {
+  const session = requireSession();
+
+  try {
+    const data = await bridgeGet(
+      `/api/person/${session.personId}/opponentList`,
+      session.accessToken,
+      session.personId
+    );
+
+    const response = data as Record<string, unknown>;
+    const retour = response.Retour;
+    if (!retour || typeof retour === 'string' || !Array.isArray(retour)) return [];
+    return retour as OpponentListItem[];
+  } catch (err) {
+    if (err instanceof AuthError || err instanceof NetworkError) throw err;
+    return [];
+  }
 }
 
 /**
