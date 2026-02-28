@@ -10,7 +10,6 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import Toast from 'react-native-toast-message';
 import {
   getPlayerProfile,
   type PlayerProfile,
@@ -381,7 +380,6 @@ export default function PlayerProfileScreen() {
     if (!player) return;
     if (bookmarked) {
       await removeBookmark(player.licence);
-      Toast.show({ type: 'info', text1: t('bookmarks.removed'), visibilityTime: 2000 });
     } else {
       const bookmark: BookmarkedPlayer = {
         licence: player.licence,
@@ -396,7 +394,6 @@ export default function PlayerProfileScreen() {
         bookmarkedAt: Date.now(),
       };
       await addBookmark(bookmark);
-      Toast.show({ type: 'success', text1: t('bookmarks.added'), visibilityTime: 2000 });
     }
   };
 
