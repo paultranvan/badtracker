@@ -958,6 +958,35 @@ export async function getClubInfo(
 const TOPS_DISCIPLINES = [1, 2, 3, 4, 5, 6] as const;
 
 /**
+ * Fetch a player's last (current) club.
+ * GET /api/person/{personId}/lastCLub/
+ * Returns club initials and id, or null on failure.
+ */
+export async function getLastClub(
+  personId: string
+): Promise<{ id: string; initials: string } | null> {
+  const session = requireSession();
+
+  try {
+    const data = (await bridgeGet(
+      `/api/person/${personId}/lastCLub/`,
+      session.accessToken,
+      session.personId
+    )) as Record<string, unknown>;
+
+    if (!data || typeof data === 'string') return null;
+
+    const id = String(data.id ?? data.clubId ?? '');
+    const initials = String(data.initials ?? data.acronym ?? '');
+    if (!initials) return null;
+
+    return { id, initials };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Fetch club leaderboard using /api/search/tops for all 6 disciplines.
  * Returns raw arrays per discipline for merging by the caller.
  *
@@ -1034,6 +1063,8 @@ export async function getOpponentList(): Promise<OpponentListItem[]> {
       session.personId
     );
 
+    // Response may be a direct array or wrapped in { Retour: [...] }
+    if (Array.isArray(data)) return data as OpponentListItem[];
     const response = data as Record<string, unknown>;
     const retour = response.Retour;
     if (!retour || typeof retour === 'string' || !Array.isArray(retour)) return [];

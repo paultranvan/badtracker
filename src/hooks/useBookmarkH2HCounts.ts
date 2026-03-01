@@ -56,7 +56,7 @@ export function useBookmarkH2HCounts(
       const byLicence = new Map<string, number>();
       for (const opp of opponents) {
         if (opp.PersonLicence) {
-          byLicence.set(opp.PersonLicence.trim(), opp.MatchCount ?? 0);
+          byLicence.set(opp.PersonLicence.trim(), Number(opp.MatchCount) || 0);
         }
       }
 
