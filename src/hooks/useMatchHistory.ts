@@ -31,10 +31,18 @@ const DETAIL_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 // Types
 // ============================================================
 
+export interface DisciplineStats {
+  simple: { wins: number; losses: number };
+  double: { wins: number; losses: number };
+  mixte: { wins: number; losses: number };
+}
+
 export interface MatchHistoryData {
   tournaments: TournamentSection[];
   allMatches: MatchItem[];
   stats: WinLossStats;
+  /** Per-discipline W/L stats computed from the same detail-aware data as stats */
+  disciplineStats: DisciplineStats;
   /** True once all tournament details have loaded and stats are accurate */
   isStatsSettled: boolean;
   disciplineCounts: Record<DisciplineFilter, number>;
@@ -236,7 +244,7 @@ export function useMatchHistory(targetPersonId?: string): MatchHistoryData {
   // Detail cache has individual match results (win/loss per match),
   // while allMatches has bracket-level results (aggregate winPoint per bracket).
   // A bracket with winPoint > 0 might still contain individual losses.
-  const { stats, isStatsSettled } = useMemo(() => {
+  const { stats, disciplineStats, isStatsSettled } = useMemo(() => {
     // Collect all detail-level matches for the current filter
     const detailMatches: MatchItem[] = [];
     const coveredBracketIds = new Set<string>();
@@ -265,8 +273,24 @@ export function useMatchHistory(targetPersonId?: string): MatchHistoryData {
     // Stats are settled when all brackets have detail data (no uncovered matches)
     const settled = uncoveredMatches.length === 0 && filteredMatches.length > 0;
 
+    const allStatsMatches = [...detailMatches, ...uncoveredMatches];
+
+    // Compute per-discipline W/L from the same detail-aware data
+    const perDisc: DisciplineStats = {
+      simple: { wins: 0, losses: 0 },
+      double: { wins: 0, losses: 0 },
+      mixte: { wins: 0, losses: 0 },
+    };
+    for (const m of allStatsMatches) {
+      if (m.discipline && m.discipline in perDisc && m.isWin !== undefined) {
+        if (m.isWin) perDisc[m.discipline].wins++;
+        else perDisc[m.discipline].losses++;
+      }
+    }
+
     return {
-      stats: computeWinLossStats([...detailMatches, ...uncoveredMatches]),
+      stats: computeWinLossStats(allStatsMatches),
+      disciplineStats: perDisc,
       isStatsSettled: settled || filteredMatches.length === 0,
     };
   }, [filteredMatches, tournaments, detailCache]);
@@ -425,6 +449,7 @@ export function useMatchHistory(targetPersonId?: string): MatchHistoryData {
     tournaments,
     allMatches,
     stats,
+    disciplineStats,
     isStatsSettled,
     disciplineCounts,
     availableSeasons,

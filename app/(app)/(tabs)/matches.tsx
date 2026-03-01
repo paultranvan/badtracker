@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,7 @@ import {
   type TournamentSection,
   type DisciplineGroup,
   type DisciplineFilter,
+  type DisciplineStats,
 } from '../../../src/hooks/useMatchHistory';
 import { DetailMatchCard, DonutChart } from '../../../src/components';
 
@@ -138,6 +139,7 @@ export default function MatchHistoryScreen() {
     tournaments,
     allMatches,
     stats,
+    disciplineStats,
     isStatsSettled,
     disciplineCounts,
     availableSeasons,
@@ -298,7 +300,7 @@ export default function MatchHistoryScreen() {
         className="overflow-hidden"
         style={headerAnimatedStyle}
       >
-        <StatsHeader stats={stats} isStatsSettled={isStatsSettled} t={t} allMatches={allMatches} />
+        <StatsHeader stats={stats} isStatsSettled={isStatsSettled} t={t} disciplineStats={disciplineStats} />
       </Animated.View>
 
       {/* Discipline Filter Chips */}
@@ -398,7 +400,7 @@ interface StatsHeaderProps {
   stats: { wins: number; losses: number; total: number; winPercentage: number };
   isStatsSettled: boolean;
   t: (key: string, opts?: Record<string, unknown>) => string;
-  allMatches: MatchItem[];
+  disciplineStats: DisciplineStats;
 }
 
 interface DisciplineStatPillProps {
@@ -446,23 +448,7 @@ function DisciplineStatPill({ discipline, wins, losses }: DisciplineStatPillProp
   );
 }
 
-function StatsHeader({ stats, isStatsSettled, t, allMatches }: StatsHeaderProps) {
-  const disciplineStats = useMemo(() => {
-    const result: Record<string, { wins: number; losses: number }> = {
-      simple: { wins: 0, losses: 0 },
-      double: { wins: 0, losses: 0 },
-      mixte: { wins: 0, losses: 0 },
-    };
-    for (const match of allMatches) {
-      const disc = match.discipline;
-      if (disc && result[disc] && match.isWin !== undefined) {
-        if (match.isWin) result[disc].wins++;
-        else result[disc].losses++;
-      }
-    }
-    return result;
-  }, [allMatches]);
-
+function StatsHeader({ stats, isStatsSettled, t, disciplineStats }: StatsHeaderProps) {
   return (
     <LinearGradient colors={['#1e293b', '#0f172a']} style={{ flex: 1 }}>
       <View style={{ padding: 16, paddingBottom: 12, flex: 1 }}>
