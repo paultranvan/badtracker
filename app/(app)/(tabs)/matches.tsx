@@ -241,7 +241,7 @@ export default function MatchHistoryScreen() {
         const m = item.match as MatchItem & { _isLoadingPlaceholder?: boolean };
         if (m._isLoadingPlaceholder) {
           return (
-            <View className="py-4 items-center">
+            <View className="mx-3 mb-1 py-4 items-center bg-gray-50 rounded-lg">
               <ActivityIndicator size="small" color="#2563eb" />
             </View>
           );
