@@ -11,6 +11,7 @@ import {
   saveBookmarks,
   updateBookmarkRankings,
   updateBookmarkPersonId,
+  updateBookmarkClubId,
 } from './storage';
 import type { BookmarkedPlayer } from './storage';
 
@@ -25,6 +26,7 @@ interface BookmarksContextType {
   removeBookmark: (licence: string) => Promise<void>;
   updateStoredRankings: (licence: string, rankings: BookmarkedPlayer['rankings']) => void;
   updateStoredPersonId: (licence: string, personId: string) => void;
+  updateStoredClubId: (licence: string, clubId: string) => void;
   isLoaded: boolean;
 }
 
@@ -132,11 +134,26 @@ export function BookmarksProvider({ children }: PropsWithChildren) {
   );
 
   // ----------------------------------------------------------
+  // Update stored clubId for a bookmarked player (backfill)
+  // Called passively when visiting a bookmarked player's profile
+  // ----------------------------------------------------------
+  const updateStoredClubId = useCallback(
+    (licence: string, clubId: string): void => {
+      setBookmarks((prev) => {
+        const next = updateBookmarkClubId(licence, clubId, prev);
+        saveBookmarks(next);
+        return next;
+      });
+    },
+    []
+  );
+
+  // ----------------------------------------------------------
   // Render
   // ----------------------------------------------------------
   return (
     <BookmarksContext.Provider
-      value={{ bookmarks, isBookmarked, addBookmark, removeBookmark, updateStoredRankings, updateStoredPersonId, isLoaded }}
+      value={{ bookmarks, isBookmarked, addBookmark, removeBookmark, updateStoredRankings, updateStoredPersonId, updateStoredClubId, isLoaded }}
     >
       {children}
     </BookmarksContext.Provider>
