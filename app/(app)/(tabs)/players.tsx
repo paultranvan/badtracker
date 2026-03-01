@@ -40,7 +40,7 @@ export default function PlayersScreen() {
     ({ item }: { item: (typeof results)[number] }) => (
       <PlayerRow
         name={`${item.Nom} ${item.Prenom}`}
-        club={item.NomClub || undefined}
+        club={item.ClubAcronyme || item.NomClub || undefined}
         licence={item.Licence}
         isBookmarked={isBookmarked(item.Licence)}
         onPress={() =>
