@@ -358,7 +358,7 @@ export default function PlayerProfileScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const { session } = useSession();
-  const { isBookmarked, addBookmark, removeBookmark, updateStoredRankings, updateStoredPersonId } = useBookmarks();
+  const { isBookmarked, addBookmark, removeBookmark, updateStoredRankings, updateStoredPersonId, updateStoredClubId } = useBookmarks();
   const { isConnected } = useConnectivity();
 
   const isOwnProfile = session?.licence === licence;
@@ -386,6 +386,7 @@ export default function PlayerProfileScreen() {
         nom: player.nom,
         prenom: player.prenom,
         personId: player.personId ?? personId,
+        clubId: player.club,
         rankings: {
           simple: player.rankings.simple?.classement,
           double: player.rankings.double?.classement,
@@ -458,6 +459,9 @@ export default function PlayerProfileScreen() {
         if (merged.personId) {
           updateStoredPersonId(licence, merged.personId);
         }
+        if (merged.club) {
+          updateStoredClubId(licence, merged.club);
+        }
         if (isBookmarked(licence)) {
           cacheSet(`player:${licence}`, merged);
         }
@@ -483,7 +487,7 @@ export default function PlayerProfileScreen() {
     return () => {
       cancelled = true;
     };
-  }, [licence, personId, nom, prenom, t, updateStoredRankings, updateStoredPersonId, isConnected, isBookmarked]);
+  }, [licence, personId, nom, prenom, t, updateStoredRankings, updateStoredPersonId, updateStoredClubId, isConnected, isBookmarked]);
 
   useEffect(() => {
     let cleanup: (() => void) | undefined;
