@@ -46,10 +46,54 @@ function isLicenceQuery(query: string): boolean {
 }
 
 // ============================================================
+// Scoring
+// ============================================================
+
+/**
+ * Score a player result against the search query for relevance sorting.
+ * Higher score = better match.
+ */
+function scoreRelevance(
+  nom: string,
+  prenom: string,
+  query: string
+): number {
+  const q = query.toLowerCase().trim();
+  const n = nom.toLowerCase();
+  const p = prenom.toLowerCase();
+  const fullNP = `${n} ${p}`;
+  const fullPN = `${p} ${n}`;
+
+  // Exact full-name match (either order)
+  if (fullNP === q || fullPN === q) return 100;
+
+  // Both query words match name parts
+  const queryWords = q.split(/\s+/).filter(Boolean);
+  if (queryWords.length >= 2) {
+    const allMatch = queryWords.every(
+      (w) => n.startsWith(w) || p.startsWith(w)
+    );
+    if (allMatch) return 80;
+  }
+
+  // Last name starts with query (or first query word)
+  const firstWord = queryWords[0] ?? q;
+  if (n.startsWith(firstWord)) return 60;
+
+  // First name starts with query (or first query word)
+  if (p.startsWith(firstWord)) return 40;
+
+  // Name contains query word
+  if (fullNP.includes(q) || fullPN.includes(q)) return 20;
+
+  return 0;
+}
+
+// ============================================================
 // Hook
 // ============================================================
 
-export function usePlayerSearch(): UsePlayerSearchReturn {
+export function usePlayerSearch(userClubId?: string): UsePlayerSearchReturn {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<PlayerResult[]>([]);
@@ -92,7 +136,38 @@ export function usePlayerSearch(): UsePlayerSearchReturn {
         if (typeof response.Retour === 'string') {
           setResults([]);
         } else {
-          setResults(response.Retour);
+          const sorted = [...response.Retour].sort((a, b) => {
+            const aR = a as Record<string, unknown>;
+            const bR = b as Record<string, unknown>;
+
+            // 1. Relevance score
+            const scoreA = scoreRelevance(
+              String(aR.Nom ?? ''),
+              String(aR.Prenom ?? ''),
+              currentQuery
+            );
+            const scoreB = scoreRelevance(
+              String(bR.Nom ?? ''),
+              String(bR.Prenom ?? ''),
+              currentQuery
+            );
+            if (scoreA !== scoreB) return scoreB - scoreA;
+
+            // 2. Same-club boost
+            if (userClubId) {
+              const aClub = String(aR.Club ?? '') === userClubId;
+              const bClub = String(bR.Club ?? '') === userClubId;
+              if (aClub && !bClub) return -1;
+              if (!aClub && bClub) return 1;
+            }
+
+            // 3. Alphabetical tie-break
+            const nameA = `${aR.Nom} ${aR.Prenom}`.toLowerCase();
+            const nameB = `${bR.Nom} ${bR.Prenom}`.toLowerCase();
+            return nameA.localeCompare(nameB);
+          });
+
+          setResults(sorted);
         }
       } catch (err) {
         if (cancelled) return;

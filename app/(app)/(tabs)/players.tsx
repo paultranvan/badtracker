@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { usePlayerSearch } from '@/hooks/usePlayerSearch';
+import { useSession } from '@/auth/context';
 import { useBookmarks } from '@/bookmarks/context';
 import { useConnectivity } from '@/connectivity/context';
 import { PlayerRow } from '@/components';
@@ -20,7 +21,8 @@ import type { BookmarkedPlayer } from '@/bookmarks/storage';
 
 export default function PlayersScreen() {
   const { t } = useTranslation();
-  const { query, setQuery, results, isLoading, error } = usePlayerSearch();
+  const { session } = useSession();
+  const { query, setQuery, results, isLoading, error } = usePlayerSearch(session?.clubId);
   const { bookmarks, isBookmarked } = useBookmarks();
   const h2hCounts = useBookmarkH2HCounts(bookmarks);
   const clubInitials = useBookmarkClubs(bookmarks);
