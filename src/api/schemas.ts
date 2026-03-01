@@ -52,6 +52,7 @@ const LicenceInfoItem = z
     Prenom: z.string(),
     Club: z.string().optional(),
     NomClub: z.string().optional(),
+    ClubAcronyme: z.string().optional(),
     IS_ACTIF: z.union([z.boolean(), z.number(), z.string()]).optional(),
     // Ranking fields per discipline
     ClassementSimple: z.string().optional(),

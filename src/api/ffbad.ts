@@ -227,12 +227,19 @@ export async function searchPlayersByKeywords(
       const nom = parts[0] ?? '';
       const prenom = parts.slice(1).join(' ') ?? '';
 
+      // Club may be nested object {id, name, acronym} or flat fields
+      const clubObj = (r.club && typeof r.club === 'object') ? r.club as Record<string, unknown> : undefined;
+      const clubId = String(clubObj?.id ?? r.clubId ?? '');
+      const clubName = String(clubObj?.name ?? r.clubName ?? r.nomClub ?? '');
+      const clubAcronym = String(clubObj?.acronym ?? r.clubAcronym ?? '');
+
       return {
         Licence: String(r.personLicence ?? r.licence ?? r.licenceNumber ?? ''),
         Nom: r.lastName ? String(r.lastName) : nom,
         Prenom: r.firstName ? String(r.firstName) : prenom,
-        Club: String(r.clubId ?? r.club ?? ''),
-        NomClub: String(r.clubName ?? r.nomClub ?? ''),
+        Club: clubId,
+        NomClub: clubName,
+        ClubAcronyme: clubAcronym,
         personId: String(r.personId ?? r.id ?? ''),
       };
     });
