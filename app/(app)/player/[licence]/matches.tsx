@@ -23,7 +23,7 @@ import { DetailMatchCard } from '../../../../src/components';
 // Stats Header
 // ============================================================
 
-function StatsHeader({ wins, losses }: { wins: number; losses: number }) {
+function StatsHeader({ wins, losses, isSettled }: { wins: number; losses: number; isSettled: boolean }) {
   const { t } = useTranslation();
   const total = wins + losses;
   const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
@@ -31,19 +31,25 @@ function StatsHeader({ wins, losses }: { wins: number; losses: number }) {
   return (
     <View className="mx-4 mt-4 mb-3 p-4 bg-primary-bg rounded-xl">
       <Text className="text-caption font-semibold text-gray-500 mb-1">{t('matchHistory.statsHeader')}</Text>
-      <Text className="text-display text-primary">{t('matchHistory.winRate', { rate: winRate })}</Text>
+      {isSettled ? (
+        <Text className="text-display text-primary">{t('matchHistory.winRate', { rate: winRate })}</Text>
+      ) : (
+        <ActivityIndicator size="small" color="#2563eb" style={{ alignSelf: 'flex-start', marginVertical: 4 }} />
+      )}
       <View className="flex-row h-2.5 rounded-full overflow-hidden bg-white mt-2">
-        {wins > 0 && (
+        {isSettled && wins > 0 && (
           <View style={{ flex: wins }} className="bg-win rounded-l-full" />
         )}
-        {losses > 0 && (
+        {isSettled && losses > 0 && (
           <View style={{ flex: losses }} className="bg-loss rounded-r-full" />
         )}
       </View>
-      <View className="flex-row justify-between mt-1">
-        <Text className="text-caption font-semibold text-win">{t('matchHistory.wins', { count: wins })}</Text>
-        <Text className="text-caption font-semibold text-loss">{t('matchHistory.losses', { count: losses })}</Text>
-      </View>
+      {isSettled && (
+        <View className="flex-row justify-between mt-1">
+          <Text className="text-caption font-semibold text-win">{t('matchHistory.wins', { count: wins })}</Text>
+          <Text className="text-caption font-semibold text-loss">{t('matchHistory.losses', { count: losses })}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -162,6 +168,7 @@ export default function PlayerMatchesScreen() {
     activeDiscipline,
     setDiscipline,
     stats,
+    isStatsSettled,
     isLoading,
     isRefreshing,
     refresh,
@@ -303,7 +310,7 @@ export default function PlayerMatchesScreen() {
         renderItem={renderItem}
         ListHeaderComponent={
           <>
-            <StatsHeader wins={stats.wins} losses={stats.losses} />
+            <StatsHeader wins={stats.wins} losses={stats.losses} isSettled={isStatsSettled} />
             {/* Discipline filters */}
             <View className="flex-row gap-2 px-4 pt-2 pb-2">
               {(['all', 'simple', 'double', 'mixte'] as DisciplineFilter[]).map((key) => {

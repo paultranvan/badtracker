@@ -138,6 +138,7 @@ export default function MatchHistoryScreen() {
     tournaments,
     allMatches,
     stats,
+    isStatsSettled,
     disciplineCounts,
     availableSeasons,
     activeDiscipline,
@@ -297,7 +298,7 @@ export default function MatchHistoryScreen() {
         className="overflow-hidden"
         style={headerAnimatedStyle}
       >
-        <StatsHeader stats={stats} t={t} allMatches={allMatches} />
+        <StatsHeader stats={stats} isStatsSettled={isStatsSettled} t={t} allMatches={allMatches} />
       </Animated.View>
 
       {/* Discipline Filter Chips */}
@@ -395,6 +396,7 @@ export default function MatchHistoryScreen() {
 
 interface StatsHeaderProps {
   stats: { wins: number; losses: number; total: number; winPercentage: number };
+  isStatsSettled: boolean;
   t: (key: string, opts?: Record<string, unknown>) => string;
   allMatches: MatchItem[];
 }
@@ -444,7 +446,7 @@ function DisciplineStatPill({ discipline, wins, losses }: DisciplineStatPillProp
   );
 }
 
-function StatsHeader({ stats, t, allMatches }: StatsHeaderProps) {
+function StatsHeader({ stats, isStatsSettled, t, allMatches }: StatsHeaderProps) {
   const disciplineStats = useMemo(() => {
     const result: Record<string, { wins: number; losses: number }> = {
       simple: { wins: 0, losses: 0 },
@@ -467,7 +469,7 @@ function StatsHeader({ stats, t, allMatches }: StatsHeaderProps) {
         {/* Top row: Donut + text stats */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 12 }}>
           <DonutChart
-            percentage={stats.winPercentage}
+            percentage={isStatsSettled ? stats.winPercentage : 0}
             size={90}
             strokeWidth={8}
             winColor="#22c55e"
@@ -486,17 +488,23 @@ function StatsHeader({ stats, t, allMatches }: StatsHeaderProps) {
             >
               {t('matchHistory.statsHeader')}
             </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#22c55e' }}>
-                {stats.wins}W
-              </Text>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#ef4444' }}>
-                {stats.losses}L
-              </Text>
-            </View>
-            <Text style={{ fontSize: 12, color: '#64748b' }}>
-              {stats.total} {t('matchHistory.totalMatches')}
-            </Text>
+            {isStatsSettled ? (
+              <>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#22c55e' }}>
+                    {stats.wins}W
+                  </Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#ef4444' }}>
+                    {stats.losses}L
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 12, color: '#64748b' }}>
+                  {stats.total} {t('matchHistory.totalMatches')}
+                </Text>
+              </>
+            ) : (
+              <ActivityIndicator size="small" color="#94a3b8" style={{ alignSelf: 'flex-start', marginVertical: 4 }} />
+            )}
           </View>
         </View>
 

@@ -590,12 +590,12 @@ export default function PlayerProfileScreen() {
             highlight
           />
           <StatCard
-            value={String(matchHistory.stats.total)}
+            value={matchHistory.isStatsSettled ? String(matchHistory.stats.total) : '…'}
             label={t('dashboard.matchesPlayed')}
             icon="fitness-outline"
           />
           <StatCard
-            value={`${matchHistory.stats.winPercentage}%`}
+            value={matchHistory.isStatsSettled ? `${matchHistory.stats.winPercentage}%` : '…'}
             label={t('dashboard.winRate')}
             icon="analytics-outline"
           />

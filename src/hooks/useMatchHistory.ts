@@ -35,6 +35,8 @@ export interface MatchHistoryData {
   tournaments: TournamentSection[];
   allMatches: MatchItem[];
   stats: WinLossStats;
+  /** True once all tournament details have loaded and stats are accurate */
+  isStatsSettled: boolean;
   disciplineCounts: Record<DisciplineFilter, number>;
   availableSeasons: string[];
   activeDiscipline: DisciplineFilter;
@@ -234,7 +236,7 @@ export function useMatchHistory(targetPersonId?: string): MatchHistoryData {
   // Detail cache has individual match results (win/loss per match),
   // while allMatches has bracket-level results (aggregate winPoint per bracket).
   // A bracket with winPoint > 0 might still contain individual losses.
-  const stats = useMemo(() => {
+  const { stats, isStatsSettled } = useMemo(() => {
     // Collect all detail-level matches for the current filter
     const detailMatches: MatchItem[] = [];
     const coveredBracketIds = new Set<string>();
@@ -260,7 +262,13 @@ export function useMatchHistory(targetPersonId?: string): MatchHistoryData {
       (m) => !coveredBracketIds.has(m.id)
     );
 
-    return computeWinLossStats([...detailMatches, ...uncoveredMatches]);
+    // Stats are settled when all brackets have detail data (no uncovered matches)
+    const settled = uncoveredMatches.length === 0 && filteredMatches.length > 0;
+
+    return {
+      stats: computeWinLossStats([...detailMatches, ...uncoveredMatches]),
+      isStatsSettled: settled || filteredMatches.length === 0,
+    };
   }, [filteredMatches, tournaments, detailCache]);
 
   // Counts from season-filtered matches (so they update with season)
@@ -417,6 +425,7 @@ export function useMatchHistory(targetPersonId?: string): MatchHistoryData {
     tournaments,
     allMatches,
     stats,
+    isStatsSettled,
     disciplineCounts,
     availableSeasons,
     activeDiscipline,
