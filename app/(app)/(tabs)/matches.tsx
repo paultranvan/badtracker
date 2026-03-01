@@ -301,7 +301,7 @@ export default function MatchHistoryScreen() {
       </Animated.View>
 
       {/* Discipline Filter Chips */}
-      <View className="flex-row gap-2 px-4 py-2.5 border-b border-gray-100">
+      <View className="flex-row gap-2 px-4 py-2.5 bg-white">
         {DISCIPLINE_FILTERS.map(({ key, labelKey }) => {
           const count = disciplineCounts[key];
           const isActive = activeDiscipline === key;
@@ -309,18 +309,18 @@ export default function MatchHistoryScreen() {
           return (
             <Pressable
               key={key}
-              className={`px-3 py-1.5 rounded-full border ${
-                isActive ? 'bg-primary border-primary' :
-                isDisabled ? 'bg-gray-50 border-gray-100' :
-                'bg-white border-gray-200'
+              className={`px-3.5 py-2 rounded-xl ${
+                isActive ? 'bg-primary shadow-sm shadow-primary/30' :
+                isDisabled ? 'bg-gray-50' :
+                'bg-surface'
               }`}
               onPress={() => !isDisabled && setDiscipline(key)}
               disabled={isDisabled}
             >
-              <Text className={`text-[13px] font-medium ${
+              <Text className={`text-[13px] font-semibold ${
                 isActive ? 'text-white' :
                 isDisabled ? 'text-gray-300' :
-                'text-gray-700'
+                'text-gray-600'
               }`}>
                 {t(labelKey)} ({count})
               </Text>
@@ -331,18 +331,18 @@ export default function MatchHistoryScreen() {
 
       {/* Season Picker */}
       {availableSeasons.length > 0 && (
-        <View className="border-b border-gray-100">
+        <View>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8, alignItems: 'center' }}
           >
-            <Text className="text-[13px] font-medium text-muted">{t('matchHistory.season')} :</Text>
+            <Text className="text-[12px] font-semibold text-muted uppercase tracking-wider">{t('matchHistory.season')}</Text>
             <Pressable
-              className={`px-3 py-1.5 rounded-full border ${activeSeason === null ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}
+              className={`px-3 py-1.5 rounded-lg ${activeSeason === null ? 'bg-primary' : 'bg-surface'}`}
               onPress={() => setSeason(null)}
             >
-              <Text className={`text-[13px] font-medium ${activeSeason === null ? 'text-white' : 'text-gray-700'}`}>
+              <Text className={`text-[13px] font-semibold ${activeSeason === null ? 'text-white' : 'text-gray-600'}`}>
                 {t('matchHistory.allSeasons')}
               </Text>
             </Pressable>
@@ -351,10 +351,10 @@ export default function MatchHistoryScreen() {
               return (
                 <Pressable
                   key={season}
-                  className={`px-3 py-1.5 rounded-full border ${isActive ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}
+                  className={`px-3 py-1.5 rounded-lg ${isActive ? 'bg-primary' : 'bg-surface'}`}
                   onPress={() => setSeason(season)}
                 >
-                  <Text className={`text-[13px] font-medium ${isActive ? 'text-white' : 'text-gray-700'}`}>
+                  <Text className={`text-[13px] font-semibold ${isActive ? 'text-white' : 'text-gray-600'}`}>
                     {season}
                   </Text>
                 </Pressable>
