@@ -85,7 +85,7 @@ export function updateBookmarkPersonId(
 
 /**
  * Returns a new bookmarks array with clubId set for the given licence.
- * Only updates if the bookmark exists and doesn't already have a clubId.
+ * Always overwrites (unlike personId) because players can transfer clubs.
  */
 export function updateBookmarkClubId(
   licence: string,
@@ -93,6 +93,6 @@ export function updateBookmarkClubId(
   all: BookmarkedPlayer[]
 ): BookmarkedPlayer[] {
   return all.map((b) =>
-    b.licence === licence && !b.clubId ? { ...b, clubId } : b
+    b.licence === licence ? { ...b, clubId } : b
   );
 }

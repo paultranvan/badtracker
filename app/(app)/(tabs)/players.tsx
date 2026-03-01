@@ -77,6 +77,7 @@ export default function PlayersScreen() {
               nom: item.nom,
               prenom: item.prenom,
               ...(item.personId ? { personId: item.personId } : {}),
+              ...(item.clubId ? { club: item.clubId } : {}),
             },
           })
         }
