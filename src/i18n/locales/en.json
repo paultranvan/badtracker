@@ -95,7 +95,8 @@
     "networkError": "No internet connection",
     "pullToRefresh": "Pull to refresh",
     "tournamentUnknown": "Unknown tournament",
-    "filterByTournament": "Filter by tournament"
+    "filterByTournament": "Filter by tournament",
+    "totalMatches": "total matches"
   },
   "ranking": {
     "title": "Ranking Evolution",
