@@ -20,6 +20,7 @@ interface StoredCredentials {
   accessToken?: string;
   nom?: string;
   prenom?: string;
+  clubId?: string;
 }
 
 /**
@@ -38,12 +39,13 @@ export async function storeCredentials(
   personId?: string,
   accessToken?: string,
   nom?: string,
-  prenom?: string
+  prenom?: string,
+  clubId?: string
 ): Promise<void> {
   if (remember) {
     await SecureStore.setItemAsync(
       CREDENTIALS_KEY,
-      JSON.stringify({ licence, password, personId, accessToken, nom, prenom }),
+      JSON.stringify({ licence, password, personId, accessToken, nom, prenom, clubId }),
       {
         keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
       }

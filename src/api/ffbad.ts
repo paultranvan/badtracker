@@ -62,15 +62,34 @@ export async function validateCredentials(
   prenom: string;
   personId: string;
   accessToken: string;
+  clubId?: string;
 }> {
   const result = await bridgeLogin(licence, password);
+  const personId = String(result.personId);
+
+  // Set session info so getLastClub can authenticate
+  setSessionInfo({
+    personId,
+    accessToken: result.accessToken,
+    licence: result.licence,
+  });
+
+  // Fetch user's club (non-blocking — login succeeds even if this fails)
+  let clubId: string | undefined;
+  try {
+    const club = await getLastClub(personId);
+    clubId = club?.id;
+  } catch {
+    // Club fetch failure is non-critical
+  }
 
   return {
     licence: result.licence,
     nom: result.nom,
     prenom: result.prenom,
-    personId: String(result.personId),
+    personId,
     accessToken: result.accessToken,
+    clubId,
   };
 }
 

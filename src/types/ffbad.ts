@@ -44,4 +44,5 @@ export interface UserSession {
   prenom: string;
   personId: string;
   accessToken: string;
+  clubId?: string;
 }

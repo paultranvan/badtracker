@@ -105,6 +105,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
               prenom: stored.prenom ?? '',
               personId: stored.personId,
               accessToken: stored.accessToken,
+              clubId: stored.clubId,
             });
           } else {
             setSession(null);
@@ -136,6 +137,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
               prenom: stored.prenom ?? '',
               personId: stored.personId,
               accessToken: stored.accessToken,
+              clubId: stored.clubId,
             });
           } else {
             setSession({
@@ -144,6 +146,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
               prenom: stored.prenom ?? '',
               personId: '',
               accessToken: '',
+              clubId: stored.clubId,
             });
           }
         } else {
@@ -164,7 +167,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
             result.personId,
             result.accessToken,
             result.nom,
-            result.prenom
+            result.prenom,
+            result.clubId
           );
         }
       } catch (error) {
@@ -190,6 +194,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
               prenom: stored.prenom ?? '',
               personId: stored.personId,
               accessToken: stored.accessToken,
+              clubId: stored.clubId,
             });
           } else {
             setSession(null);
@@ -239,7 +244,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
         userInfo.personId,
         userInfo.accessToken,
         userInfo.nom,
-        userInfo.prenom
+        userInfo.prenom,
+        userInfo.clubId
       );
 
       // Set session
