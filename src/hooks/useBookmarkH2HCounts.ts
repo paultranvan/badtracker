@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from '../auth/context';
 import { getOpponentList } from '../api/ffbad';
 import { cacheGetWithTTL, cacheSetWithTTL } from '../cache/storage';
+import { readAllDetailCache } from './useHeadToHead';
 import type { BookmarkedPlayer } from '../bookmarks/storage';
 
 export interface H2HCounts {
@@ -65,6 +66,27 @@ export function useBookmarkH2HCounts(
         if (against > 0) {
           result.set(b.licence, { against, together: 0 });
         }
+      }
+
+      // Compute "together" counts from match detail cache
+      try {
+        const allDetails = await readAllDetailCache(session.personId);
+        if (allDetails.length > 0) {
+          const bookmarkLicences = new Set(bookmarks.map((b) => b.licence.trim()));
+          for (const m of allDetails) {
+            const partner = m.partnerLicence?.trim();
+            if (partner && bookmarkLicences.has(partner)) {
+              const licence = bookmarks.find((b) => b.licence.trim() === partner)?.licence;
+              if (licence) {
+                const existing = result.get(licence) ?? { against: 0, together: 0 };
+                existing.together += 1;
+                result.set(licence, existing);
+              }
+            }
+          }
+        }
+      } catch {
+        // Silently fail — together counts just won't show
       }
 
       if (!cancelled) setCounts(result);
