@@ -1070,6 +1070,89 @@ export async function getPlayerOpposition(
   }
 }
 
+// ============================================================
+// Ranking Levels
+// ============================================================
+
+/**
+ * A single ranking level with its minimum CPPH thresholds per discipline.
+ * Extracted from the FFBaD /api/common/rankingLevel endpoint.
+ */
+export interface RankingLevel {
+  rank: string; // "N1", "N2", ..., "P12", "NC"
+  minRates: {
+    simple: number;
+    double: number;
+    mixte: number;
+  };
+}
+
+/**
+ * Fetch official ranking level thresholds from FFBaD.
+ *
+ * GET /api/common/rankingLevel returns a JSON **string** (not object).
+ * The parsed structure contains ValuesLow with per-rank minimum CPPH rates
+ * broken down by gender and discipline. We use Men's rates for now.
+ *
+ * Returns levels sorted descending by simple rate (N1 first, P12 last).
+ * NC is excluded (null rates).
+ */
+export async function getRankingLevels(): Promise<RankingLevel[]> {
+  const session = requireSession();
+
+  try {
+    const data = await bridgeGet(
+      '/api/common/rankingLevel',
+      session.accessToken,
+      session.personId
+    );
+
+    if (!data) return [];
+
+    // Response is a JSON string — parse it
+    const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+    const valuesLow = parsed?.ValuesLow;
+
+    if (!valuesLow || typeof valuesLow !== 'object') return [];
+
+    const levels: RankingLevel[] = [];
+
+    for (const key of Object.keys(valuesLow)) {
+      const entry = valuesLow[key] as Record<string, unknown>;
+      const subLevel = entry.SubLevel as string | undefined;
+      const menSingleRate = entry.MenSingleRate as string | null | undefined;
+      const menDoubleRate = entry.MenDoubleRate as string | null | undefined;
+      const menMixteRate = entry.MenMixteRate as string | null | undefined;
+
+      // Skip NC (null rates)
+      if (!subLevel || menSingleRate == null) continue;
+
+      const simple = parseFloat(menSingleRate);
+      const double_ = parseFloat(menDoubleRate ?? '0');
+      const mixte = parseFloat(menMixteRate ?? '0');
+
+      if (isNaN(simple)) continue;
+
+      levels.push({
+        rank: subLevel,
+        minRates: {
+          simple,
+          double: isNaN(double_) ? 0 : double_,
+          mixte: isNaN(mixte) ? 0 : mixte,
+        },
+      });
+    }
+
+    // Sort descending by simple rate (highest rank first)
+    levels.sort((a, b) => b.minRates.simple - a.minRates.simple);
+
+    return levels;
+  } catch (err) {
+    if (err instanceof AuthError || err instanceof NetworkError) throw err;
+    return [];
+  }
+}
+
 /**
  * Get the list of clubs for search.
  * Uses myffbad.fr /api/search/clubs endpoint.
