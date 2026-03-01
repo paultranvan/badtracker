@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { useDashboardData } from '../../../src/hooks/useDashboardData';
 import { getRankLabel } from '../../../src/utils/rankings';
 import { useSession } from '../../../src/auth/context';
-import { StatCard, SectionHeader, MatchCard, Card, DetailMatchCard } from '../../../src/components';
+import { StatCard, SectionHeader, MatchCard, Card, DetailMatchCard, RankProgressBar } from '../../../src/components';
 
 // ============================================================
 // Discipline config
@@ -181,6 +181,14 @@ export default function DashboardScreen() {
                 </Text>
                 {cpph != null && (
                   <Text className="text-caption text-muted">{cpph.toFixed(1)} pts</Text>
+                )}
+                {cpph != null && ranking?.classement && (
+                  <RankProgressBar
+                    cpph={cpph}
+                    rank={ranking.classement}
+                    discipline={key}
+                    color={disciplineColors[key]}
+                  />
                 )}
               </Card>
             </Pressable>
