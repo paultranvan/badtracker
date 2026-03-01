@@ -18,7 +18,7 @@ import { useSession } from '../../../../src/auth/context';
 import { useBookmarks } from '../../../../src/bookmarks/context';
 import { useConnectivity } from '../../../../src/connectivity/context';
 import { cacheGet, cacheSet } from '../../../../src/cache/storage';
-import { Card, DetailMatchCard, StatCard, SectionHeader } from '../../../../src/components';
+import { Card, DetailMatchCard, StatCard, SectionHeader, RankProgressBar } from '../../../../src/components';
 import type { BookmarkedPlayer } from '../../../../src/bookmarks/storage';
 import { useHeadToHead } from '../../../../src/hooks/useHeadToHead';
 import { useMatchHistory } from '../../../../src/hooks/useMatchHistory';
@@ -620,6 +620,14 @@ export default function PlayerProfileScreen() {
                 </Text>
                 {cpph != null && (
                   <Text className="text-caption text-muted">{cpph.toFixed(1)} pts</Text>
+                )}
+                {cpph != null && ranking?.classement && (
+                  <RankProgressBar
+                    cpph={cpph}
+                    rank={ranking.classement}
+                    discipline={key}
+                    color={disciplineColors[key]}
+                  />
                 )}
               </Card>
             );
