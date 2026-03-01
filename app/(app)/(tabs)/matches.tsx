@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import Animated, {
   interpolate,
   Extrapolation,
 } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../../src/auth/context';
@@ -25,13 +26,13 @@ import {
   type DisciplineGroup,
   type DisciplineFilter,
 } from '../../../src/hooks/useMatchHistory';
-import { DetailMatchCard } from '../../../src/components';
+import { DetailMatchCard, DonutChart } from '../../../src/components';
 
 // ============================================================
 // Constants
 // ============================================================
 
-const HEADER_MAX_HEIGHT = 140;
+const HEADER_MAX_HEIGHT = 180;
 const HEADER_COLLAPSE_DISTANCE = HEADER_MAX_HEIGHT;
 
 const DISCIPLINE_FILTERS: Array<{
@@ -54,6 +55,12 @@ const DISC_LETTERS: Record<string, string> = {
   simple: 'S',
   double: 'D',
   mixte: 'M',
+};
+
+const DISC_SOLID_COLORS: Record<string, string> = {
+  simple: '#3b82f6',
+  double: '#10b981',
+  mixte: '#f59e0b',
 };
 
 // ============================================================
@@ -284,13 +291,13 @@ export default function MatchHistoryScreen() {
   // Render
   // ----------------------------------------------------------
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-surface">
       {/* Collapsible Stats Header */}
       <Animated.View
-        className="overflow-hidden bg-primary-bg"
+        className="overflow-hidden"
         style={headerAnimatedStyle}
       >
-        <StatsHeader stats={stats} t={t} />
+        <StatsHeader stats={stats} t={t} allMatches={allMatches} />
       </Animated.View>
 
       {/* Discipline Filter Chips */}
@@ -373,7 +380,7 @@ export default function MatchHistoryScreen() {
         ListEmptyComponent={
           <Text className="text-body text-gray-400 italic text-center py-10 px-6">{emptyMessage}</Text>
         }
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingTop: 4, paddingBottom: 32 }}
         extraData={detailCache}
         onScroll={handleScroll}
         scrollEventThrottle={16}
@@ -389,33 +396,130 @@ export default function MatchHistoryScreen() {
 interface StatsHeaderProps {
   stats: { wins: number; losses: number; total: number; winPercentage: number };
   t: (key: string, opts?: Record<string, unknown>) => string;
+  allMatches: MatchItem[];
 }
 
-function StatsHeader({ stats, t }: StatsHeaderProps) {
+interface DisciplineStatPillProps {
+  discipline: 'simple' | 'double' | 'mixte';
+  wins: number;
+  losses: number;
+}
+
+function DisciplineStatPill({ discipline, wins, losses }: DisciplineStatPillProps) {
+  const total = wins + losses;
+  const pct = total > 0 ? Math.round((wins / total) * 100) : 0;
+  const letter = DISC_LETTERS[discipline] ?? '?';
+  const color = DISC_SOLID_COLORS[discipline] ?? '#9ca3af';
+
   return (
-    <View className="p-4 pb-3">
-      <Text className="text-[14px] font-semibold text-gray-700 mb-2">
-        {t('matchHistory.statsHeader')}
-      </Text>
-      <Text className="text-[36px] font-bold text-primary mb-2">
-        {t('matchHistory.winRate', { rate: stats.winPercentage })}
-      </Text>
-      {/* Progress bar */}
-      <View className="h-2 bg-loss-bg rounded-full overflow-hidden mb-2">
-        <View
-          className="h-full bg-win rounded-full"
-          style={{ width: stats.total > 0 ? `${stats.winPercentage}%` : 0 }}
-        />
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        gap: 8,
+        flex: 1,
+      }}
+    >
+      <View
+        style={{
+          width: 20,
+          height: 20,
+          borderRadius: 6,
+          backgroundColor: color,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>{letter}</Text>
       </View>
-      <View className="flex-row justify-between">
-        <Text className="text-[14px] font-semibold text-win">
-          {t('matchHistory.wins', { count: stats.wins })}
-        </Text>
-        <Text className="text-[14px] font-semibold text-loss">
-          {t('matchHistory.losses', { count: stats.losses })}
-        </Text>
+      <View>
+        <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '600' }}>{pct}%</Text>
+        <Text style={{ color: '#94a3b8', fontSize: 10 }}>{wins}W / {losses}L</Text>
       </View>
     </View>
+  );
+}
+
+function StatsHeader({ stats, t, allMatches }: StatsHeaderProps) {
+  const disciplineStats = useMemo(() => {
+    const result: Record<string, { wins: number; losses: number }> = {
+      simple: { wins: 0, losses: 0 },
+      double: { wins: 0, losses: 0 },
+      mixte: { wins: 0, losses: 0 },
+    };
+    for (const match of allMatches) {
+      const disc = match.discipline;
+      if (disc && result[disc] && match.isWin !== undefined) {
+        if (match.isWin) result[disc].wins++;
+        else result[disc].losses++;
+      }
+    }
+    return result;
+  }, [allMatches]);
+
+  return (
+    <LinearGradient colors={['#1e293b', '#0f172a']} style={{ flex: 1 }}>
+      <View style={{ padding: 16, paddingBottom: 12, flex: 1 }}>
+        {/* Top row: Donut + text stats */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 12 }}>
+          <DonutChart
+            percentage={stats.winPercentage}
+            size={90}
+            strokeWidth={8}
+            winColor="#22c55e"
+            lossColor="rgba(239,68,68,0.3)"
+          />
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: '600',
+                color: '#94a3b8',
+                letterSpacing: 1.5,
+                textTransform: 'uppercase',
+                marginBottom: 4,
+              }}
+            >
+              {t('matchHistory.statsHeader')}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#22c55e' }}>
+                {stats.wins}W
+              </Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#ef4444' }}>
+                {stats.losses}L
+              </Text>
+            </View>
+            <Text style={{ fontSize: 12, color: '#64748b' }}>
+              {stats.total} {t('matchHistory.totalMatches')}
+            </Text>
+          </View>
+        </View>
+
+        {/* Per-discipline pills */}
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <DisciplineStatPill
+            discipline="simple"
+            wins={disciplineStats.simple.wins}
+            losses={disciplineStats.simple.losses}
+          />
+          <DisciplineStatPill
+            discipline="double"
+            wins={disciplineStats.double.wins}
+            losses={disciplineStats.double.losses}
+          />
+          <DisciplineStatPill
+            discipline="mixte"
+            wins={disciplineStats.mixte.wins}
+            losses={disciplineStats.mixte.losses}
+          />
+        </View>
+      </View>
+    </LinearGradient>
   );
 }
 
@@ -434,30 +538,103 @@ function TournamentHeader({ tournament, t, isExpanded, onToggle }: TournamentHea
   const title = tournament.title || t('matchHistory.tournamentUnknown');
   const pts = tournament.totalPoints;
   const pointsText = pts !== 0 ? (pts > 0 ? `+${pts.toFixed(1)}` : pts.toFixed(1)) + ' pts' : '';
-  const pointsColor = pts > 0 ? 'text-win' : pts < 0 ? 'text-loss' : 'text-gray-400';
+
+  // Left accent bar color: green for positive, red for negative, gray for zero
+  const accentColor = (() => {
+    if (pts === 0) return '#d1d5db';
+    const absPts = Math.abs(pts);
+    const opacity = Math.min(0.4 + (absPts / 100) * 0.6, 1.0);
+    if (pts > 0) return `rgba(22, 163, 74, ${opacity})`;
+    return `rgba(220, 38, 38, ${opacity})`;
+  })();
+
+  // Collect unique discipline dots
+  const disciplineDots = tournament.disciplines.map((d) => ({
+    key: d.discipline,
+    color: DISC_SOLID_COLORS[d.discipline] ?? '#9ca3af',
+  }));
 
   return (
     <Pressable
-      className="flex-row justify-between items-center px-4 py-2.5 bg-slate-50 border-l-[3px] border-l-primary border-b border-b-gray-200 active:bg-slate-100"
       onPress={onToggle}
+      style={({ pressed }) => ({
+        marginHorizontal: 12,
+        marginTop: 8,
+        backgroundColor: '#ffffff',
+        borderRadius: 12,
+        overflow: 'hidden',
+        // Shadow
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 3,
+        elevation: 2,
+        transform: [{ scale: pressed ? 0.98 : 1 }],
+      })}
     >
-      <Text className="text-body font-semibold text-gray-900 flex-1 mr-2" numberOfLines={1}>
-        {title}
-      </Text>
-      <View className="flex-row items-center gap-2">
-        {tournament.date ? (
-          <Text className="text-caption text-muted">{tournament.date}</Text>
-        ) : null}
-        {pointsText ? (
-          <Text className={`text-caption font-semibold ${pointsColor}`} style={{ fontVariant: ['tabular-nums'] }}>
-            {pointsText}
-          </Text>
-        ) : null}
-        <Ionicons
-          name={isExpanded ? 'chevron-up' : 'chevron-down'}
-          size={16}
-          color="#64748b"
-        />
+      <View style={{ flexDirection: 'row' }}>
+        {/* Left accent bar */}
+        <View style={{ width: 4, backgroundColor: accentColor }} />
+
+        {/* Content */}
+        <View style={{ flex: 1, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center' }}>
+          {/* Title + date area */}
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }} numberOfLines={1}>
+              {title}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2, gap: 6 }}>
+              {tournament.date ? (
+                <Text style={{ fontSize: 12, color: '#64748b' }}>{tournament.date}</Text>
+              ) : null}
+              {/* Discipline preview dots */}
+              {disciplineDots.length > 0 && (
+                <View style={{ flexDirection: 'row', gap: 3, alignItems: 'center' }}>
+                  {disciplineDots.map((dot) => (
+                    <View
+                      key={dot.key}
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: 3,
+                        backgroundColor: dot.color,
+                      }}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Points badge */}
+          {pointsText ? (
+            <View
+              style={{
+                backgroundColor: pts > 0 ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.1)',
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                borderRadius: 99,
+                marginRight: 8,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: '700',
+                  color: pts > 0 ? '#16a34a' : '#dc2626',
+                  fontVariant: ['tabular-nums'],
+                }}
+              >
+                {pointsText}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Animated chevron */}
+          <Animated.View style={{ transform: [{ rotate: isExpanded ? '180deg' : '0deg' }] }}>
+            <Ionicons name="chevron-down" size={16} color="#94a3b8" />
+          </Animated.View>
+        </View>
       </View>
     </Pressable>
   );
@@ -481,6 +658,7 @@ function DisciplineRow({ discipline, tournament, t, isExpanded, isLoading, onTog
   const disc = discipline.discipline;
   const letter = DISC_LETTERS[disc] ?? '?';
   const labelKey = DISC_LABELS[disc] ?? disc;
+  const discColor = DISC_SOLID_COLORS[disc] ?? '#9ca3af';
 
   // Compute live win/loss from detailCache if available (after expansion)
   const tKey = tournament.title || t('matchHistory.tournamentUnknown');
@@ -493,52 +671,106 @@ function DisciplineRow({ discipline, tournament, t, isExpanded, isLoading, onTog
     ? detailMatches.filter((m) => m.isWin === false).length
     : discipline.losses;
 
-  const discColors: Record<string, string> = { simple: 'bg-blue-100', double: 'bg-emerald-100', mixte: 'bg-amber-100' };
-  const discTextColors: Record<string, string> = { simple: 'text-singles', double: 'text-doubles', mixte: 'text-mixed' };
-  const discBg = discColors[disc] ?? 'bg-gray-200';
-  const discText = discTextColors[disc] ?? 'text-gray-500';
+  const total = wins + losses;
+  const winRatio = total > 0 ? wins / total : 0;
 
   const pts = discipline.points;
   const pointsText = pts !== 0 ? (pts > 0 ? `+${pts.toFixed(1)}` : pts.toFixed(1)) + ' pts' : '';
-  const pointsColor = pts > 0 ? 'text-win' : pts < 0 ? 'text-loss' : 'text-gray-400';
 
   return (
     <Pressable
-      className="flex-row justify-between items-center pl-8 pr-4 py-2 bg-white border-b border-b-gray-100 active:bg-gray-50"
       onPress={onToggle}
+      style={({ pressed }) => ({
+        marginHorizontal: 12,
+        backgroundColor: pressed ? '#f9fafb' : '#ffffff',
+        borderTopWidth: 1,
+        borderTopColor: '#f3f4f6',
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+      })}
     >
-      <View className="flex-row items-center gap-2 flex-1">
-        <View className={`w-6 h-6 rounded-full items-center justify-center ${discBg}`}>
-          <Text className={`text-[11px] font-bold ${discText}`}>{letter}</Text>
-        </View>
-        <Text className="text-[14px] font-medium text-gray-800">{t(labelKey)}</Text>
-        {wins > 0 && (
-          <View className="bg-win/20 px-1.5 py-0.5 rounded">
-            <Text className="text-[11px] font-semibold text-win">{wins}W</Text>
-          </View>
-        )}
-        {losses > 0 && (
-          <View className="bg-loss/20 px-1.5 py-0.5 rounded">
-            <Text className="text-[11px] font-semibold text-loss">{losses}L</Text>
+      {/* Discipline badge */}
+      <View
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 8,
+          backgroundColor: discColor,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: 10,
+        }}
+      >
+        <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '700' }}>{letter}</Text>
+      </View>
+
+      {/* Label + mini win-rate bar */}
+      <View style={{ flex: 1, marginRight: 8 }}>
+        <Text style={{ fontSize: 14, fontWeight: '500', color: '#1f2937', marginBottom: 3 }}>
+          {t(labelKey)}
+        </Text>
+        {total > 0 && (
+          <View>
+            {/* Mini win-rate bar */}
+            <View
+              style={{
+                width: 56,
+                height: 4,
+                borderRadius: 99,
+                backgroundColor: 'rgba(220,38,38,0.2)',
+                overflow: 'hidden',
+              }}
+            >
+              <View
+                style={{
+                  width: Math.round(winRatio * 56),
+                  height: 4,
+                  borderRadius: 99,
+                  backgroundColor: '#16a34a',
+                }}
+              />
+            </View>
+            <Text style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
+              {wins}W · {losses}L
+            </Text>
           </View>
         )}
       </View>
-      <View className="flex-row items-center gap-2">
-        {pointsText ? (
-          <Text className={`text-caption font-semibold ${pointsColor}`} style={{ fontVariant: ['tabular-nums'] }}>
+
+      {/* Points pill */}
+      {pointsText ? (
+        <View
+          style={{
+            backgroundColor: pts > 0 ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.1)',
+            paddingHorizontal: 8,
+            paddingVertical: 3,
+            borderRadius: 99,
+            marginRight: 8,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: '700',
+              color: pts > 0 ? '#16a34a' : '#dc2626',
+              fontVariant: ['tabular-nums'],
+            }}
+          >
             {pointsText}
           </Text>
-        ) : null}
-        {isLoading ? (
-          <ActivityIndicator size="small" color="#2563eb" />
-        ) : (
-          <Ionicons
-            name={isExpanded ? 'chevron-up' : 'chevron-down'}
-            size={14}
-            color="#94a3b8"
-          />
-        )}
-      </View>
+        </View>
+      ) : null}
+
+      {/* Loading / chevron */}
+      {isLoading ? (
+        <ActivityIndicator size="small" color="#2563eb" />
+      ) : (
+        <Animated.View style={{ transform: [{ rotate: isExpanded ? '180deg' : '0deg' }] }}>
+          <Ionicons name="chevron-down" size={14} color="#94a3b8" />
+        </Animated.View>
+      )}
     </Pressable>
   );
 }

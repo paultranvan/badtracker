@@ -95,7 +95,8 @@
     "networkError": "Pas de connexion internet",
     "pullToRefresh": "Tirer pour actualiser",
     "tournamentUnknown": "Tournoi inconnu",
-    "filterByTournament": "Filtrer par tournoi"
+    "filterByTournament": "Filtrer par tournoi",
+    "totalMatches": "matchs au total"
   },
   "ranking": {
     "title": "Évolution du classement",
