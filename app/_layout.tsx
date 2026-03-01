@@ -4,6 +4,7 @@ import { SessionProvider, useSession } from '../src/auth/context';
 import { BookmarksProvider } from '../src/bookmarks/context';
 import { ConnectivityProvider, OfflineBar } from '../src/connectivity/context';
 import { WebViewBridgeProvider } from '../src/api/webview-bridge';
+import { RankingLevelsProvider } from '../src/ranking-levels/context';
 import Toast from 'react-native-toast-message';
 import { useEffect } from 'react';
 import { View, ActivityIndicator, Text } from 'react-native';
@@ -50,10 +51,12 @@ export default function RootLayout() {
     <ConnectivityProvider>
       <WebViewBridgeProvider>
         <SessionProvider>
-          <BookmarksProvider>
-            <AuthGate />
-            <Toast />
-          </BookmarksProvider>
+          <RankingLevelsProvider>
+            <BookmarksProvider>
+              <AuthGate />
+              <Toast />
+            </BookmarksProvider>
+          </RankingLevelsProvider>
         </SessionProvider>
       </WebViewBridgeProvider>
     </ConnectivityProvider>

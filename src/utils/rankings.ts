@@ -1,4 +1,4 @@
-import type { PlayerProfile } from '../api/ffbad';
+import type { PlayerProfile, RankingLevel } from '../api/ffbad';
 
 // ============================================================
 // Types
@@ -87,4 +87,71 @@ export function getRankLabel(rank: string | undefined): string {
     return 'NC';
   }
   return rank;
+}
+
+// ============================================================
+// Rank Progress
+// ============================================================
+
+export interface RankProgress {
+  nextRank: string | null;
+  prevRank: string | null;
+  pointsToNext: number | null;
+  pointsToDown: number | null;
+  progressPercent: number;
+}
+
+/**
+ * Compute a player's progress within their current rank band.
+ *
+ * @param cpph      Current CPPH in the given discipline
+ * @param rank      Current rank code (e.g. "D8")
+ * @param discipline Which discipline's thresholds to use
+ * @param levels    Ranking levels sorted descending by rate (N1 first)
+ * @returns Progress info, or null if levels are empty or rank not found
+ */
+export function getRankProgress(
+  cpph: number,
+  rank: string,
+  discipline: 'simple' | 'double' | 'mixte',
+  levels: RankingLevel[]
+): RankProgress | null {
+  if (levels.length === 0) return null;
+
+  const idx = levels.findIndex((l) => l.rank === rank);
+  if (idx === -1) return null;
+
+  const current = levels[idx];
+  const lowerBound = current.minRates[discipline];
+
+  // Next rank up is the previous index (levels sorted descending)
+  const nextUp = idx > 0 ? levels[idx - 1] : null;
+  // Previous rank down is the next index
+  const prevDown = idx < levels.length - 1 ? levels[idx + 1] : null;
+
+  const upperBound = nextUp ? nextUp.minRates[discipline] : null;
+
+  const pointsToNext = upperBound != null ? Math.max(0, upperBound - cpph) : null;
+  const pointsToDown = Math.max(0, cpph - lowerBound);
+
+  // Progress percent within the band [lowerBound, upperBound)
+  let progressPercent: number;
+  if (upperBound == null) {
+    // Highest rank (N1) — no upper bound, show 100%
+    progressPercent = 100;
+  } else if (upperBound <= lowerBound) {
+    // Degenerate case — avoid division by zero
+    progressPercent = 0;
+  } else {
+    const range = upperBound - lowerBound;
+    progressPercent = Math.min(100, Math.max(0, ((cpph - lowerBound) / range) * 100));
+  }
+
+  return {
+    nextRank: nextUp?.rank ?? null,
+    prevRank: prevDown?.rank ?? null,
+    pointsToNext,
+    pointsToDown,
+    progressPercent,
+  };
 }
