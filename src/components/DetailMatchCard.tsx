@@ -12,16 +12,22 @@ export function DetailMatchCard({ match, nested = true, playerName }: DetailMatc
   const isWin = match.isWin === true;
   const isLoss = match.isWin === false;
 
-  // Border and indicator colors
-  const borderColor = isWin ? 'border-l-win' : isLoss ? 'border-l-loss' : 'border-l-gray-300';
-  const emoji = isWin ? '\ud83d\udc4d' : isLoss ? '\ud83d\udc4e' : '';
-  const emojiColor = isWin ? 'text-win' : 'text-loss';
+  // Left accent bar color
+  const accentColor = isWin ? '#16a34a' : isLoss ? '#dc2626' : '#d1d5db';
+
+  // Background tint class
+  const bgTint = isWin ? 'bg-win/5' : isLoss ? 'bg-loss/5' : 'bg-gray-50/50';
 
   // Points display
   const pointsText = match.pointsImpact != null && match.pointsImpact !== 0
     ? `${match.pointsImpact > 0 ? '+' : ''}${match.pointsImpact.toFixed(1)}`
     : null;
-  const pointsColor = match.pointsImpact != null && match.pointsImpact >= 0 ? 'text-win' : 'text-loss';
+  const pointsPillBg = match.pointsImpact != null && match.pointsImpact >= 0
+    ? 'bg-win/10'
+    : 'bg-loss/10';
+  const pointsTextColor = match.pointsImpact != null && match.pointsImpact >= 0
+    ? 'text-win'
+    : 'text-loss';
 
   // Parse set scores
   const scores = splitSetScores(match);
@@ -36,41 +42,59 @@ export function DetailMatchCard({ match, nested = true, playerName }: DetailMatc
     ? match.opponent + (match.opponent2 ? `  /  ${match.opponent2}` : '')
     : null;
 
+  // Winner/loser text styles
+  const winnerNameClass = 'font-bold text-gray-900';
+  const loserNameClass = 'text-gray-600';
+
   return (
-    <View className={`${nested ? 'ml-10 mr-3' : 'mx-0'} border-l-[3px] ${borderColor} border-b border-b-gray-100`}>
+    <View
+      className={`${nested ? 'mx-3 mb-1' : 'mb-1'} rounded-lg overflow-hidden ${bgTint}`}
+      style={{ borderLeftWidth: 4, borderLeftColor: accentColor }}
+    >
       <View className="px-3 py-2">
         {/* Header: Round + Points */}
-        <View className="flex-row justify-between items-center mb-1">
+        <View className="flex-row justify-between items-center mb-1.5">
           <Text className="text-[12px] text-muted" numberOfLines={1}>
             {match.round ?? match.date ?? ''}
           </Text>
           {pointsText ? (
-            <Text className={`text-[12px] font-semibold ${pointsColor}`} style={{ fontVariant: ['tabular-nums'] }}>
-              {pointsText}
-            </Text>
+            <View className={`${pointsPillBg} px-1.5 py-0.5 rounded`}>
+              <Text
+                className={`text-[12px] font-semibold ${pointsTextColor}`}
+                style={{ fontVariant: ['tabular-nums'] }}
+              >
+                {pointsText}
+              </Text>
+            </View>
           ) : null}
         </View>
+
+        {/* Divider */}
+        <View className="h-px bg-gray-200/60 mb-2" />
 
         {/* User team row */}
         <View className="flex-row items-center justify-between mb-0.5">
           <View className="flex-row items-center flex-1 mr-2">
             {userTeamName ? (
-              <Text className={`text-[13px] ${isWin ? 'font-bold text-gray-900' : 'text-gray-700'} flex-1`} numberOfLines={1}>
+              <Text
+                className={`text-[14px] ${isWin ? winnerNameClass : loserNameClass} flex-1`}
+                numberOfLines={1}
+              >
                 {userTeamName}
               </Text>
             ) : (
-              <Text className={`text-[13px] ${isWin ? 'font-bold text-gray-900' : 'text-gray-700'}`}>
+              <Text className={`text-[14px] ${isWin ? winnerNameClass : loserNameClass}`}>
                 {playerName ?? 'You'}
               </Text>
             )}
           </View>
           {/* User scores */}
           {scores ? (
-            <View className="flex-row gap-1">
+            <View className="flex-row gap-2">
               {scores.map((s, i) => (
                 <Text
                   key={i}
-                  className={`text-[13px] w-5 text-center ${s.userWonSet ? 'font-bold text-gray-900' : 'text-gray-400'}`}
+                  className={`text-[15px] w-6 text-center ${s.userWonSet ? 'font-bold text-gray-900' : 'text-gray-400'}`}
                   style={{ fontVariant: ['tabular-nums'] }}
                 >
                   {s.userScore}
@@ -86,30 +110,32 @@ export function DetailMatchCard({ match, nested = true, playerName }: DetailMatc
             {opponentName ? (
               match.opponentLicence ? (
                 <Pressable className="flex-1" onPress={() => router.push(`/player/${match.opponentLicence}`)}>
-                  <Text className={`text-[13px] ${isLoss ? 'font-bold text-gray-900' : 'text-gray-700'}`} numberOfLines={1}>
+                  <Text
+                    className={`text-[14px] ${isLoss ? winnerNameClass : loserNameClass}`}
+                    numberOfLines={1}
+                  >
                     {opponentName}
                   </Text>
                 </Pressable>
               ) : (
-                <Text className={`text-[13px] ${isLoss ? 'font-bold text-gray-900' : 'text-gray-700'} flex-1`} numberOfLines={1}>
+                <Text
+                  className={`text-[14px] ${isLoss ? winnerNameClass : loserNameClass} flex-1`}
+                  numberOfLines={1}
+                >
                   {opponentName}
                 </Text>
               )
             ) : (
-              <Text className="text-[13px] text-gray-400">-</Text>
+              <Text className="text-[14px] text-gray-400">-</Text>
             )}
-            {/* Win/loss emoji */}
-            {emoji ? (
-              <Text className={`text-[13px] ml-1.5 ${emojiColor}`}>{emoji}</Text>
-            ) : null}
           </View>
           {/* Opponent scores */}
           {scores ? (
-            <View className="flex-row gap-1">
+            <View className="flex-row gap-2">
               {scores.map((s, i) => (
                 <Text
                   key={i}
-                  className={`text-[13px] w-5 text-center ${!s.userWonSet ? 'font-bold text-gray-900' : 'text-gray-400'}`}
+                  className={`text-[15px] w-6 text-center ${!s.userWonSet ? 'font-bold text-gray-900' : 'text-gray-400'}`}
                   style={{ fontVariant: ['tabular-nums'] }}
                 >
                   {s.opponentScore}
