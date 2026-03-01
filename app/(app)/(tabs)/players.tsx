@@ -15,6 +15,7 @@ import { useBookmarks } from '@/bookmarks/context';
 import { useConnectivity } from '@/connectivity/context';
 import { PlayerRow } from '@/components';
 import { useBookmarkH2HCounts } from '@/hooks/useBookmarkH2HCounts';
+import { useBookmarkClubs } from '@/hooks/useBookmarkClubs';
 import type { BookmarkedPlayer } from '@/bookmarks/storage';
 
 export default function PlayersScreen() {
@@ -22,6 +23,7 @@ export default function PlayersScreen() {
   const { query, setQuery, results, isLoading, error } = usePlayerSearch();
   const { bookmarks, isBookmarked } = useBookmarks();
   const h2hCounts = useBookmarkH2HCounts(bookmarks);
+  const clubInitials = useBookmarkClubs(bookmarks);
   const { isConnected } = useConnectivity();
 
   const isSearching = query.length > 0;
@@ -63,6 +65,7 @@ export default function PlayersScreen() {
     ({ item }: { item: BookmarkedPlayer }) => (
       <PlayerRow
         name={`${item.nom} ${item.prenom}`}
+        club={clubInitials.get(item.licence)}
         ranks={item.rankings}
         isBookmarked
         h2hCounts={h2hCounts.get(item.licence)}
@@ -79,7 +82,7 @@ export default function PlayersScreen() {
         }
       />
     ),
-    [h2hCounts],
+    [h2hCounts, clubInitials],
   );
 
   const separator = () => <View className="h-px bg-gray-100 mx-4" />;
