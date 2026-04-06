@@ -8,7 +8,10 @@ import { RankingLevelsProvider } from '../src/ranking-levels/context';
 import Toast from 'react-native-toast-message';
 import { useEffect } from 'react';
 import { View, ActivityIndicator, Text } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
 import '../src/i18n';
+
+SplashScreen.preventAutoHideAsync();
 
 function AuthGate() {
   const { session, isLoading } = useSession();
@@ -17,6 +20,8 @@ function AuthGate() {
 
   useEffect(() => {
     if (isLoading) return;
+
+    SplashScreen.hideAsync();
 
     const inApp = segments[0] === '(app)';
 
