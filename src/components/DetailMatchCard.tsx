@@ -48,7 +48,7 @@ export function DetailMatchCard({ match, nested = true, playerName }: DetailMatc
 
   return (
     <View
-      className={`${nested ? 'mx-3 mb-1' : 'mb-1'} rounded-lg overflow-hidden ${bgTint}`}
+      className={`${nested ? 'ml-7 mr-3 mb-1' : 'mb-1'} rounded-lg overflow-hidden ${bgTint}`}
       style={{ borderLeftWidth: 4, borderLeftColor: accentColor }}
     >
       <View className="px-3 py-2">

@@ -244,7 +244,7 @@ export default function MatchHistoryScreen() {
         const m = item.match as MatchItem & { _isLoadingPlaceholder?: boolean };
         if (m._isLoadingPlaceholder) {
           return (
-            <View className="mx-3 mb-1 py-4 items-center bg-gray-50 rounded-lg">
+            <View className="ml-7 mr-3 mb-1 py-4 items-center bg-gray-50 rounded-lg">
               <ActivityIndicator size="small" color="#2563eb" />
             </View>
           );
@@ -674,16 +674,7 @@ function DisciplineRow({ discipline, tournament, t, isExpanded, isLoading, onTog
   return (
     <Pressable
       onPress={onToggle}
-      style={({ pressed }) => ({
-        marginHorizontal: 12,
-        backgroundColor: pressed ? '#f9fafb' : '#ffffff',
-        borderTopWidth: 1,
-        borderTopColor: '#f3f4f6',
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-      })}
+      className="ml-7 mr-3 flex-row items-center px-3 py-2.5 border-t border-gray-100 bg-white active:bg-gray-50"
     >
       {/* Discipline badge */}
       <View
