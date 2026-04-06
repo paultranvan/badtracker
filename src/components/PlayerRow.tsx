@@ -34,8 +34,7 @@ export function PlayerRow({
 }: PlayerRowProps) {
   return (
     <Pressable
-      className={`flex-row items-center px-4 py-3 ${isCurrentUser ? 'bg-primary-bg border-l-[3px] border-l-primary' : ''}`}
-      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+      className={`flex-row items-center px-4 py-3 active:opacity-70 ${isCurrentUser ? 'bg-primary-bg border-l-[3px] border-l-primary' : ''}`}
       onPress={onPress}
     >
       {position != null && (

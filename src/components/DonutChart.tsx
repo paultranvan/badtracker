@@ -72,24 +72,8 @@ export function DonutChart({
         />
       </Svg>
       {/* Center label */}
-      <View
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
-        <Text
-          style={{
-            color: '#ffffff',
-            fontSize: 22,
-            fontWeight: '800',
-          }}
-        >
+      <View className="absolute inset-0 justify-center items-center">
+        <Text className="text-white text-[22px] font-extrabold">
           {label ?? `${percentage}%`}
         </Text>
       </View>
