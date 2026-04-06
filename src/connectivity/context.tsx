@@ -5,7 +5,7 @@ import React, {
   useRef,
   type PropsWithChildren,
 } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
 import { useNetInfo } from '@react-native-community/netinfo';
 import { useTranslation } from 'react-i18next';
 
@@ -91,26 +91,9 @@ export function OfflineBar() {
   if (isConnected) return null;
 
   return (
-    <View style={styles.offlineBar}>
-      <Text style={styles.offlineText}>{t('offline.noConnection')}</Text>
+    <View className="bg-orange-500 py-1.5 items-center justify-center">
+      <Text className="text-white text-[13px] font-semibold">{t('offline.noConnection')}</Text>
     </View>
   );
 }
 
-// ============================================================
-// Styles
-// ============================================================
-
-const styles = StyleSheet.create({
-  offlineBar: {
-    backgroundColor: '#f97316',
-    paddingVertical: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  offlineText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-});

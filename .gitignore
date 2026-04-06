@@ -41,6 +41,9 @@ yarn-error.*
 /android
 
 
+# Build outputs
+*.apk
+
 # AI
 .planning/
 docs/plans/

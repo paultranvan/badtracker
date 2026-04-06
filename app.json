@@ -9,7 +9,7 @@
     "scheme": "badtracker",
     "newArchEnabled": true,
     "experiments": {
-      "reactCompiler": true
+      "reactCompiler": false
     },
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -32,23 +32,13 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/YOUR_PROJECT_ID"
-    },
     "plugins": [
       "expo-router",
       "expo-secure-store",
       "expo-localization"
     ],
     "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "a289ab95-0d14-4e39-b759-b743a27f4f04"
-      }
-    },
-    "owner": "ptranvan"
+      "router": {}
+    }
   }
 }

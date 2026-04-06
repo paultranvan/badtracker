@@ -3,7 +3,7 @@ import type { Config } from 'tailwindcss';
 export default {
   content: [
     './app/**/*.{ts,tsx}',
-    './src/components/**/*.{ts,tsx}',
+    './src/**/*.{ts,tsx}',
   ],
   presets: [require('nativewind/preset')],
   theme: {
