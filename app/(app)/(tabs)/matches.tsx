@@ -304,7 +304,7 @@ export default function MatchHistoryScreen() {
       </Animated.View>
 
       {/* Discipline Filter Chips */}
-      <View className="flex-row gap-2 px-4 py-2.5 bg-white">
+      <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#ffffff' }}>
         {DISCIPLINE_FILTERS.map(({ key, labelKey }) => {
           const count = disciplineCounts[key];
           const isActive = activeDiscipline === key;
@@ -312,19 +312,22 @@ export default function MatchHistoryScreen() {
           return (
             <Pressable
               key={key}
-              className={`px-3.5 py-2 rounded-xl ${
-                isActive ? 'bg-primary shadow-sm shadow-primary/30' :
-                isDisabled ? 'bg-gray-50' :
-                'bg-surface'
-              }`}
+              style={{
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                borderRadius: 12,
+                backgroundColor: isActive ? '#2563eb' : isDisabled ? '#f9fafb' : '#f8fafc',
+              }}
               onPress={() => !isDisabled && setDiscipline(key)}
               disabled={isDisabled}
             >
-              <Text className={`text-[13px] font-semibold ${
-                isActive ? 'text-white' :
-                isDisabled ? 'text-gray-300' :
-                'text-gray-600'
-              }`}>
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: '600',
+                  color: isActive ? '#ffffff' : isDisabled ? '#d1d5db' : '#4b5563',
+                }}
+              >
                 {t(labelKey)} ({count})
               </Text>
             </Pressable>
@@ -340,12 +343,19 @@ export default function MatchHistoryScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8, alignItems: 'center' }}
           >
-            <Text className="text-[12px] font-semibold text-muted uppercase tracking-wider">{t('matchHistory.season')}</Text>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: 1.5 }}>
+              {t('matchHistory.season')}
+            </Text>
             <Pressable
-              className={`px-3 py-1.5 rounded-lg ${activeSeason === null ? 'bg-primary' : 'bg-surface'}`}
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 8,
+                backgroundColor: activeSeason === null ? '#2563eb' : '#f8fafc',
+              }}
               onPress={() => setSeason(null)}
             >
-              <Text className={`text-[13px] font-semibold ${activeSeason === null ? 'text-white' : 'text-gray-600'}`}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: activeSeason === null ? '#ffffff' : '#4b5563' }}>
                 {t('matchHistory.allSeasons')}
               </Text>
             </Pressable>
@@ -354,10 +364,15 @@ export default function MatchHistoryScreen() {
               return (
                 <Pressable
                   key={season}
-                  className={`px-3 py-1.5 rounded-lg ${isActive ? 'bg-primary' : 'bg-surface'}`}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 8,
+                    backgroundColor: isActive ? '#2563eb' : '#f8fafc',
+                  }}
                   onPress={() => setSeason(season)}
                 >
-                  <Text className={`text-[13px] font-semibold ${isActive ? 'text-white' : 'text-gray-600'}`}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: isActive ? '#ffffff' : '#4b5563' }}>
                     {season}
                   </Text>
                 </Pressable>
