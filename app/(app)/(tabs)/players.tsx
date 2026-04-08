@@ -32,11 +32,20 @@ export default function PlayersScreen() {
 
   const sortedBookmarks = useMemo(() => {
     return [...bookmarks].sort((a, b) => {
+      const h2hA = h2hCounts.get(a.licence);
+      const h2hB = h2hCounts.get(b.licence);
+      // Primary: matches played together (descending)
+      const togetherDiff = (h2hB?.together ?? 0) - (h2hA?.together ?? 0);
+      if (togetherDiff !== 0) return togetherDiff;
+      // Secondary: matches against (descending)
+      const againstDiff = (h2hB?.against ?? 0) - (h2hA?.against ?? 0);
+      if (againstDiff !== 0) return againstDiff;
+      // Tiebreaker: alphabetical
       const nameA = `${a.nom} ${a.prenom}`.toLowerCase();
       const nameB = `${b.nom} ${b.prenom}`.toLowerCase();
       return nameA.localeCompare(nameB);
     });
-  }, [bookmarks]);
+  }, [bookmarks, h2hCounts]);
 
   const renderSearchItem = useCallback(
     ({ item }: { item: (typeof results)[number] }) => (
