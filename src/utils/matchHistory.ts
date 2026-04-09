@@ -24,6 +24,10 @@ export interface MatchItem {
   pointsImpact?: number;
   setScores?: string[];
   duration?: string;
+  /** Opponent's rank at match time (e.g. "D7", "P10") */
+  opponentRank?: string;
+  /** Player's rank at match time */
+  playerRank?: string;
   /** Raw ISO date string for season computation (display date may be formatted) */
   _rawDate?: string;
 }
@@ -184,6 +188,8 @@ export function toFullMatchItem(
     pointsImpact: parsePoints(raw.Points),
     setScores: parseSetScores(raw.Sets),
     duration: (raw.Duree as string) ?? undefined,
+    opponentRank: (raw.OpponentRank as string) ?? undefined,
+    playerRank: (raw.PlayerRank as string) ?? undefined,
     // Store raw ISO date for season computation
     _rawDate: rawDate,
   };

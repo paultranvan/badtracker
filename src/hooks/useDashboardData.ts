@@ -37,6 +37,8 @@ export interface DashboardData {
   recentMatches: MatchItem[];
   /** Last 3 individual matches from detail data (sorted by date desc) */
   recentDetailMatches: MatchItem[];
+  /** All individual matches from detail cache (sorted by date desc) */
+  allDetailMatches: MatchItem[];
   /** True while detail data is still loading for recent matches */
   detailsLoading: boolean;
   quickStats: QuickStats | null;
@@ -363,8 +365,8 @@ export function useDashboardData(): DashboardData {
     };
   }, [quickStats, detailStatsCache, tournaments, allMatches]);
 
-  // Derive last 3 individual matches from detail data (sorted by date desc)
-  const recentDetailMatches = useMemo(() => {
+  // Collect all detail-level matches from cache
+  const allDetailMatches = useMemo(() => {
     if (detailStatsCache.size === 0) return [];
     const allDetail: MatchItem[] = [];
     for (const matches of detailStatsCache.values()) {
@@ -376,9 +378,15 @@ export function useDashboardData(): DashboardData {
       const db = b._rawDate ?? '';
       return db.localeCompare(da);
     });
-    // Re-assign unique IDs (original IDs can collide across different cache entries)
-    return allDetail.slice(0, 3).map((m, i) => ({ ...m, id: `recent-${i}` }));
+    return allDetail;
   }, [detailStatsCache]);
+
+  // Derive last 3 individual matches from detail data
+  const recentDetailMatches = useMemo(() => {
+    if (allDetailMatches.length === 0) return [];
+    // Re-assign unique IDs (original IDs can collide across different cache entries)
+    return allDetailMatches.slice(0, 3).map((m, i) => ({ ...m, id: `recent-${i}` }));
+  }, [allDetailMatches]);
 
   // Track whether details are still loading
   const detailsLoading = useMemo(() => {
@@ -398,6 +406,7 @@ export function useDashboardData(): DashboardData {
     profile,
     recentMatches,
     recentDetailMatches,
+    allDetailMatches,
     detailsLoading,
     quickStats: enrichedQuickStats,
     isLoading,

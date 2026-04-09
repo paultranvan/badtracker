@@ -170,5 +170,30 @@
     "removed": "Bookmark removed",
     "empty": "No bookmarks",
     "settingsRow": "My bookmarks"
+  },
+  "insights": {
+    "title": "Insights",
+    "longestStreak": "Win Streak",
+    "consecutiveWins": "consecutive wins",
+    "recentForm": "Recent Form",
+    "formWin": "W",
+    "formLoss": "L",
+    "lastNMatches": "last {{count}} matches",
+    "biggestUpset": "Biggest Upset",
+    "vsRank": "vs {{rank}}",
+    "youWere": "you were {{rank}}",
+    "cpphMomentum": "CPPH Trend",
+    "disciplineBalance": "Discipline Balance",
+    "simpleCount": "Singles: {{count}}",
+    "doubleCount": "Doubles: {{count}}",
+    "mixteCount": "Mixed: {{count}}",
+    "bestTournament": "Best Tournament",
+    "tournamentStats": "{{wins}}W / {{losses}}L \u00b7 {{rate}}% win rate",
+    "bestPartner": "Best Partner",
+    "partnerStats": "{{count}} matches \u00b7 {{rate}}% win rate",
+    "nemesis": "Nemesis",
+    "nemesisStats": "{{wins}}W / {{losses}}L",
+    "mostPlayed": "Most Played",
+    "mostPlayedStats": "{{count}} matches \u00b7 Last: {{date}}"
   }
 }

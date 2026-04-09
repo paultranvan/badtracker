@@ -170,5 +170,30 @@
     "removed": "Favori supprim\u00e9",
     "empty": "Aucun favori",
     "settingsRow": "Mes favoris"
+  },
+  "insights": {
+    "title": "Insights",
+    "longestStreak": "S\u00e9rie de victoires",
+    "consecutiveWins": "victoires cons\u00e9cutives",
+    "recentForm": "Forme r\u00e9cente",
+    "formWin": "V",
+    "formLoss": "D",
+    "lastNMatches": "{{count}} derniers matchs",
+    "biggestUpset": "Plus gros exploit",
+    "vsRank": "vs {{rank}}",
+    "youWere": "class\u00e9 {{rank}}",
+    "cpphMomentum": "Tendance CPPH",
+    "disciplineBalance": "R\u00e9partition disciplines",
+    "simpleCount": "Simple : {{count}}",
+    "doubleCount": "Double : {{count}}",
+    "mixteCount": "Mixte : {{count}}",
+    "bestTournament": "Meilleur tournoi",
+    "tournamentStats": "{{wins}}V / {{losses}}D \u00b7 {{rate}}% victoires",
+    "bestPartner": "Meilleur partenaire",
+    "partnerStats": "{{count}} matchs \u00b7 {{rate}}% victoires",
+    "nemesis": "N\u00e9m\u00e9sis",
+    "nemesisStats": "{{wins}}V / {{losses}}D",
+    "mostPlayed": "Plus rencontr\u00e9",
+    "mostPlayedStats": "{{count}} matchs \u00b7 Dernier : {{date}}"
   }
 }

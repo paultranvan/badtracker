@@ -639,6 +639,8 @@ function expandWithDetail(
       _detailScore: match.score as string | undefined,
       _detailRound: roundName,
       _detailIsWinner: userIsWinner,
+      _detailOpponentRank: opp1?.RankingSubLevel as string | undefined,
+      _detailPlayerRank: userEntry?.RankingSubLevel as string | undefined,
       // Remove _detail to avoid passing raw data downstream
       _detail: undefined,
     };
@@ -760,6 +762,8 @@ function transformResultItem(raw: Record<string, unknown>): Record<string, unkno
   const detailScore = raw._detailScore as string | undefined;
   const detailRound = raw._detailRound as string | undefined;
   const detailIsWinner = raw._detailIsWinner as boolean | undefined;
+  const detailOpponentRank = raw._detailOpponentRank as string | undefined;
+  const detailPlayerRank = raw._detailPlayerRank as string | undefined;
 
   // Override win/loss from detail if available (more reliable than winPoint sign)
   if (detailIsWinner != null) {
@@ -796,6 +800,8 @@ function transformResultItem(raw: Record<string, unknown>): Record<string, unkno
     PartenaireLicence: detailPartnerLicence,
     Sets: detailSetScores,
     Tour: detailRound,
+    OpponentRank: detailOpponentRank,
+    PlayerRank: detailPlayerRank,
     // Keep original date for season computation
     _rawDate: raw.date,
   };

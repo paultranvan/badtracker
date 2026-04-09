@@ -11,9 +11,10 @@ import {
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useDashboardData } from '../../../src/hooks/useDashboardData';
+import { useInsights } from '../../../src/hooks/useInsights';
 import { getRankLabel } from '../../../src/utils/rankings';
 import { useSession } from '../../../src/auth/context';
-import { StatCard, SectionHeader, MatchCard, Card, DetailMatchCard, RankProgressBar } from '../../../src/components';
+import { StatCard, SectionHeader, MatchCard, Card, DetailMatchCard, RankProgressBar, InsightsSection } from '../../../src/components';
 
 // ============================================================
 // Discipline config
@@ -45,6 +46,7 @@ export default function DashboardScreen() {
     profile,
     recentMatches,
     recentDetailMatches,
+    allDetailMatches,
     detailsLoading,
     quickStats,
     isLoading,
@@ -52,6 +54,8 @@ export default function DashboardScreen() {
     error,
     refresh,
   } = useDashboardData();
+
+  const insights = useInsights(allDetailMatches, detailsLoading);
 
   const [expandedMatch, setExpandedMatch] = useState<string | null>(null);
 
@@ -247,6 +251,9 @@ export default function DashboardScreen() {
           </Pressable>
         </View>
       )}
+
+      {/* Insights Section */}
+      {!isLoading && <InsightsSection data={insights} />}
     </ScrollView>
   );
 }
