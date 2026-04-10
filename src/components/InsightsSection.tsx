@@ -95,45 +95,6 @@ function CpphMomentumCard({ total, matchCount, t }: { total: number; matchCount:
   );
 }
 
-function DisciplineBalanceCard({ simple, double: dbl, mixte, t }: { simple: number; double: number; mixte: number; t: TFunction }) {
-  const total = simple + dbl + mixte;
-  if (total === 0) return null;
-
-  const sPct = Math.round((simple / total) * 100);
-  const dPct = Math.round((dbl / total) * 100);
-  const mPct = 100 - sPct - dPct;
-
-  return (
-    <Card className="py-3 px-3">
-      <Text className="text-caption text-muted uppercase text-center mb-2">
-        {t('insights.disciplineBalance')}
-      </Text>
-      <View style={{ flexDirection: 'row', gap: 3, height: 20, borderRadius: 10, overflow: 'hidden' }}>
-        {simple > 0 && (
-          <View style={{ flex: sPct, backgroundColor: '#3b82f6', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 10, color: '#fff', fontWeight: '600' }}>S {sPct}%</Text>
-          </View>
-        )}
-        {dbl > 0 && (
-          <View style={{ flex: dPct, backgroundColor: '#10b981', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 10, color: '#fff', fontWeight: '600' }}>D {dPct}%</Text>
-          </View>
-        )}
-        {mixte > 0 && (
-          <View style={{ flex: mPct, backgroundColor: '#f59e0b', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 10, color: '#fff', fontWeight: '600' }}>M {mPct}%</Text>
-          </View>
-        )}
-      </View>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-        <Text className="text-[11px] text-muted">{t('insights.simpleCount', { count: simple })}</Text>
-        <Text className="text-[11px] text-muted">{t('insights.doubleCount', { count: dbl })}</Text>
-        <Text className="text-[11px] text-muted">{t('insights.mixteCount', { count: mixte })}</Text>
-      </View>
-    </Card>
-  );
-}
-
 interface FullWidthCardProps {
   emoji: string;
   bgColor: string;
@@ -200,7 +161,6 @@ export function InsightsSection({ data }: InsightsSectionProps) {
     data.recentForm ||
     data.biggestUpset ||
     data.cpphMomentum ||
-    data.disciplineBalance ||
     data.bestTournament ||
     data.bestPartner ||
     data.nemesis ||
@@ -221,14 +181,6 @@ export function InsightsSection({ data }: InsightsSectionProps) {
           left={data.biggestUpset ? <BiggestUpsetCard opponentRank={data.biggestUpset.opponentRank} playerRank={data.biggestUpset.playerRank} t={t} /> : null}
           right={data.cpphMomentum ? <CpphMomentumCard total={data.cpphMomentum.total} matchCount={data.cpphMomentum.matchCount} t={t} /> : null}
         />
-        {data.disciplineBalance && (
-          <DisciplineBalanceCard
-            simple={data.disciplineBalance.simple}
-            double={data.disciplineBalance.double}
-            mixte={data.disciplineBalance.mixte}
-            t={t}
-          />
-        )}
       </View>
 
       <View style={{ gap: 10 }}>
