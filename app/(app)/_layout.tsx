@@ -29,6 +29,14 @@ export default function AppLayout() {
           headerBackTitle: '',
         }}
       />
+      <Stack.Screen
+        name="insight-matches/[type]"
+        options={{
+          headerShown: true,
+          headerTitle: t('insightMatches.title'),
+          headerBackTitle: '',
+        }}
+      />
     </Stack>
   );
 }
