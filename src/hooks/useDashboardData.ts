@@ -366,20 +366,29 @@ export function useDashboardData(): DashboardData {
   }, [quickStats, detailStatsCache, tournaments, allMatches]);
 
   // Collect all detail-level matches from cache.
-  // Original ids can collide across different cache entries, so re-key here
-  // to give every consumer a stable unique id.
+  // Content-dedupe (same date + partner + opponents + score) — upstream brackets
+  // can occasionally expand the same underlying match twice, inflating counts.
+  // Then re-key so every consumer has a stable unique id.
   const allDetailMatches = useMemo(() => {
     if (detailStatsCache.size === 0) return [];
     const allDetail: MatchItem[] = [];
     for (const matches of detailStatsCache.values()) {
       allDetail.push(...matches);
     }
-    allDetail.sort((a, b) => {
+    const seen = new Set<string>();
+    const deduped: MatchItem[] = [];
+    for (const m of allDetail) {
+      const key = `${m._rawDate ?? ''}|${m.partnerLicence ?? ''}|${m.opponentLicence ?? ''}|${m.opponent2Licence ?? ''}|${m.score ?? ''}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(m);
+    }
+    deduped.sort((a, b) => {
       const da = a._rawDate ?? '';
       const db = b._rawDate ?? '';
       return db.localeCompare(da);
     });
-    return allDetail.map((m, i) => ({ ...m, id: `detail-${i}` }));
+    return deduped.map((m, i) => ({ ...m, id: `detail-${i}` }));
   }, [detailStatsCache]);
 
   // Derive last 3 individual matches from detail data
