@@ -406,8 +406,11 @@ export function useMatchHistory(targetPersonId?: string): MatchHistoryData {
   loadDetailsRef.current = loadDetails;
 
   const refresh = useCallback(async () => {
-    // Clear detail cache on refresh
-    setDetailCache(new Map());
+    // Don't clear detailCache — when empty, the stats useMemo recomputes with
+    // no covered brackets, flipping isStatsSettled to false (spinner) and
+    // flashing per-discipline pills to bracket-level values before the auto-
+    // load repopulates from the persistent cache. Entries are overwritten by
+    // key as loadDetails runs again, so in-memory clearing is unnecessary.
     autoLoadTriggered.current.clear();
     await fetchData(true);
   }, [fetchData]);

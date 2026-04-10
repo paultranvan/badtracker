@@ -406,7 +406,10 @@ export function useDashboardData(): DashboardData {
   }, [allMatches.length, tournaments, detailStatsCache.size]);
 
   const refresh = useCallback(async () => {
-    setDetailStatsCache(new Map());
+    // Don't clear detailStatsCache — entries are overwritten by key as the
+    // auto-load effect re-runs, and clearing causes a visible flicker where
+    // the matchCount drops to the bracket-level count before detail data
+    // repopulates. The persistent cache is the source of freshness anyway.
     autoLoadTriggered.current.clear();
     await fetchData(true);
   }, [fetchData]);
