@@ -369,11 +369,20 @@ export function useDashboardData(): DashboardData {
   // Content-dedupe (same date + partner + opponents + score) — upstream brackets
   // can occasionally expand the same underlying match twice, inflating counts.
   // Then re-key so every consumer has a stable unique id.
+  //
+  // Within each cache entry we reverse the order: the FFBaD detail API
+  // returns matches in chronological order (first played first), but
+  // _rawDate is date-only so stable desc sort can't distinguish matches
+  // within the same day. Reversing ensures the newest intra-day match
+  // ends up first in the sorted array — critical for "recent form" and
+  // the dashboard's "recent matches" section, which both slice the top N.
   const allDetailMatches = useMemo(() => {
     if (detailStatsCache.size === 0) return [];
     const allDetail: MatchItem[] = [];
     for (const matches of detailStatsCache.values()) {
-      allDetail.push(...matches);
+      for (let i = matches.length - 1; i >= 0; i--) {
+        allDetail.push(matches[i]);
+      }
     }
     const seen = new Set<string>();
     const deduped: MatchItem[] = [];

@@ -187,8 +187,12 @@
     "tournamentStats": "{{wins}}W / {{losses}}L \u00b7 {{rate}}% win rate",
     "bestPartner": "Best Partner",
     "partnerStats": "{{count}} matches \u00b7 {{rate}}% win rate",
+    "mostPlayedPartner": "Favorite Partner",
+    "mostPlayedPartnerStats": "{{count}} matches \u00b7 {{rate}}% win rate",
     "nemesis": "Nemesis",
     "nemesisStats": "{{wins}}W / {{losses}}L",
+    "mostDefeated": "Most Defeated",
+    "mostDefeatedStats": "{{wins}}W / {{losses}}L",
     "mostPlayed": "Most Played",
     "mostPlayedStats": "{{count}} matches \u00b7 Last: {{date}}"
   },

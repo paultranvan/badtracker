@@ -25,7 +25,19 @@ export interface InsightsData {
     matchCount: number;
     winRate: number;
   } | null;
+  mostPlayedPartner: {
+    name: string;
+    licence: string;
+    matchCount: number;
+    winRate: number;
+  } | null;
   nemesis: {
+    name: string;
+    licence: string;
+    wins: number;
+    losses: number;
+  } | null;
+  mostDefeated: {
     name: string;
     licence: string;
     wins: number;
@@ -186,6 +198,68 @@ export function computeBestPartner(matches: MatchItem[]): InsightsData['bestPart
   return best;
 }
 
+export function computeMostPlayedPartner(matches: MatchItem[]): InsightsData['mostPlayedPartner'] {
+  const byPartner = new Map<string, { name: string; licence: string; wins: number; total: number }>();
+
+  for (const m of matches) {
+    if (!m.partnerLicence || !m.partner || m.isWin === undefined) continue;
+    const stats = byPartner.get(m.partnerLicence) ?? { name: m.partner, licence: m.partnerLicence, wins: 0, total: 0 };
+    stats.total++;
+    if (m.isWin) stats.wins++;
+    byPartner.set(m.partnerLicence, stats);
+  }
+
+  let top: InsightsData['mostPlayedPartner'] = null;
+  let mostMatches = 0;
+
+  for (const [, stats] of byPartner) {
+    if (stats.total < 2) continue;
+    if (stats.total > mostMatches) {
+      mostMatches = stats.total;
+      const winRate = Math.round((stats.wins / stats.total) * 100);
+      top = { name: stats.name, licence: stats.licence, matchCount: stats.total, winRate };
+    }
+  }
+
+  return top;
+}
+
+export function computeMostDefeated(matches: MatchItem[]): InsightsData['mostDefeated'] {
+  const byOpponent = new Map<string, { name: string; licence: string; wins: number; losses: number }>();
+
+  // Count both opponent positions for doubles, same as computeNemesis.
+  const addResult = (
+    name: string | undefined,
+    licence: string | undefined,
+    isWin: boolean
+  ) => {
+    if (!licence || !name) return;
+    const stats = byOpponent.get(licence) ?? { name, licence, wins: 0, losses: 0 };
+    if (isWin) stats.wins++;
+    else stats.losses++;
+    byOpponent.set(licence, stats);
+  };
+
+  for (const m of matches) {
+    if (m.isWin === undefined) continue;
+    addResult(m.opponent, m.opponentLicence, m.isWin);
+    addResult(m.opponent2, m.opponent2Licence, m.isWin);
+  }
+
+  let best: InsightsData['mostDefeated'] = null;
+  let mostWins = 0;
+
+  for (const [, stats] of byOpponent) {
+    if (stats.wins < 2) continue;
+    if (stats.wins > mostWins) {
+      mostWins = stats.wins;
+      best = { name: stats.name, licence: stats.licence, wins: stats.wins, losses: stats.losses };
+    }
+  }
+
+  return best;
+}
+
 export function computeNemesis(matches: MatchItem[]): InsightsData['nemesis'] {
   const byOpponent = new Map<string, { name: string; licence: string; wins: number; losses: number }>();
 
@@ -254,7 +328,9 @@ export function computeAllInsights(
     cpphMomentum: computeCpphMomentum(matches),
     bestTournament: computeBestTournament(matches),
     bestPartner: computeBestPartner(matches),
+    mostPlayedPartner: computeMostPlayedPartner(matches),
     nemesis: computeNemesis(matches),
+    mostDefeated: computeMostDefeated(matches),
     mostPlayed: computeMostPlayed(opponents),
   };
 }
@@ -270,7 +346,9 @@ export type InsightType =
   | 'cpphMomentum'
   | 'bestTournament'
   | 'bestPartner'
+  | 'mostPlayedPartner'
   | 'nemesis'
+  | 'mostDefeated'
   | 'mostPlayed';
 
 export const INSIGHT_TYPES: readonly InsightType[] = [
@@ -280,7 +358,9 @@ export const INSIGHT_TYPES: readonly InsightType[] = [
   'cpphMomentum',
   'bestTournament',
   'bestPartner',
+  'mostPlayedPartner',
   'nemesis',
+  'mostDefeated',
   'mostPlayed',
 ];
 
@@ -312,11 +392,23 @@ export function getMatchesForInsight(
       const p = insights.bestPartner;
       return p ? matches.filter((m) => m.partnerLicence === p.licence) : [];
     }
+    case 'mostPlayedPartner': {
+      const mpp = insights.mostPlayedPartner;
+      return mpp ? matches.filter((m) => m.partnerLicence === mpp.licence) : [];
+    }
     case 'nemesis': {
       const n = insights.nemesis;
       return n
         ? matches.filter(
             (m) => m.opponentLicence === n.licence || m.opponent2Licence === n.licence,
+          )
+        : [];
+    }
+    case 'mostDefeated': {
+      const md = insights.mostDefeated;
+      return md
+        ? matches.filter(
+            (m) => m.opponentLicence === md.licence || m.opponent2Licence === md.licence,
           )
         : [];
     }

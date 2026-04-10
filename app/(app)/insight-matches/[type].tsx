@@ -20,7 +20,9 @@ const INSIGHT_BG: Record<InsightType, string> = {
   cpphMomentum: '#f1f5f9',
   bestTournament: '#fef3c7',
   bestPartner: '#dbeafe',
+  mostPlayedPartner: '#e0e7ff',
   nemesis: '#fee2e2',
+  mostDefeated: '#fef3c7',
   mostPlayed: '#f0fdf4',
 };
 
@@ -114,6 +116,21 @@ function getHeaderProps(
           }
         : null;
     }
+    case 'mostPlayedPartner': {
+      const mpp = insights.mostPlayedPartner;
+      return mpp
+        ? {
+            emoji: '👯',
+            bgColor,
+            label: t('insights.mostPlayedPartner'),
+            title: mpp.name,
+            subtitle: t('insights.mostPlayedPartnerStats', {
+              count: mpp.matchCount,
+              rate: mpp.winRate,
+            }),
+          }
+        : null;
+    }
     case 'nemesis': {
       const n = insights.nemesis;
       return n
@@ -123,6 +140,18 @@ function getHeaderProps(
             label: t('insights.nemesis'),
             title: n.name,
             subtitle: t('insights.nemesisStats', { wins: n.wins, losses: n.losses }),
+          }
+        : null;
+    }
+    case 'mostDefeated': {
+      const md = insights.mostDefeated;
+      return md
+        ? {
+            emoji: '🎯',
+            bgColor,
+            label: t('insights.mostDefeated'),
+            title: md.name,
+            subtitle: t('insights.mostDefeatedStats', { wins: md.wins, losses: md.losses }),
           }
         : null;
     }

@@ -181,7 +181,9 @@ export function InsightsSection({ data }: InsightsSectionProps) {
     data.cpphMomentum ||
     data.bestTournament ||
     data.bestPartner ||
+    data.mostPlayedPartner ||
     data.nemesis ||
+    data.mostDefeated ||
     data.mostPlayed;
 
   if (!hasAny) return null;
@@ -263,6 +265,20 @@ export function InsightsSection({ data }: InsightsSectionProps) {
             />
           </InsightPressable>
         )}
+        {data.mostPlayedPartner && (
+          <InsightPressable type="mostPlayedPartner">
+            <FullWidthCard
+              emoji="👯"
+              bgColor="#e0e7ff"
+              label={t('insights.mostPlayedPartner')}
+              title={data.mostPlayedPartner.name}
+              subtitle={t('insights.mostPlayedPartnerStats', {
+                count: data.mostPlayedPartner.matchCount,
+                rate: data.mostPlayedPartner.winRate,
+              })}
+            />
+          </InsightPressable>
+        )}
         {data.nemesis && (
           <InsightPressable type="nemesis">
             <FullWidthCard
@@ -273,6 +289,20 @@ export function InsightsSection({ data }: InsightsSectionProps) {
               subtitle={t('insights.nemesisStats', {
                 wins: data.nemesis.wins,
                 losses: data.nemesis.losses,
+              })}
+            />
+          </InsightPressable>
+        )}
+        {data.mostDefeated && (
+          <InsightPressable type="mostDefeated">
+            <FullWidthCard
+              emoji="🎯"
+              bgColor="#fef3c7"
+              label={t('insights.mostDefeated')}
+              title={data.mostDefeated.name}
+              subtitle={t('insights.mostDefeatedStats', {
+                wins: data.mostDefeated.wins,
+                losses: data.mostDefeated.losses,
               })}
             />
           </InsightPressable>
