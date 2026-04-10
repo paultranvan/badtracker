@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
+import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { Card } from './Card';
 import { SectionHeader } from './SectionHeader';
-import type { InsightsData } from '../utils/insights';
+import type { InsightsData, InsightType } from '../utils/insights';
 
 interface InsightsSectionProps {
   data: InsightsData | null;
@@ -144,6 +145,25 @@ function InsightsSkeleton() {
   );
 }
 
+function InsightPressable({
+  type,
+  children,
+  style,
+}: {
+  type: InsightType;
+  children: ReactNode;
+  style?: { flex?: number };
+}) {
+  return (
+    <Pressable
+      onPress={() => router.push(`/insight-matches/${type}`)}
+      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, ...style })}
+    >
+      {children}
+    </Pressable>
+  );
+}
+
 export function InsightsSection({ data }: InsightsSectionProps) {
   const { t } = useTranslation();
 
@@ -174,64 +194,104 @@ export function InsightsSection({ data }: InsightsSectionProps) {
 
       <View style={{ gap: 10, marginBottom: 10 }}>
         <GridRow
-          left={data.winStreak ? <WinStreakCard count={data.winStreak.count} t={t} /> : null}
-          right={data.recentForm ? <RecentFormCard results={data.recentForm.results} t={t} /> : null}
+          left={
+            data.winStreak ? (
+              <InsightPressable type="winStreak" style={{ flex: 1 }}>
+                <WinStreakCard count={data.winStreak.count} t={t} />
+              </InsightPressable>
+            ) : null
+          }
+          right={
+            data.recentForm ? (
+              <InsightPressable type="recentForm" style={{ flex: 1 }}>
+                <RecentFormCard results={data.recentForm.results} t={t} />
+              </InsightPressable>
+            ) : null
+          }
         />
         <GridRow
-          left={data.biggestUpset ? <BiggestUpsetCard opponentRank={data.biggestUpset.opponentRank} playerRank={data.biggestUpset.playerRank} t={t} /> : null}
-          right={data.cpphMomentum ? <CpphMomentumCard total={data.cpphMomentum.total} matchCount={data.cpphMomentum.matchCount} t={t} /> : null}
+          left={
+            data.biggestUpset ? (
+              <InsightPressable type="biggestUpset" style={{ flex: 1 }}>
+                <BiggestUpsetCard
+                  opponentRank={data.biggestUpset.opponentRank}
+                  playerRank={data.biggestUpset.playerRank}
+                  t={t}
+                />
+              </InsightPressable>
+            ) : null
+          }
+          right={
+            data.cpphMomentum ? (
+              <InsightPressable type="cpphMomentum" style={{ flex: 1 }}>
+                <CpphMomentumCard
+                  total={data.cpphMomentum.total}
+                  matchCount={data.cpphMomentum.matchCount}
+                  t={t}
+                />
+              </InsightPressable>
+            ) : null
+          }
         />
       </View>
 
       <View style={{ gap: 10 }}>
         {data.bestTournament && (
-          <FullWidthCard
-            emoji="🏆"
-            bgColor="#fef3c7"
-            label={t('insights.bestTournament')}
-            title={data.bestTournament.name}
-            subtitle={t('insights.tournamentStats', {
-              wins: data.bestTournament.wins,
-              losses: data.bestTournament.losses,
-              rate: data.bestTournament.winRate,
-            })}
-          />
+          <InsightPressable type="bestTournament">
+            <FullWidthCard
+              emoji="🏆"
+              bgColor="#fef3c7"
+              label={t('insights.bestTournament')}
+              title={data.bestTournament.name}
+              subtitle={t('insights.tournamentStats', {
+                wins: data.bestTournament.wins,
+                losses: data.bestTournament.losses,
+                rate: data.bestTournament.winRate,
+              })}
+            />
+          </InsightPressable>
         )}
         {data.bestPartner && (
-          <FullWidthCard
-            emoji="🤝"
-            bgColor="#dbeafe"
-            label={t('insights.bestPartner')}
-            title={data.bestPartner.name}
-            subtitle={t('insights.partnerStats', {
-              count: data.bestPartner.matchCount,
-              rate: data.bestPartner.winRate,
-            })}
-          />
+          <InsightPressable type="bestPartner">
+            <FullWidthCard
+              emoji="🤝"
+              bgColor="#dbeafe"
+              label={t('insights.bestPartner')}
+              title={data.bestPartner.name}
+              subtitle={t('insights.partnerStats', {
+                count: data.bestPartner.matchCount,
+                rate: data.bestPartner.winRate,
+              })}
+            />
+          </InsightPressable>
         )}
         {data.nemesis && (
-          <FullWidthCard
-            emoji="⚔️"
-            bgColor="#fee2e2"
-            label={t('insights.nemesis')}
-            title={data.nemesis.name}
-            subtitle={t('insights.nemesisStats', {
-              wins: data.nemesis.wins,
-              losses: data.nemesis.losses,
-            })}
-          />
+          <InsightPressable type="nemesis">
+            <FullWidthCard
+              emoji="⚔️"
+              bgColor="#fee2e2"
+              label={t('insights.nemesis')}
+              title={data.nemesis.name}
+              subtitle={t('insights.nemesisStats', {
+                wins: data.nemesis.wins,
+                losses: data.nemesis.losses,
+              })}
+            />
+          </InsightPressable>
         )}
         {data.mostPlayed && (
-          <FullWidthCard
-            emoji="🔄"
-            bgColor="#f0fdf4"
-            label={t('insights.mostPlayed')}
-            title={data.mostPlayed.name}
-            subtitle={t('insights.mostPlayedStats', {
-              count: data.mostPlayed.matchCount,
-              date: data.mostPlayed.lastDate,
-            })}
-          />
+          <InsightPressable type="mostPlayed">
+            <FullWidthCard
+              emoji="🔄"
+              bgColor="#f0fdf4"
+              label={t('insights.mostPlayed')}
+              title={data.mostPlayed.name}
+              subtitle={t('insights.mostPlayedStats', {
+                count: data.mostPlayed.matchCount,
+                date: data.mostPlayed.lastDate,
+              })}
+            />
+          </InsightPressable>
         )}
       </View>
     </View>
