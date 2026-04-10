@@ -189,12 +189,24 @@ export function computeBestPartner(matches: MatchItem[]): InsightsData['bestPart
 export function computeNemesis(matches: MatchItem[]): InsightsData['nemesis'] {
   const byOpponent = new Map<string, { name: string; licence: string; wins: number; losses: number }>();
 
-  for (const m of matches) {
-    if (!m.opponentLicence || !m.opponent || m.isWin === undefined) continue;
-    const stats = byOpponent.get(m.opponentLicence) ?? { name: m.opponent, licence: m.opponentLicence, wins: 0, losses: 0 };
-    if (m.isWin) stats.wins++;
+  // For doubles, count both opponents on the opposing side. A single loss
+  // contributes 1 loss to each of the two adversaries — they both beat us.
+  const addResult = (
+    name: string | undefined,
+    licence: string | undefined,
+    isWin: boolean
+  ) => {
+    if (!licence || !name) return;
+    const stats = byOpponent.get(licence) ?? { name, licence, wins: 0, losses: 0 };
+    if (isWin) stats.wins++;
     else stats.losses++;
-    byOpponent.set(m.opponentLicence, stats);
+    byOpponent.set(licence, stats);
+  };
+
+  for (const m of matches) {
+    if (m.isWin === undefined) continue;
+    addResult(m.opponent, m.opponentLicence, m.isWin);
+    addResult(m.opponent2, m.opponent2Licence, m.isWin);
   }
 
   let worst: InsightsData['nemesis'] = null;
@@ -302,11 +314,19 @@ export function getMatchesForInsight(
     }
     case 'nemesis': {
       const n = insights.nemesis;
-      return n ? matches.filter((m) => m.opponentLicence === n.licence) : [];
+      return n
+        ? matches.filter(
+            (m) => m.opponentLicence === n.licence || m.opponent2Licence === n.licence,
+          )
+        : [];
     }
     case 'mostPlayed': {
       const mp = insights.mostPlayed;
-      return mp ? matches.filter((m) => m.opponentLicence === mp.licence) : [];
+      return mp
+        ? matches.filter(
+            (m) => m.opponentLicence === mp.licence || m.opponent2Licence === mp.licence,
+          )
+        : [];
     }
   }
 }
