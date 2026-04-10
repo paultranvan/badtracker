@@ -15,15 +15,15 @@ function GridRow({ left, right }: { left: ReactNode | null; right: ReactNode | n
   if (!left && !right) return null;
   return (
     <View style={{ flexDirection: 'row', gap: 10 }}>
-      {left ?? <View style={{ flex: 1 }} />}
-      {right ?? <View style={{ flex: 1 }} />}
+      <View style={{ flex: 1 }}>{left}</View>
+      <View style={{ flex: 1 }}>{right}</View>
     </View>
   );
 }
 
 function WinStreakCard({ count, t }: { count: number; t: TFunction }) {
   return (
-    <Card className="flex-1 items-center py-3 px-2">
+    <Card className="w-full items-center py-3 px-2">
       <Text className="text-caption text-muted uppercase">{t('insights.longestStreak')}</Text>
       <Text style={{ fontSize: 28, fontWeight: '800', color: '#f59e0b', marginVertical: 2 }}>
         {'🔥 '}{count}
@@ -35,7 +35,7 @@ function WinStreakCard({ count, t }: { count: number; t: TFunction }) {
 
 function RecentFormCard({ results, t }: { results: boolean[]; t: TFunction }) {
   return (
-    <Card className="flex-1 items-center py-3 px-2">
+    <Card className="w-full items-center py-3 px-2">
       <Text className="text-caption text-muted uppercase">{t('insights.recentForm')}</Text>
       <View style={{ flexDirection: 'row', gap: 4, marginVertical: 6 }}>
         {results.map((isWin, i) => (
@@ -65,7 +65,7 @@ function RecentFormCard({ results, t }: { results: boolean[]; t: TFunction }) {
 
 function BiggestUpsetCard({ opponentRank, playerRank, t }: { opponentRank: string; playerRank: string; t: TFunction }) {
   return (
-    <Card className="flex-1 items-center py-3 px-2">
+    <Card className="w-full items-center py-3 px-2">
       <Text className="text-caption text-muted uppercase">{t('insights.biggestUpset')}</Text>
       <Text style={{ fontSize: 20, fontWeight: '800', color: '#10b981', marginVertical: 2 }}>
         {'💥 '}{t('insights.vsRank', { rank: opponentRank })}
@@ -84,7 +84,7 @@ function CpphMomentumCard({ total, matchCount, t }: { total: number; matchCount:
   const sign = isPositive ? '+' : '';
 
   return (
-    <Card className="flex-1 items-center py-3 px-2">
+    <Card className="w-full items-center py-3 px-2">
       <Text className="text-caption text-muted uppercase">{t('insights.cpphMomentum')}</Text>
       <Text style={{ fontSize: 24, fontWeight: '800', color, marginVertical: 2 }}>
         {arrow} {sign}{total.toFixed(1)}
@@ -148,16 +148,14 @@ function InsightsSkeleton() {
 function InsightPressable({
   type,
   children,
-  style,
 }: {
   type: InsightType;
   children: ReactNode;
-  style?: { flex?: number };
 }) {
   return (
     <Pressable
       onPress={() => router.push(`/insight-matches/${type}`)}
-      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, ...style })}
+      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
     >
       {children}
     </Pressable>
@@ -196,14 +194,14 @@ export function InsightsSection({ data }: InsightsSectionProps) {
         <GridRow
           left={
             data.winStreak ? (
-              <InsightPressable type="winStreak" style={{ flex: 1 }}>
+              <InsightPressable type="winStreak">
                 <WinStreakCard count={data.winStreak.count} t={t} />
               </InsightPressable>
             ) : null
           }
           right={
             data.recentForm ? (
-              <InsightPressable type="recentForm" style={{ flex: 1 }}>
+              <InsightPressable type="recentForm">
                 <RecentFormCard results={data.recentForm.results} t={t} />
               </InsightPressable>
             ) : null
@@ -212,7 +210,7 @@ export function InsightsSection({ data }: InsightsSectionProps) {
         <GridRow
           left={
             data.biggestUpset ? (
-              <InsightPressable type="biggestUpset" style={{ flex: 1 }}>
+              <InsightPressable type="biggestUpset">
                 <BiggestUpsetCard
                   opponentRank={data.biggestUpset.opponentRank}
                   playerRank={data.biggestUpset.playerRank}
@@ -223,7 +221,7 @@ export function InsightsSection({ data }: InsightsSectionProps) {
           }
           right={
             data.cpphMomentum ? (
-              <InsightPressable type="cpphMomentum" style={{ flex: 1 }}>
+              <InsightPressable type="cpphMomentum">
                 <CpphMomentumCard
                   total={data.cpphMomentum.total}
                   matchCount={data.cpphMomentum.matchCount}
