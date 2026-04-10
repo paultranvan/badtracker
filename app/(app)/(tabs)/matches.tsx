@@ -475,65 +475,46 @@ function DisciplineBalanceBar({
 }: {
   counts: Record<DisciplineFilter, number>;
 }) {
-  const simple = counts.simple;
-  const dbl = counts.double;
-  const mixte = counts.mixte;
-  const total = simple + dbl + mixte;
+  const total = counts.simple + counts.double + counts.mixte;
   if (total === 0) return null;
 
-  const sPct = Math.round((simple / total) * 100);
-  const dPct = Math.round((dbl / total) * 100);
+  const sPct = Math.round((counts.simple / total) * 100);
+  const dPct = Math.round((counts.double / total) * 100);
   const mPct = 100 - sPct - dPct;
 
+  const segments = [
+    { key: 'simple' as const, letter: 'S', pct: sPct, count: counts.simple },
+    { key: 'double' as const, letter: 'D', pct: dPct, count: counts.double },
+    { key: 'mixte' as const, letter: 'M', pct: mPct, count: counts.mixte },
+  ].filter((s) => s.count > 0);
+
   return (
-    <View style={{ marginTop: 10 }}>
-      <View
-        style={{
-          flexDirection: 'row',
-          gap: 3,
-          height: 18,
-          borderRadius: 9,
-          overflow: 'hidden',
-          backgroundColor: 'rgba(255,255,255,0.08)',
-        }}
-      >
-        {simple > 0 && (
-          <View
-            style={{
-              flex: sPct,
-              backgroundColor: DISC_SOLID_COLORS.simple,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={{ fontSize: 10, color: '#fff', fontWeight: '600' }}>S {sPct}%</Text>
-          </View>
-        )}
-        {dbl > 0 && (
-          <View
-            style={{
-              flex: dPct,
-              backgroundColor: DISC_SOLID_COLORS.double,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={{ fontSize: 10, color: '#fff', fontWeight: '600' }}>D {dPct}%</Text>
-          </View>
-        )}
-        {mixte > 0 && (
-          <View
-            style={{
-              flex: mPct,
-              backgroundColor: DISC_SOLID_COLORS.mixte,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={{ fontSize: 10, color: '#fff', fontWeight: '600' }}>M {mPct}%</Text>
-          </View>
-        )}
-      </View>
+    <View
+      style={{
+        marginTop: 10,
+        flexDirection: 'row',
+        gap: 3,
+        height: 18,
+        borderRadius: 9,
+        overflow: 'hidden',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+      }}
+    >
+      {segments.map((s) => (
+        <View
+          key={s.key}
+          style={{
+            flex: s.pct,
+            backgroundColor: DISC_SOLID_COLORS[s.key],
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={{ fontSize: 10, color: '#fff', fontWeight: '600' }}>
+            {s.letter} {s.pct}%
+          </Text>
+        </View>
+      ))}
     </View>
   );
 }
@@ -603,7 +584,6 @@ function StatsHeader({ stats, isStatsSettled, t, disciplineStats, disciplineCoun
           />
         </View>
 
-        {/* Discipline balance bar */}
         <DisciplineBalanceBar counts={disciplineCounts} />
       </View>
     </LinearGradient>

@@ -7,4 +7,4 @@ export { MatchCard } from './MatchCard';
 export { DetailMatchCard } from './DetailMatchCard';
 export { DonutChart } from './DonutChart';
 export { RankProgressBar } from './RankProgressBar';
-export { InsightsSection } from './InsightsSection';
+export { InsightsSection, FullWidthCard } from './InsightsSection';

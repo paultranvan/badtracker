@@ -96,7 +96,7 @@ function CpphMomentumCard({ total, matchCount, t }: { total: number; matchCount:
   );
 }
 
-interface FullWidthCardProps {
+export interface FullWidthCardProps {
   emoji: string;
   bgColor: string;
   label: string;
@@ -104,7 +104,7 @@ interface FullWidthCardProps {
   subtitle: string;
 }
 
-function FullWidthCard({ emoji, bgColor, label, title, subtitle }: FullWidthCardProps) {
+export function FullWidthCard({ emoji, bgColor, label, title, subtitle }: FullWidthCardProps) {
   return (
     <Card className="flex-row items-center p-3.5" style={{ gap: 14 }}>
       <View

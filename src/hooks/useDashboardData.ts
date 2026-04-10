@@ -365,27 +365,27 @@ export function useDashboardData(): DashboardData {
     };
   }, [quickStats, detailStatsCache, tournaments, allMatches]);
 
-  // Collect all detail-level matches from cache
+  // Collect all detail-level matches from cache.
+  // Original ids can collide across different cache entries, so re-key here
+  // to give every consumer a stable unique id.
   const allDetailMatches = useMemo(() => {
     if (detailStatsCache.size === 0) return [];
     const allDetail: MatchItem[] = [];
     for (const matches of detailStatsCache.values()) {
       allDetail.push(...matches);
     }
-    // Sort by raw date descending (most recent first)
     allDetail.sort((a, b) => {
       const da = a._rawDate ?? '';
       const db = b._rawDate ?? '';
       return db.localeCompare(da);
     });
-    return allDetail;
+    return allDetail.map((m, i) => ({ ...m, id: `detail-${i}` }));
   }, [detailStatsCache]);
 
   // Derive last 3 individual matches from detail data
   const recentDetailMatches = useMemo(() => {
     if (allDetailMatches.length === 0) return [];
-    // Re-assign unique IDs (original IDs can collide across different cache entries)
-    return allDetailMatches.slice(0, 3).map((m, i) => ({ ...m, id: `recent-${i}` }));
+    return allDetailMatches.slice(0, 3);
   }, [allDetailMatches]);
 
   // Track whether details are still loading

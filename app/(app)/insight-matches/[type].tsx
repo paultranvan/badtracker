@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { View, Text, FlatList, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -6,7 +5,7 @@ import type { TFunction } from 'i18next';
 import { useSession } from '../../../src/auth/context';
 import { useDashboardData } from '../../../src/hooks/useDashboardData';
 import { useInsights } from '../../../src/hooks/useInsights';
-import { DetailMatchCard } from '../../../src/components';
+import { DetailMatchCard, FullWidthCard, type FullWidthCardProps } from '../../../src/components';
 import {
   getMatchesForInsight,
   INSIGHT_TYPES,
@@ -14,103 +13,134 @@ import {
   type InsightsData,
 } from '../../../src/utils/insights';
 
-interface HeaderInfo {
-  emoji: string;
-  label: string;
-  title: string;
-  subtitle: string;
-}
+const INSIGHT_BG: Record<InsightType, string> = {
+  winStreak: '#fef3c7',
+  recentForm: '#f1f5f9',
+  biggestUpset: '#dcfce7',
+  cpphMomentum: '#f1f5f9',
+  bestTournament: '#fef3c7',
+  bestPartner: '#dbeafe',
+  nemesis: '#fee2e2',
+  mostPlayed: '#f0fdf4',
+};
 
 function isValidInsightType(x: string | undefined): x is InsightType {
   return !!x && (INSIGHT_TYPES as readonly string[]).includes(x);
 }
 
-function getHeaderInfo(
+function getHeaderProps(
   type: InsightType,
   insights: InsightsData,
   t: TFunction
-): HeaderInfo | null {
+): FullWidthCardProps | null {
+  const bgColor = INSIGHT_BG[type];
   switch (type) {
-    case 'winStreak':
-      if (!insights.winStreak) return null;
-      return {
-        emoji: '🔥',
-        label: t('insights.longestStreak'),
-        title: `${insights.winStreak.count}`,
-        subtitle: t('insights.consecutiveWins'),
-      };
-    case 'recentForm':
-      if (!insights.recentForm) return null;
-      return {
-        emoji: '📊',
-        label: t('insights.recentForm'),
-        title: t('insights.lastNMatches', { count: insights.recentForm.results.length }),
-        subtitle: '',
-      };
-    case 'biggestUpset':
-      if (!insights.biggestUpset) return null;
-      return {
-        emoji: '💥',
-        label: t('insights.biggestUpset'),
-        title: t('insights.vsRank', { rank: insights.biggestUpset.opponentRank }),
-        subtitle: t('insights.youWere', { rank: insights.biggestUpset.playerRank }),
-      };
+    case 'winStreak': {
+      const ws = insights.winStreak;
+      return ws
+        ? {
+            emoji: '🔥',
+            bgColor,
+            label: t('insights.longestStreak'),
+            title: `${ws.count}`,
+            subtitle: t('insights.consecutiveWins'),
+          }
+        : null;
+    }
+    case 'recentForm': {
+      const rf = insights.recentForm;
+      return rf
+        ? {
+            emoji: '📊',
+            bgColor,
+            label: t('insights.recentForm'),
+            title: t('insights.lastNMatches', { count: rf.results.length }),
+            subtitle: '',
+          }
+        : null;
+    }
+    case 'biggestUpset': {
+      const bu = insights.biggestUpset;
+      return bu
+        ? {
+            emoji: '💥',
+            bgColor,
+            label: t('insights.biggestUpset'),
+            title: t('insights.vsRank', { rank: bu.opponentRank }),
+            subtitle: t('insights.youWere', { rank: bu.playerRank }),
+          }
+        : null;
+    }
     case 'cpphMomentum': {
-      if (!insights.cpphMomentum) return null;
-      const total = insights.cpphMomentum.total;
-      const sign = total >= 0 ? '+' : '';
+      const cm = insights.cpphMomentum;
+      if (!cm) return null;
+      const sign = cm.total >= 0 ? '+' : '';
       return {
-        emoji: total >= 0 ? '↑' : '↓',
+        emoji: cm.total >= 0 ? '↑' : '↓',
+        bgColor,
         label: t('insights.cpphMomentum'),
-        title: `${sign}${total.toFixed(1)}`,
-        subtitle: t('insights.lastNMatches', { count: insights.cpphMomentum.matchCount }),
+        title: `${sign}${cm.total.toFixed(1)}`,
+        subtitle: t('insights.lastNMatches', { count: cm.matchCount }),
       };
     }
-    case 'bestTournament':
-      if (!insights.bestTournament) return null;
-      return {
-        emoji: '🏆',
-        label: t('insights.bestTournament'),
-        title: insights.bestTournament.name,
-        subtitle: t('insights.tournamentStats', {
-          wins: insights.bestTournament.wins,
-          losses: insights.bestTournament.losses,
-          rate: insights.bestTournament.winRate,
-        }),
-      };
-    case 'bestPartner':
-      if (!insights.bestPartner) return null;
-      return {
-        emoji: '🤝',
-        label: t('insights.bestPartner'),
-        title: insights.bestPartner.name,
-        subtitle: t('insights.partnerStats', {
-          count: insights.bestPartner.matchCount,
-          rate: insights.bestPartner.winRate,
-        }),
-      };
-    case 'nemesis':
-      if (!insights.nemesis) return null;
-      return {
-        emoji: '⚔️',
-        label: t('insights.nemesis'),
-        title: insights.nemesis.name,
-        subtitle: t('insights.nemesisStats', {
-          wins: insights.nemesis.wins,
-          losses: insights.nemesis.losses,
-        }),
-      };
-    case 'mostPlayed':
-      if (!insights.mostPlayed) return null;
-      return {
-        emoji: '🔄',
-        label: t('insights.mostPlayed'),
-        title: insights.mostPlayed.name,
-        subtitle: t('insights.mostPlayedStats', {
-          count: insights.mostPlayed.matchCount,
-          date: insights.mostPlayed.lastDate,
-        }),
-      };
+    case 'bestTournament': {
+      const bt = insights.bestTournament;
+      return bt
+        ? {
+            emoji: '🏆',
+            bgColor,
+            label: t('insights.bestTournament'),
+            title: bt.name,
+            subtitle: t('insights.tournamentStats', {
+              wins: bt.wins,
+              losses: bt.losses,
+              rate: bt.winRate,
+            }),
+          }
+        : null;
+    }
+    case 'bestPartner': {
+      const bp = insights.bestPartner;
+      return bp
+        ? {
+            emoji: '🤝',
+            bgColor,
+            label: t('insights.bestPartner'),
+            title: bp.name,
+            subtitle: t('insights.partnerStats', {
+              count: bp.matchCount,
+              rate: bp.winRate,
+            }),
+          }
+        : null;
+    }
+    case 'nemesis': {
+      const n = insights.nemesis;
+      return n
+        ? {
+            emoji: '⚔️',
+            bgColor,
+            label: t('insights.nemesis'),
+            title: n.name,
+            subtitle: t('insights.nemesisStats', { wins: n.wins, losses: n.losses }),
+          }
+        : null;
+    }
+    case 'mostPlayed': {
+      const mp = insights.mostPlayed;
+      return mp
+        ? {
+            emoji: '🔄',
+            bgColor,
+            label: t('insights.mostPlayed'),
+            title: mp.name,
+            subtitle: t('insights.mostPlayedStats', {
+              count: mp.matchCount,
+              date: mp.lastDate,
+            }),
+          }
+        : null;
+    }
   }
 }
 
@@ -125,16 +155,6 @@ export default function InsightMatchesScreen() {
   const insights = useInsights(allDetailMatches, detailsLoading);
 
   const playerName = session ? `${session.prenom} ${session.nom}` : undefined;
-
-  const filteredMatches = useMemo(() => {
-    if (!isValid || !insights) return [];
-    return getMatchesForInsight(type as InsightType, allDetailMatches, insights);
-  }, [isValid, type, allDetailMatches, insights]);
-
-  const headerInfo = useMemo(() => {
-    if (!isValid || !insights) return null;
-    return getHeaderInfo(type as InsightType, insights, t);
-  }, [isValid, type, insights, t]);
 
   if (!isValid) {
     return (
@@ -154,6 +174,9 @@ export default function InsightMatchesScreen() {
     );
   }
 
+  const filteredMatches = getMatchesForInsight(type, allDetailMatches, insights);
+  const headerProps = getHeaderProps(type, insights, t);
+
   return (
     <View className="flex-1 bg-white">
       <Stack.Screen options={{ title: t('insightMatches.title') }} />
@@ -161,15 +184,9 @@ export default function InsightMatchesScreen() {
         data={filteredMatches}
         keyExtractor={(m) => m.id}
         ListHeaderComponent={
-          headerInfo ? (
-            <View className="px-4 py-4 border-b border-gray-100">
-              <Text className="text-caption text-muted uppercase mb-1">{headerInfo.label}</Text>
-              <Text className="text-title font-bold text-gray-900 mb-0.5">
-                {headerInfo.emoji} {headerInfo.title}
-              </Text>
-              {headerInfo.subtitle ? (
-                <Text className="text-body text-muted">{headerInfo.subtitle}</Text>
-              ) : null}
+          headerProps ? (
+            <View className="px-3 pt-3 pb-2">
+              <FullWidthCard {...headerProps} />
             </View>
           ) : null
         }

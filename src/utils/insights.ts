@@ -292,46 +292,53 @@ export function getMatchesForInsight(
       return getBiggestUpsetMatches(matches);
     case 'cpphMomentum':
       return getCpphMomentumMatches(matches);
-    case 'bestTournament':
-      return insights.bestTournament
-        ? matches.filter((m) => m.tournament === insights.bestTournament!.name)
-        : [];
-    case 'bestPartner':
-      return insights.bestPartner
-        ? matches.filter((m) => m.partnerLicence === insights.bestPartner!.licence)
-        : [];
-    case 'nemesis':
-      return insights.nemesis
-        ? matches.filter((m) => m.opponentLicence === insights.nemesis!.licence)
-        : [];
-    case 'mostPlayed':
-      return insights.mostPlayed
-        ? matches.filter((m) => m.opponentLicence === insights.mostPlayed!.licence)
-        : [];
+    case 'bestTournament': {
+      const t = insights.bestTournament;
+      return t ? matches.filter((m) => m.tournament === t.name) : [];
+    }
+    case 'bestPartner': {
+      const p = insights.bestPartner;
+      return p ? matches.filter((m) => m.partnerLicence === p.licence) : [];
+    }
+    case 'nemesis': {
+      const n = insights.nemesis;
+      return n ? matches.filter((m) => m.opponentLicence === n.licence) : [];
+    }
+    case 'mostPlayed': {
+      const mp = insights.mostPlayed;
+      return mp ? matches.filter((m) => m.opponentLicence === mp.licence) : [];
+    }
   }
 }
 
 function getWinStreakMatches(matches: MatchItem[]): MatchItem[] {
-  // matches is desc-sorted. Walk oldest→newest; collect matches in longest streak.
-  // Mirrors computeWinStreak: `undefined` neither extends nor resets.
-  let maxStreakMatches: MatchItem[] = [];
-  let curStreak: MatchItem[] = [];
+  // matches is desc-sorted. Walk oldest→newest (reverse index); track longest streak
+  // as [newestIdx, oldestIdx] indices. `undefined` neither extends nor resets,
+  // mirroring computeWinStreak.
+  let bestNewest = -1;
+  let bestOldest = -1;
+  let bestLen = 0;
+  let curOldest = -1;
+  let curLen = 0;
 
   for (let i = matches.length - 1; i >= 0; i--) {
     const m = matches[i];
     if (m.isWin === true) {
-      curStreak.push(m);
-      if (curStreak.length > maxStreakMatches.length) {
-        maxStreakMatches = curStreak.slice();
+      if (curLen === 0) curOldest = i;
+      curLen++;
+      if (curLen > bestLen) {
+        bestLen = curLen;
+        bestOldest = curOldest;
+        bestNewest = i;
       }
     } else if (m.isWin === false) {
-      curStreak = [];
+      curLen = 0;
     }
   }
 
-  if (maxStreakMatches.length < 2) return [];
-  // Collected oldest→newest; caller expects desc order (newest first)
-  return maxStreakMatches.reverse();
+  if (bestLen < 2) return [];
+  // bestNewest ≤ bestOldest in desc-sorted index space; slice is already desc order
+  return matches.slice(bestNewest, bestOldest + 1);
 }
 
 function getRecentFormMatches(matches: MatchItem[]): MatchItem[] {
