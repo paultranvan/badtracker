@@ -33,7 +33,7 @@ import { DetailMatchCard, DonutChart } from '../../../src/components';
 // Constants
 // ============================================================
 
-const HEADER_MAX_HEIGHT = 180;
+const HEADER_MAX_HEIGHT = 210;
 const HEADER_COLLAPSE_DISTANCE = HEADER_MAX_HEIGHT;
 
 const DISCIPLINE_FILTERS: Array<{
@@ -300,7 +300,13 @@ export default function MatchHistoryScreen() {
         className="overflow-hidden"
         style={headerAnimatedStyle}
       >
-        <StatsHeader stats={stats} isStatsSettled={isStatsSettled} t={t} disciplineStats={disciplineStats} />
+        <StatsHeader
+          stats={stats}
+          isStatsSettled={isStatsSettled}
+          t={t}
+          disciplineStats={disciplineStats}
+          disciplineCounts={disciplineCounts}
+        />
       </Animated.View>
 
       {/* Discipline Filter Chips */}
@@ -416,6 +422,7 @@ interface StatsHeaderProps {
   isStatsSettled: boolean;
   t: (key: string, opts?: Record<string, unknown>) => string;
   disciplineStats: DisciplineStats;
+  disciplineCounts: Record<DisciplineFilter, number>;
 }
 
 interface DisciplineStatPillProps {
@@ -463,7 +470,75 @@ function DisciplineStatPill({ discipline, wins, losses }: DisciplineStatPillProp
   );
 }
 
-function StatsHeader({ stats, isStatsSettled, t, disciplineStats }: StatsHeaderProps) {
+function DisciplineBalanceBar({
+  counts,
+}: {
+  counts: Record<DisciplineFilter, number>;
+}) {
+  const simple = counts.simple;
+  const dbl = counts.double;
+  const mixte = counts.mixte;
+  const total = simple + dbl + mixte;
+  if (total === 0) return null;
+
+  const sPct = Math.round((simple / total) * 100);
+  const dPct = Math.round((dbl / total) * 100);
+  const mPct = 100 - sPct - dPct;
+
+  return (
+    <View style={{ marginTop: 10 }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          gap: 3,
+          height: 18,
+          borderRadius: 9,
+          overflow: 'hidden',
+          backgroundColor: 'rgba(255,255,255,0.08)',
+        }}
+      >
+        {simple > 0 && (
+          <View
+            style={{
+              flex: sPct,
+              backgroundColor: DISC_SOLID_COLORS.simple,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ fontSize: 10, color: '#fff', fontWeight: '600' }}>S {sPct}%</Text>
+          </View>
+        )}
+        {dbl > 0 && (
+          <View
+            style={{
+              flex: dPct,
+              backgroundColor: DISC_SOLID_COLORS.double,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ fontSize: 10, color: '#fff', fontWeight: '600' }}>D {dPct}%</Text>
+          </View>
+        )}
+        {mixte > 0 && (
+          <View
+            style={{
+              flex: mPct,
+              backgroundColor: DISC_SOLID_COLORS.mixte,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ fontSize: 10, color: '#fff', fontWeight: '600' }}>M {mPct}%</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
+function StatsHeader({ stats, isStatsSettled, t, disciplineStats, disciplineCounts }: StatsHeaderProps) {
   return (
     <LinearGradient colors={['#1e293b', '#0f172a']} style={{ flex: 1 }}>
       <View style={{ padding: 16, paddingBottom: 12, flex: 1 }}>
@@ -527,6 +602,9 @@ function StatsHeader({ stats, isStatsSettled, t, disciplineStats }: StatsHeaderP
             losses={disciplineStats.mixte.losses}
           />
         </View>
+
+        {/* Discipline balance bar */}
+        <DisciplineBalanceBar counts={disciplineCounts} />
       </View>
     </LinearGradient>
   );
