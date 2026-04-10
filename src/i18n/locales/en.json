@@ -195,5 +195,9 @@
     "nemesisStats": "{{wins}}W / {{losses}}L",
     "mostPlayed": "Most Played",
     "mostPlayedStats": "{{count}} matches \u00b7 Last: {{date}}"
+  },
+  "insightMatches": {
+    "title": "Matches",
+    "empty": "No matches to display"
   }
 }
