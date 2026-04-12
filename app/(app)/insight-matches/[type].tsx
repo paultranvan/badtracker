@@ -26,6 +26,7 @@ const INSIGHT_BG: Record<InsightType, string> = {
   mostDefeated: '#fef3c7',
   mostPlayed: '#f0fdf4',
   rankingProjection: '#dbeafe',
+  seasonComparison: '#dcfce7',
 };
 
 function isValidInsightType(x: string | undefined): x is InsightType {
@@ -190,6 +191,22 @@ function getHeaderProps(
             }),
           }
         : null;
+    }
+    case 'seasonComparison': {
+      const sc = insights.seasonComparison;
+      if (!sc) return null;
+      const emoji = sc.isBetter ? '📈' : '📉';
+      const sign = sc.winRateDelta >= 0 ? '+' : '';
+      return {
+        emoji,
+        bgColor,
+        label: t('insights.seasonComparison'),
+        title: t('insights.seasonWinRateDelta', { delta: `${sign}${sc.winRateDelta}` }),
+        subtitle: t('insights.seasonMatchCount', {
+          current: sc.currentMatchCount,
+          last: sc.lastMatchCount,
+        }),
+      };
     }
   }
 }

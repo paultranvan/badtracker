@@ -120,6 +120,35 @@ function RankingProjectionCard({
   );
 }
 
+function SeasonComparisonCard({
+  winRateDelta,
+  currentMatchCount,
+  lastMatchCount,
+  isBetter,
+  t,
+}: {
+  winRateDelta: number;
+  currentMatchCount: number;
+  lastMatchCount: number;
+  isBetter: boolean;
+  t: TFunction;
+}) {
+  const emoji = isBetter ? '📈' : '📉';
+  const color = isBetter ? '#10b981' : '#ef4444';
+  const sign = winRateDelta >= 0 ? '+' : '';
+  return (
+    <Card className="w-full items-center py-3 px-2">
+      <Text className="text-caption text-muted uppercase">{t('insights.seasonComparison')}</Text>
+      <Text style={{ fontSize: 22, fontWeight: '800', color, marginVertical: 2 }}>
+        {emoji} {t('insights.seasonWinRateDelta', { delta: `${sign}${winRateDelta}` })}
+      </Text>
+      <Text className="text-[11px] text-muted">
+        {t('insights.seasonMatchCount', { current: currentMatchCount, last: lastMatchCount })}
+      </Text>
+    </Card>
+  );
+}
+
 export interface FullWidthCardProps {
   emoji: string;
   bgColor: string;
@@ -209,7 +238,8 @@ export function InsightsSection({ data }: InsightsSectionProps) {
     data.nemesis ||
     data.mostDefeated ||
     data.mostPlayed ||
-    data.rankingProjection;
+    data.rankingProjection ||
+    data.seasonComparison;
 
   if (!hasAny) return null;
 
@@ -271,7 +301,19 @@ export function InsightsSection({ data }: InsightsSectionProps) {
               </InsightPressable>
             ) : null
           }
-          right={null}
+          right={
+            data.seasonComparison ? (
+              <InsightPressable type="seasonComparison">
+                <SeasonComparisonCard
+                  winRateDelta={data.seasonComparison.winRateDelta}
+                  currentMatchCount={data.seasonComparison.currentMatchCount}
+                  lastMatchCount={data.seasonComparison.lastMatchCount}
+                  isBetter={data.seasonComparison.isBetter}
+                  t={t}
+                />
+              </InsightPressable>
+            ) : null
+          }
         />
       </View>
 

@@ -200,7 +200,12 @@
     "rankingProjectionGap": "+{{gap}} CPPH restants",
     "rankingProjectionTop": "Meilleur classement atteint",
     "rankingProjectionDetailTitle": "Projection de classement",
-    "rankingProjectionDetailSubtitle": "Bas\u00e9 sur vos {{count}} derni\u00e8res victoires en {{discipline}}"
+    "rankingProjectionDetailSubtitle": "Bas\u00e9 sur vos {{count}} derni\u00e8res victoires en {{discipline}}",
+    "seasonComparison": "vs Saison derni\u00e8re",
+    "seasonAhead": "En avance",
+    "seasonBehind": "En retard",
+    "seasonWinRateDelta": "{{delta}}% victoires",
+    "seasonMatchCount": "{{current}} vs {{last}} matchs"
   },
   "insightMatches": {
     "title": "Matchs",

@@ -58,6 +58,17 @@ export interface InsightsData {
     avgPointsPerWin: number; // average pointsImpact across recent wins in this discipline
     estimatedWins: number;   // ceil(gap / avgPointsPerWin)
   } | null;
+  seasonComparison: {
+    currentWinRate: number;
+    lastWinRate: number;
+    winRateDelta: number;       // current - last, rounded to nearest integer
+    currentMatchCount: number;
+    lastMatchCount: number;
+    currentCpphChange: number;  // rounded 1 decimal
+    lastCpphChange: number;
+    cpphDelta: number;
+    isBetter: boolean;
+  } | null;
 }
 
 /** Rank index derived from RANK_BOUNDARIES: lower = stronger. N1=0, NC=12. */
@@ -373,6 +384,82 @@ export function computeRankingProjection(
   return best;
 }
 
+/**
+ * FFBaD seasons run September 1 — August 31.
+ * Returns {start, end} dates for the season containing the given reference date.
+ */
+function getSeasonRange(ref: Date): { start: Date; end: Date } {
+  const y = ref.getUTCFullYear();
+  const m = ref.getUTCMonth(); // 0-indexed
+  const seasonStartYear = m >= 8 ? y : y - 1; // Sept (month index 8) or later → current year; else previous year
+  const start = new Date(Date.UTC(seasonStartYear, 8, 1));      // Sept 1
+  const end = new Date(Date.UTC(seasonStartYear + 1, 8, 1));    // next Sept 1 (exclusive)
+  return { start, end };
+}
+
+function parseRawDate(raw: string | undefined): Date | null {
+  if (!raw) return null;
+  // _rawDate comes from FFBaD as YYYY-MM-DD
+  const d = new Date(raw + 'T00:00:00Z');
+  return isNaN(d.getTime()) ? null : d;
+}
+
+export function computeSeasonComparison(
+  matches: MatchItem[],
+  now: Date = new Date()
+): InsightsData['seasonComparison'] {
+  const current = getSeasonRange(now);
+  // Previous season = 12 months before current season start
+  const previous = {
+    start: new Date(Date.UTC(current.start.getUTCFullYear() - 1, 8, 1)),
+    end: current.start,
+  };
+
+  // Days since current season start
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const daysIntoSeason = Math.floor((now.getTime() - current.start.getTime()) / msPerDay);
+  const windowEndOfPrev = new Date(previous.start.getTime() + daysIntoSeason * msPerDay);
+
+  const currentMatches: MatchItem[] = [];
+  const lastMatches: MatchItem[] = [];
+
+  for (const m of matches) {
+    const d = parseRawDate(m._rawDate);
+    if (!d) continue;
+    if (d >= current.start && d < current.end) currentMatches.push(m);
+    else if (d >= previous.start && d < windowEndOfPrev) lastMatches.push(m);
+  }
+
+  if (currentMatches.length < 5 || lastMatches.length < 5) return null;
+
+  const computeWinRate = (ms: MatchItem[]) => {
+    const known = ms.filter((m) => m.isWin !== undefined);
+    if (known.length === 0) return 0;
+    const wins = known.filter((m) => m.isWin === true).length;
+    return Math.round((wins / known.length) * 100);
+  };
+
+  const computeCpphChange = (ms: MatchItem[]) =>
+    Math.round(ms.reduce((s, m) => s + (m.pointsImpact ?? 0), 0) * 10) / 10;
+
+  const currentWinRate = computeWinRate(currentMatches);
+  const lastWinRate = computeWinRate(lastMatches);
+  const currentCpphChange = computeCpphChange(currentMatches);
+  const lastCpphChange = computeCpphChange(lastMatches);
+
+  return {
+    currentWinRate,
+    lastWinRate,
+    winRateDelta: currentWinRate - lastWinRate,
+    currentMatchCount: currentMatches.length,
+    lastMatchCount: lastMatches.length,
+    currentCpphChange,
+    lastCpphChange,
+    cpphDelta: Math.round((currentCpphChange - lastCpphChange) * 10) / 10,
+    isBetter: currentWinRate >= lastWinRate,
+  };
+}
+
 export function computeAllInsights(
   matches: MatchItem[],
   opponents: OpponentListItem[],
@@ -391,6 +478,7 @@ export function computeAllInsights(
     mostDefeated: computeMostDefeated(matches),
     mostPlayed: computeMostPlayed(opponents),
     rankingProjection: computeRankingProjection(matches, rankings, levels),
+    seasonComparison: computeSeasonComparison(matches),
   };
 }
 
@@ -409,7 +497,8 @@ export type InsightType =
   | 'nemesis'
   | 'mostDefeated'
   | 'mostPlayed'
-  | 'rankingProjection';
+  | 'rankingProjection'
+  | 'seasonComparison';
 
 export const INSIGHT_TYPES: readonly InsightType[] = [
   'winStreak',
@@ -423,6 +512,7 @@ export const INSIGHT_TYPES: readonly InsightType[] = [
   'mostDefeated',
   'mostPlayed',
   'rankingProjection',
+  'seasonComparison',
 ];
 
 /**
@@ -491,6 +581,15 @@ export function getMatchesForInsight(
           m.pointsImpact != null &&
           m.pointsImpact > 0
       );
+    }
+    case 'seasonComparison': {
+      const sc = insights.seasonComparison;
+      if (!sc) return [];
+      const { start, end } = getSeasonRange(new Date());
+      return matches.filter((m) => {
+        const d = parseRawDate(m._rawDate);
+        return d != null && d >= start && d < end;
+      });
     }
   }
 }
