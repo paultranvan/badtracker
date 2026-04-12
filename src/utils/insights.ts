@@ -410,8 +410,11 @@ function getSeasonRange(ref: Date): { start: Date; end: Date } {
 
 function parseRawDate(raw: string | undefined): Date | null {
   if (!raw) return null;
-  // _rawDate comes from FFBaD as YYYY-MM-DD
-  const d = new Date(raw + 'T00:00:00Z');
+  // _rawDate may be "YYYY-MM-DD" (from /result/actual) or a full ISO string
+  // like "2026-03-22T00:00:00.000Z" (from /result/detail transform).
+  // Normalize: if it's just a date, append UTC midnight; otherwise parse as-is.
+  const isoCandidate = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw + 'T00:00:00Z' : raw;
+  const d = new Date(isoCandidate);
   return isNaN(d.getTime()) ? null : d;
 }
 
