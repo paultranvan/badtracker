@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useClubLeaderboard } from '../../../src/hooks/useClubLeaderboard';
 import { useClubSearch } from '../../../src/hooks/useClubSearch';
 import { useSession } from '../../../src/auth/context';
-import { getPlayerProfile } from '../../../src/api/ffbad';
 import {
   type LeaderboardEntry,
   type ClubDisciplineFilter,
@@ -97,9 +96,7 @@ export default function ClubScreen() {
   const { t } = useTranslation();
   const { session } = useSession();
 
-  // User's own club state
-  const [userClubId, setUserClubId] = useState<string | null>(null);
-  const [userClubLoading, setUserClubLoading] = useState(true);
+  const userClubId = session?.clubId ?? null;
 
   // Viewing state — null means show user's own club
   const [targetClubId, setTargetClubId] = useState<string | null>(null);
@@ -130,41 +127,6 @@ export default function ClubScreen() {
     const sorted = sortLeaderboardByDiscipline(members, disciplineFilter);
     return filterByGender(sorted, genderFilter);
   }, [members, disciplineFilter, genderFilter]);
-
-  // ----------------------------------------------------------
-  // Fetch user's own club ID on mount
-  // ----------------------------------------------------------
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadUserClub() {
-      if (!session?.licence) {
-        // Don't clear loading if session not yet available — auth may still be resolving
-        return;
-      }
-
-      setUserClubLoading(true);
-
-      try {
-        const profile = await getPlayerProfile(session.licence);
-        if (!cancelled && profile?.club) {
-          setUserClubId(profile.club);
-        }
-      } catch {
-        // Non-critical — user may still browse clubs manually
-      } finally {
-        if (!cancelled) {
-          setUserClubLoading(false);
-        }
-      }
-    }
-
-    loadUserClub();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [session?.licence]);
 
   // ----------------------------------------------------------
   // Search mode handlers
@@ -294,20 +256,9 @@ export default function ClubScreen() {
   }
 
   // ----------------------------------------------------------
-  // Loading state (initial fetch of user's club)
-  // ----------------------------------------------------------
-  if (userClubLoading) {
-    return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#2563eb" />
-      </View>
-    );
-  }
-
-  // ----------------------------------------------------------
   // No club state
   // ----------------------------------------------------------
-  if (!displayClubId && !userClubLoading) {
+  if (!displayClubId) {
     return (
       <View className="flex-1 items-center justify-center bg-white px-6">
         <Text className="text-body text-muted text-center mb-5">{t('club.noClub')}</Text>

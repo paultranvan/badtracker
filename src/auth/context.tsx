@@ -14,6 +14,7 @@ import {
 } from './storage';
 import { AuthError, NetworkError, FFBaDError } from '../api/errors';
 import { cacheClear } from '../cache/storage';
+import { prefetchClubLeaderboard } from '../cache/prefetch';
 import { resetBridge, waitForBridge } from '../api/webview-bridge';
 import type { UserSession } from '../types/ffbad';
 
@@ -63,6 +64,12 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<UserSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Couples session establishment with background prefetch
+  function applySession(s: UserSession) {
+    setSession(s);
+    if (s.clubId) prefetchClubLeaderboard(s.clubId);
+  }
+
   // ----------------------------------------------------------
   // Auto-login on mount: check stored credentials
   // ----------------------------------------------------------
@@ -99,7 +106,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         if (bridgeResult === 'timeout') {
           // Bridge not ready in time — use stored data if available
           if (stored.personId && stored.accessToken) {
-            setSession({
+            applySession({
               licence: stored.licence,
               nom: stored.nom ?? '',
               prenom: stored.prenom ?? '',
@@ -131,7 +138,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         if (result === 'timeout') {
           // Timeout: use stored session data if available
           if (stored.personId && stored.accessToken) {
-            setSession({
+            applySession({
               licence: stored.licence,
               nom: stored.nom ?? '',
               prenom: stored.prenom ?? '',
@@ -140,7 +147,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
               clubId: stored.clubId,
             });
           } else {
-            setSession({
+            applySession({
               licence: stored.licence,
               nom: stored.nom ?? '',
               prenom: stored.prenom ?? '',
@@ -157,7 +164,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
             licence: result.licence,
           });
 
-          setSession(result);
+          applySession(result);
 
           // Update stored credentials with fresh personId/accessToken/name
           await storeCredentials(
@@ -188,7 +195,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
               accessToken: stored.accessToken,
               licence: stored.licence,
             });
-            setSession({
+            applySession({
               licence: stored.licence,
               nom: stored.nom ?? '',
               prenom: stored.prenom ?? '',
@@ -249,7 +256,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       );
 
       // Set session
-      setSession(userInfo);
+      applySession(userInfo);
     },
     []
   );

@@ -25,7 +25,7 @@ export interface ClubLeaderboardData {
   refresh: () => Promise<void>;
 }
 
-interface CachedClubTops {
+export interface CachedClubTops {
   members: LeaderboardEntry[];
   clubName: string;
   clubInfo: ClubInfo | null;
