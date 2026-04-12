@@ -170,7 +170,8 @@ function ActivityCalendarCard({
     bodyText = t('insights.activityInactiveGap', { count: inactiveMonths });
     bodyColor = '#f59e0b';
   } else {
-    bodyText = t('insights.activityThisMonth', { count: months[0]?.tournamentCount ?? 0 });
+    const recentCount = months.find((m) => m.tournamentCount > 0)?.tournamentCount ?? 0;
+    bodyText = t('insights.activityThisMonth', { count: recentCount });
   }
 
   // Mini heatmap: last 6 months, newest on the right (so reverse first 6 of months array)

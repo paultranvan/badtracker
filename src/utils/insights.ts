@@ -79,7 +79,6 @@ export interface InsightsData {
     }>;
     activeStreak: number;
     inactiveMonths: number;
-    isActive: boolean;
   } | null;
 }
 
@@ -540,9 +539,8 @@ export function computeActivityCalendar(
   }
 
   const inactiveMonths = firstActiveIdx;
-  const isActive = firstActiveIdx <= 1; // active if played this month or last
 
-  return { months, activeStreak, inactiveMonths, isActive };
+  return { months, activeStreak, inactiveMonths };
 }
 
 export function computeAllInsights(
