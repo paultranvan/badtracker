@@ -185,11 +185,7 @@ function getHeaderProps(
               wins: rp.estimatedWins,
             }),
             subtitle: t('insights.rankingProjectionDetailSubtitle', {
-              count: matches.length > 0
-                ? matches.filter(
-                    (m) => m.discipline === rp.discipline && m.isWin === true && (m.pointsImpact ?? 0) > 0,
-                  ).length
-                : 0,
+              count: matches.length,
               discipline: t(`player.${rp.discipline}`),
             }),
           }
