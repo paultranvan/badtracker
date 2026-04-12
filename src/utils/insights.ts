@@ -418,7 +418,9 @@ export function computeSeasonComparison(
   // Days since current season start
   const msPerDay = 24 * 60 * 60 * 1000;
   const daysIntoSeason = Math.floor((now.getTime() - current.start.getTime()) / msPerDay);
-  const windowEndOfPrev = new Date(previous.start.getTime() + daysIntoSeason * msPerDay);
+  const windowEndOfPrev = new Date(
+    Math.min(previous.start.getTime() + daysIntoSeason * msPerDay, previous.end.getTime())
+  );
 
   const currentMatches: MatchItem[] = [];
   const lastMatches: MatchItem[] = [];
@@ -456,7 +458,7 @@ export function computeSeasonComparison(
     currentCpphChange,
     lastCpphChange,
     cpphDelta: Math.round((currentCpphChange - lastCpphChange) * 10) / 10,
-    isBetter: currentWinRate >= lastWinRate,
+    isBetter: currentWinRate > lastWinRate,
   };
 }
 
@@ -585,10 +587,24 @@ export function getMatchesForInsight(
     case 'seasonComparison': {
       const sc = insights.seasonComparison;
       if (!sc) return [];
-      const { start, end } = getSeasonRange(new Date());
+      const now = new Date();
+      const current = getSeasonRange(now);
+      const previousStart = new Date(
+        Date.UTC(current.start.getUTCFullYear() - 1, 8, 1)
+      );
+      const msPerDay = 24 * 60 * 60 * 1000;
+      const daysIntoSeason = Math.floor(
+        (now.getTime() - current.start.getTime()) / msPerDay
+      );
+      const windowEndOfPrev = new Date(
+        Math.min(previousStart.getTime() + daysIntoSeason * msPerDay, current.start.getTime())
+      );
       return matches.filter((m) => {
         const d = parseRawDate(m._rawDate);
-        return d != null && d >= start && d < end;
+        if (!d) return false;
+        const inCurrent = d >= current.start && d < current.end;
+        const inPrev = d >= previousStart && d < windowEndOfPrev;
+        return inCurrent || inPrev;
       });
     }
   }
