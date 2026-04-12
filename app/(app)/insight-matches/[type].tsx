@@ -27,6 +27,7 @@ const INSIGHT_BG: Record<InsightType, string> = {
   mostPlayed: '#f0fdf4',
   rankingProjection: '#dbeafe',
   seasonComparison: '#dcfce7',
+  activityCalendar: '#e0e7ff',
 };
 
 function isValidInsightType(x: string | undefined): x is InsightType {
@@ -206,6 +207,28 @@ function getHeaderProps(
           current: sc.currentMatchCount,
           last: sc.lastMatchCount,
         }),
+      };
+    }
+    case 'activityCalendar': {
+      const ac = insights.activityCalendar;
+      if (!ac) return null;
+      const totalTournaments = ac.months.reduce((s, m) => s + m.tournamentCount, 0);
+      let title: string;
+      if (ac.activeStreak >= 2) {
+        title = t('insights.activityStreak', { count: ac.activeStreak });
+      } else if (ac.inactiveMonths >= 2) {
+        title = t('insights.activityInactiveGap', { count: ac.inactiveMonths });
+      } else {
+        title = t('insights.activityThisMonth', {
+          count: ac.months[0]?.tournamentCount ?? 0,
+        });
+      }
+      return {
+        emoji: '📅',
+        bgColor,
+        label: t('insights.activityDetailTitle'),
+        title,
+        subtitle: t('insights.lastNMatches', { count: totalTournaments }),
       };
     }
   }

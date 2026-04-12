@@ -69,6 +69,18 @@ export interface InsightsData {
     cpphDelta: number;
     isBetter: boolean;
   } | null;
+  activityCalendar: {
+    months: Array<{
+      yearMonth: string;           // "2026-03"
+      year: number;
+      month: number;               // 0-indexed
+      tournamentCount: number;
+      tournamentNames: string[];
+    }>;
+    activeStreak: number;
+    inactiveMonths: number;
+    isActive: boolean;
+  } | null;
 }
 
 /** Rank index derived from RANK_BOUNDARIES: lower = stronger. N1=0, NC=12. */
@@ -462,6 +474,77 @@ export function computeSeasonComparison(
   };
 }
 
+export function computeActivityCalendar(
+  matches: MatchItem[],
+  now: Date = new Date()
+): InsightsData['activityCalendar'] {
+  if (matches.length < 3) return null;
+
+  // Group tournament names by year-month from _rawDate
+  const byYearMonth = new Map<string, Set<string>>();
+  for (const m of matches) {
+    const d = parseRawDate(m._rawDate);
+    if (!d) continue;
+    const ym = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+    const set = byYearMonth.get(ym) ?? new Set();
+    set.add(m.tournament ?? 'unknown');
+    byYearMonth.set(ym, set);
+  }
+
+  // Build the last 12 months (including the current month), newest first
+  const nowYear = now.getUTCFullYear();
+  const nowMonth = now.getUTCMonth();
+  type MonthEntry = {
+    yearMonth: string;
+    year: number;
+    month: number;
+    tournamentCount: number;
+    tournamentNames: string[];
+  };
+  const months: MonthEntry[] = [];
+
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(Date.UTC(nowYear, nowMonth - i, 1));
+    const y = d.getUTCFullYear();
+    const mo = d.getUTCMonth();
+    const ym = `${y}-${String(mo + 1).padStart(2, '0')}`;
+    const tournaments = byYearMonth.get(ym);
+    months.push({
+      yearMonth: ym,
+      year: y,
+      month: mo,
+      tournamentCount: tournaments?.size ?? 0,
+      tournamentNames: tournaments ? Array.from(tournaments) : [],
+    });
+  }
+
+  // Ensure we have at least one match in the last 12 months
+  const anyActive = months.some((m) => m.tournamentCount > 0);
+  if (!anyActive) return null;
+
+  // Active streak: walk from the most recent active month backward,
+  // counting consecutive months with > 0 tournaments.
+  let activeStreak = 0;
+  let firstActiveIdx = -1;
+  for (let i = 0; i < months.length; i++) {
+    if (months[i].tournamentCount > 0) {
+      firstActiveIdx = i;
+      break;
+    }
+  }
+  if (firstActiveIdx >= 0) {
+    for (let i = firstActiveIdx; i < months.length; i++) {
+      if (months[i].tournamentCount > 0) activeStreak++;
+      else break;
+    }
+  }
+
+  const inactiveMonths = firstActiveIdx;
+  const isActive = firstActiveIdx <= 1; // active if played this month or last
+
+  return { months, activeStreak, inactiveMonths, isActive };
+}
+
 export function computeAllInsights(
   matches: MatchItem[],
   opponents: OpponentListItem[],
@@ -481,6 +564,7 @@ export function computeAllInsights(
     mostPlayed: computeMostPlayed(opponents),
     rankingProjection: computeRankingProjection(matches, rankings, levels),
     seasonComparison: computeSeasonComparison(matches),
+    activityCalendar: computeActivityCalendar(matches),
   };
 }
 
@@ -500,7 +584,8 @@ export type InsightType =
   | 'mostDefeated'
   | 'mostPlayed'
   | 'rankingProjection'
-  | 'seasonComparison';
+  | 'seasonComparison'
+  | 'activityCalendar';
 
 export const INSIGHT_TYPES: readonly InsightType[] = [
   'winStreak',
@@ -515,6 +600,7 @@ export const INSIGHT_TYPES: readonly InsightType[] = [
   'mostPlayed',
   'rankingProjection',
   'seasonComparison',
+  'activityCalendar',
 ];
 
 /**
@@ -605,6 +691,18 @@ export function getMatchesForInsight(
         const inCurrent = d >= current.start && d < current.end;
         const inPrev = d >= previousStart && d < windowEndOfPrev;
         return inCurrent || inPrev;
+      });
+    }
+    case 'activityCalendar': {
+      const ac = insights.activityCalendar;
+      if (!ac) return [];
+      // Return matches from the last 12 months
+      const oldestYm = ac.months[ac.months.length - 1].yearMonth;
+      return matches.filter((m) => {
+        const d = parseRawDate(m._rawDate);
+        if (!d) return false;
+        const ym = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+        return ym >= oldestYm;
       });
     }
   }

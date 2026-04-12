@@ -205,7 +205,13 @@
     "seasonAhead": "En avance",
     "seasonBehind": "En retard",
     "seasonWinRateDelta": "{{delta}}% victoires",
-    "seasonMatchCount": "{{current}} vs {{last}} matchs"
+    "seasonMatchCount": "{{current}} vs {{last}} matchs",
+    "activityCalendar": "Activité",
+    "activityStreak": "{{count}} mois consécutifs",
+    "activityInactiveGap": "{{count}} mois sans tournoi",
+    "activityThisMonth": "{{count}} tournoi(s) ce mois",
+    "activityDetailTitle": "Activité sur 12 mois",
+    "activityDetailNoTournaments": "Aucun tournoi"
   },
   "insightMatches": {
     "title": "Matchs",

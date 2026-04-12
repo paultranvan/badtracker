@@ -149,6 +149,61 @@ function SeasonComparisonCard({
   );
 }
 
+function ActivityCalendarCard({
+  activeStreak,
+  inactiveMonths,
+  months,
+  t,
+}: {
+  activeStreak: number;
+  inactiveMonths: number;
+  months: Array<{ tournamentCount: number }>;
+  t: TFunction;
+}) {
+  // Body text: streak if 2+, else gap if 2+, else this-month count
+  let bodyText: string;
+  let bodyColor = '#2563eb';
+  if (activeStreak >= 2) {
+    bodyText = t('insights.activityStreak', { count: activeStreak });
+    bodyColor = '#10b981';
+  } else if (inactiveMonths >= 2) {
+    bodyText = t('insights.activityInactiveGap', { count: inactiveMonths });
+    bodyColor = '#f59e0b';
+  } else {
+    bodyText = t('insights.activityThisMonth', { count: months[0]?.tournamentCount ?? 0 });
+  }
+
+  // Mini heatmap: last 6 months, newest on the right (so reverse first 6 of months array)
+  const recent = months.slice(0, 6).reverse();
+  const intensityColor = (count: number): string => {
+    if (count === 0) return '#e5e7eb';
+    if (count === 1) return '#bbf7d0';
+    return '#10b981';
+  };
+
+  return (
+    <Card className="w-full items-center py-3 px-2">
+      <Text className="text-caption text-muted uppercase">{t('insights.activityCalendar')}</Text>
+      <Text style={{ fontSize: 18, fontWeight: '800', color: bodyColor, marginVertical: 2 }}>
+        {'📅 '}{bodyText}
+      </Text>
+      <View style={{ flexDirection: 'row', gap: 3, marginTop: 4 }}>
+        {recent.map((m, i) => (
+          <View
+            key={i}
+            style={{
+              width: 14,
+              height: 14,
+              borderRadius: 3,
+              backgroundColor: intensityColor(m.tournamentCount),
+            }}
+          />
+        ))}
+      </View>
+    </Card>
+  );
+}
+
 export interface FullWidthCardProps {
   emoji: string;
   bgColor: string;
@@ -239,7 +294,8 @@ export function InsightsSection({ data }: InsightsSectionProps) {
     data.mostDefeated ||
     data.mostPlayed ||
     data.rankingProjection ||
-    data.seasonComparison;
+    data.seasonComparison ||
+    data.activityCalendar;
 
   if (!hasAny) return null;
 
@@ -314,6 +370,21 @@ export function InsightsSection({ data }: InsightsSectionProps) {
               </InsightPressable>
             ) : null
           }
+        />
+        <GridRow
+          left={
+            data.activityCalendar ? (
+              <InsightPressable type="activityCalendar">
+                <ActivityCalendarCard
+                  activeStreak={data.activityCalendar.activeStreak}
+                  inactiveMonths={data.activityCalendar.inactiveMonths}
+                  months={data.activityCalendar.months}
+                  t={t}
+                />
+              </InsightPressable>
+            ) : null
+          }
+          right={null}
         />
       </View>
 
