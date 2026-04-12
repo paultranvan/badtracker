@@ -194,7 +194,13 @@
     "mostDefeated": "Victime favorite",
     "mostDefeatedStats": "{{wins}}V / {{losses}}D",
     "mostPlayed": "Plus rencontr\u00e9",
-    "mostPlayedStats": "{{count}} matchs \u00b7 Dernier : {{date}}"
+    "mostPlayedStats": "{{count}} matchs \u00b7 Dernier : {{date}}",
+    "rankingProjection": "Prochain classement",
+    "rankingProjectionTitle": "{{rank}} \u2014 ~{{wins}} V",
+    "rankingProjectionGap": "+{{gap}} CPPH restants",
+    "rankingProjectionTop": "Meilleur classement atteint",
+    "rankingProjectionDetailTitle": "Projection de classement",
+    "rankingProjectionDetailSubtitle": "Bas\u00e9 sur vos {{count}} derni\u00e8res victoires en {{discipline}}"
   },
   "insightMatches": {
     "title": "Matchs",

@@ -96,6 +96,30 @@ function CpphMomentumCard({ total, matchCount, t }: { total: number; matchCount:
   );
 }
 
+function RankingProjectionCard({
+  nextRank,
+  gap,
+  estimatedWins,
+  t,
+}: {
+  nextRank: string;
+  gap: number;
+  estimatedWins: number;
+  t: TFunction;
+}) {
+  return (
+    <Card className="w-full items-center py-3 px-2">
+      <Text className="text-caption text-muted uppercase">{t('insights.rankingProjection')}</Text>
+      <Text style={{ fontSize: 22, fontWeight: '800', color: '#2563eb', marginVertical: 2 }}>
+        {'🎯 '}{t('insights.rankingProjectionTitle', { rank: nextRank, wins: estimatedWins })}
+      </Text>
+      <Text className="text-[11px] text-muted">
+        {t('insights.rankingProjectionGap', { gap: gap.toFixed(1) })}
+      </Text>
+    </Card>
+  );
+}
+
 export interface FullWidthCardProps {
   emoji: string;
   bgColor: string;
@@ -184,7 +208,8 @@ export function InsightsSection({ data }: InsightsSectionProps) {
     data.mostPlayedPartner ||
     data.nemesis ||
     data.mostDefeated ||
-    data.mostPlayed;
+    data.mostPlayed ||
+    data.rankingProjection;
 
   if (!hasAny) return null;
 
@@ -232,6 +257,21 @@ export function InsightsSection({ data }: InsightsSectionProps) {
               </InsightPressable>
             ) : null
           }
+        />
+        <GridRow
+          left={
+            data.rankingProjection ? (
+              <InsightPressable type="rankingProjection">
+                <RankingProjectionCard
+                  nextRank={data.rankingProjection.nextRank}
+                  gap={data.rankingProjection.gap}
+                  estimatedWins={data.rankingProjection.estimatedWins}
+                  t={t}
+                />
+              </InsightPressable>
+            ) : null
+          }
+          right={null}
         />
       </View>
 

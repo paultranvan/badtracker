@@ -55,7 +55,7 @@ export default function DashboardScreen() {
     refresh,
   } = useDashboardData();
 
-  const insights = useInsights(allDetailMatches, detailsLoading);
+  const insights = useInsights(allDetailMatches, detailsLoading, profile?.rankings);
 
   const [expandedMatch, setExpandedMatch] = useState<string | null>(null);
 

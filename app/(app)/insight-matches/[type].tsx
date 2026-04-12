@@ -12,6 +12,7 @@ import {
   type InsightType,
   type InsightsData,
 } from '../../../src/utils/insights';
+import type { MatchItem } from '../../../src/utils/matchHistory';
 
 const INSIGHT_BG: Record<InsightType, string> = {
   winStreak: '#fef3c7',
@@ -24,6 +25,7 @@ const INSIGHT_BG: Record<InsightType, string> = {
   nemesis: '#fee2e2',
   mostDefeated: '#fef3c7',
   mostPlayed: '#f0fdf4',
+  rankingProjection: '#dbeafe',
 };
 
 function isValidInsightType(x: string | undefined): x is InsightType {
@@ -33,6 +35,7 @@ function isValidInsightType(x: string | undefined): x is InsightType {
 function getHeaderProps(
   type: InsightType,
   insights: InsightsData,
+  matches: MatchItem[],
   t: TFunction
 ): FullWidthCardProps | null {
   const bgColor = INSIGHT_BG[type];
@@ -170,6 +173,28 @@ function getHeaderProps(
           }
         : null;
     }
+    case 'rankingProjection': {
+      const rp = insights.rankingProjection;
+      return rp
+        ? {
+            emoji: '🎯',
+            bgColor,
+            label: t('insights.rankingProjectionDetailTitle'),
+            title: t('insights.rankingProjectionTitle', {
+              rank: rp.nextRank,
+              wins: rp.estimatedWins,
+            }),
+            subtitle: t('insights.rankingProjectionDetailSubtitle', {
+              count: matches.length > 0
+                ? matches.filter(
+                    (m) => m.discipline === rp.discipline && m.isWin === true && (m.pointsImpact ?? 0) > 0,
+                  ).length
+                : 0,
+              discipline: t(`player.${rp.discipline}`),
+            }),
+          }
+        : null;
+    }
   }
 }
 
@@ -180,8 +205,8 @@ export default function InsightMatchesScreen() {
   const type = params.type;
   const isValid = isValidInsightType(type);
 
-  const { allDetailMatches, detailsLoading } = useDashboardData();
-  const insights = useInsights(allDetailMatches, detailsLoading);
+  const { allDetailMatches, detailsLoading, profile } = useDashboardData();
+  const insights = useInsights(allDetailMatches, detailsLoading, profile?.rankings);
 
   const playerName = session ? `${session.prenom} ${session.nom}` : undefined;
 
@@ -204,7 +229,7 @@ export default function InsightMatchesScreen() {
   }
 
   const filteredMatches = getMatchesForInsight(type, allDetailMatches, insights);
-  const headerProps = getHeaderProps(type, insights, t);
+  const headerProps = getHeaderProps(type, insights, filteredMatches, t);
 
   return (
     <View className="flex-1 bg-white">

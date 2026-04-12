@@ -1,6 +1,6 @@
 import type { MatchItem } from './matchHistory';
-import { RANK_BOUNDARIES } from './rankings';
-import type { OpponentListItem } from '../api/ffbad';
+import { RANK_BOUNDARIES, getRankProgress } from './rankings';
+import type { OpponentListItem, PlayerProfile, RankingLevel } from '../api/ffbad';
 
 export interface InsightsData {
   winStreak: { count: number } | null;
@@ -48,6 +48,15 @@ export interface InsightsData {
     licence: string;
     matchCount: number;
     lastDate: string;
+  } | null;
+  rankingProjection: {
+    discipline: 'simple' | 'double' | 'mixte';
+    currentRank: string;
+    currentCpph: number;
+    nextRank: string;
+    gap: number;           // CPPH to next rank, rounded 1 decimal
+    avgPointsPerWin: number; // average pointsImpact across recent wins in this discipline
+    estimatedWins: number;   // ceil(gap / avgPointsPerWin)
   } | null;
 }
 
@@ -317,9 +326,58 @@ export function computeMostPlayed(opponents: OpponentListItem[]): InsightsData['
   };
 }
 
+export function computeRankingProjection(
+  matches: MatchItem[],
+  rankings: PlayerProfile['rankings'] | null | undefined,
+  levels: RankingLevel[] | null
+): InsightsData['rankingProjection'] {
+  if (!rankings || !levels || levels.length === 0) return null;
+
+  const disciplines: Array<'simple' | 'double' | 'mixte'> = ['simple', 'double', 'mixte'];
+  let best: InsightsData['rankingProjection'] = null;
+  let smallestGap = Infinity;
+
+  for (const disc of disciplines) {
+    const r = rankings[disc];
+    if (!r || r.cpph == null) continue;
+
+    const progress = getRankProgress(r.cpph, r.classement, disc, levels);
+    if (!progress || progress.nextRank == null || progress.pointsToNext == null) continue;
+    if (progress.pointsToNext <= 0) continue;
+
+    // Average points per win in this discipline, from detail matches
+    const wins = matches.filter(
+      (m) => m.discipline === disc && m.isWin === true && m.pointsImpact != null && m.pointsImpact > 0
+    );
+    if (wins.length < 3) continue;
+
+    const avgPoints = wins.reduce((sum, m) => sum + (m.pointsImpact ?? 0), 0) / wins.length;
+    if (avgPoints <= 0) continue;
+
+    const estimatedWins = Math.ceil(progress.pointsToNext / avgPoints);
+
+    if (progress.pointsToNext < smallestGap) {
+      smallestGap = progress.pointsToNext;
+      best = {
+        discipline: disc,
+        currentRank: r.classement,
+        currentCpph: r.cpph,
+        nextRank: progress.nextRank,
+        gap: Math.round(progress.pointsToNext * 10) / 10,
+        avgPointsPerWin: Math.round(avgPoints * 10) / 10,
+        estimatedWins,
+      };
+    }
+  }
+
+  return best;
+}
+
 export function computeAllInsights(
   matches: MatchItem[],
-  opponents: OpponentListItem[]
+  opponents: OpponentListItem[],
+  rankings: PlayerProfile['rankings'] | null | undefined,
+  levels: RankingLevel[] | null
 ): InsightsData {
   return {
     winStreak: computeWinStreak(matches),
@@ -332,6 +390,7 @@ export function computeAllInsights(
     nemesis: computeNemesis(matches),
     mostDefeated: computeMostDefeated(matches),
     mostPlayed: computeMostPlayed(opponents),
+    rankingProjection: computeRankingProjection(matches, rankings, levels),
   };
 }
 
@@ -349,7 +408,8 @@ export type InsightType =
   | 'mostPlayedPartner'
   | 'nemesis'
   | 'mostDefeated'
-  | 'mostPlayed';
+  | 'mostPlayed'
+  | 'rankingProjection';
 
 export const INSIGHT_TYPES: readonly InsightType[] = [
   'winStreak',
@@ -362,6 +422,7 @@ export const INSIGHT_TYPES: readonly InsightType[] = [
   'nemesis',
   'mostDefeated',
   'mostPlayed',
+  'rankingProjection',
 ];
 
 /**
@@ -419,6 +480,17 @@ export function getMatchesForInsight(
             (m) => m.opponentLicence === mp.licence || m.opponent2Licence === mp.licence,
           )
         : [];
+    }
+    case 'rankingProjection': {
+      const rp = insights.rankingProjection;
+      if (!rp) return [];
+      return matches.filter(
+        (m) =>
+          m.discipline === rp.discipline &&
+          m.isWin === true &&
+          m.pointsImpact != null &&
+          m.pointsImpact > 0
+      );
     }
   }
 }

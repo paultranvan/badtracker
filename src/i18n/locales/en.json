@@ -194,7 +194,13 @@
     "mostDefeated": "Most Defeated",
     "mostDefeatedStats": "{{wins}}W / {{losses}}L",
     "mostPlayed": "Most Played",
-    "mostPlayedStats": "{{count}} matches \u00b7 Last: {{date}}"
+    "mostPlayedStats": "{{count}} matches \u00b7 Last: {{date}}",
+    "rankingProjection": "Next Rank",
+    "rankingProjectionTitle": "{{rank}} \u2014 ~{{wins}} wins",
+    "rankingProjectionGap": "+{{gap}} CPPH to go",
+    "rankingProjectionTop": "Top rank reached",
+    "rankingProjectionDetailTitle": "Rank Projection",
+    "rankingProjectionDetailSubtitle": "Based on your last {{count}} wins in {{discipline}}"
   },
   "insightMatches": {
     "title": "Matches",

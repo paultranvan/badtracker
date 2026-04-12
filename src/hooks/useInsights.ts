@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSession } from '../auth/context';
-import { getOpponentList, type OpponentListItem } from '../api/ffbad';
+import { getOpponentList, type OpponentListItem, type PlayerProfile } from '../api/ffbad';
 import { cacheGetWithTTL, cacheSetWithTTL } from '../cache/storage';
 import { computeAllInsights, type InsightsData } from '../utils/insights';
 import type { MatchItem } from '../utils/matchHistory';
+import { useRankingLevels } from '../ranking-levels/context';
 
 const OPPONENT_LIST_TTL = 10 * 60 * 1000; // 10 minutes
 
@@ -15,9 +16,11 @@ const OPPONENT_LIST_TTL = 10 * 60 * 1000; // 10 minutes
  */
 export function useInsights(
   allDetailMatches: MatchItem[],
-  detailsLoading: boolean
+  detailsLoading: boolean,
+  rankings?: PlayerProfile['rankings'] | null,
 ): InsightsData | null {
   const { session } = useSession();
+  const rankingLevels = useRankingLevels();
   const [opponents, setOpponents] = useState<OpponentListItem[]>([]);
 
   // Fetch opponent list
@@ -51,8 +54,8 @@ export function useInsights(
   // Compute insights only when details are settled
   const insights = useMemo(() => {
     if (detailsLoading || allDetailMatches.length === 0) return null;
-    return computeAllInsights(allDetailMatches, opponents);
-  }, [allDetailMatches, detailsLoading, opponents]);
+    return computeAllInsights(allDetailMatches, opponents, rankings, rankingLevels);
+  }, [allDetailMatches, detailsLoading, opponents, rankings, rankingLevels]);
 
   return insights;
 }
