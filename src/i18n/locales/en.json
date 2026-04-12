@@ -211,6 +211,7 @@
     "activityInactiveGap": "{{count}} months without tournament",
     "activityThisMonth": "{{count}} tournament(s) this month",
     "activityDetailTitle": "12-month Activity",
+    "activityDetailSubtitle": "{{count}} tournaments in 12 months",
     "activityDetailNoTournaments": "No tournaments"
   },
   "insightMatches": {

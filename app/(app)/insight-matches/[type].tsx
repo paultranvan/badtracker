@@ -228,7 +228,7 @@ function getHeaderProps(
         bgColor,
         label: t('insights.activityDetailTitle'),
         title,
-        subtitle: t('insights.lastNMatches', { count: totalTournaments }),
+        subtitle: t('insights.activityDetailSubtitle', { count: totalTournaments }),
       };
     }
   }

@@ -211,6 +211,7 @@
     "activityInactiveGap": "{{count}} mois sans tournoi",
     "activityThisMonth": "{{count}} tournoi(s) ce mois",
     "activityDetailTitle": "Activité sur 12 mois",
+    "activityDetailSubtitle": "{{count}} tournois sur 12 mois",
     "activityDetailNoTournaments": "Aucun tournoi"
   },
   "insightMatches": {
