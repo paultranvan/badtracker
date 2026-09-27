@@ -4,7 +4,6 @@ import type {
   LicenceSearchResponse,
   ResultByLicenceResponse,
   RankingEvolutionResponse,
-  ClubListResponse,
 } from './schemas';
 import { AuthError, NetworkError } from './errors';
 
@@ -1014,38 +1013,53 @@ export interface ClubInfo {
 }
 
 /**
+ * Search clubs by name or acronym via the RSC payload of /recherche/club.
+ */
+async function fetchClubSearchResults(query: string): Promise<Array<Record<string, unknown>>> {
+  const payload = await bridgeRsc(`/recherche/club?search=${encodeURIComponent(query)}`);
+  return (extractRscArray(payload, 'results') ?? []) as Array<Record<string, unknown>>;
+}
+
+export async function searchClubs(query: string): Promise<Array<{ id: string; name: string }>> {
+  requireSession();
+  const results = await fetchClubSearchResults(query);
+  return results.map((c) => ({ id: String(c.InstanceId ?? ''), name: String(c.Name ?? '') }));
+}
+
+/**
  * Get club information.
- * Uses myffbad.fr /api/club/{clubId}/informations/ endpoint.
+ *
+ * /club/{id} only renders markup, so its name is read from the hero title
+ * and the structured record is then found through the club search.
  */
 export async function getClubInfo(
   clubId: string
 ): Promise<ClubInfo | null> {
-  const session = requireSession();
+  requireSession();
 
   try {
-    const data = (await bridgeGet(
-      `/api/club/${clubId}/informations/`,
-      session.accessToken,
-      session.personId
-    )) as Record<string, unknown>;
+    const page = await bridgeRsc(`/club/${clubId}`);
+    // The layout also embeds 401/403/404 heroes; skip those.
+    const name = [...page.matchAll(/"data-testid":"hero-title"[^}]*?"children":"((?:[^"\\]|\\.)*)"/g)]
+      .map((m) => JSON.parse(`"${m[1]}"`) as string)
+      .find((title) => !/^\d{3}$/.test(title));
+    if (!name) return null;
 
-    if (!data || typeof data === 'string') {
-      return null;
-    }
-
-    const addr = data.address as Record<string, unknown> | undefined;
+    const results = await fetchClubSearchResults(name);
+    const club = results.find((c) => String(c.InstanceId) === clubId);
+    if (!club) return null;
 
     return {
       id: clubId,
-      name: String(data.name ?? ''),
-      initials: String(data.initials ?? ''),
-      city: String(data.city ?? ''),
-      department: (data.department as number) ?? 0,
-      address: addr ? String(addr.address ?? '') : '',
-      mail: String(data.mail ?? ''),
-      phone: String(data.contact ?? data.mobile ?? ''),
-      website: String(data.website ?? ''),
-      logo: String(data.logo ?? ''),
+      name: String(club.Name ?? name),
+      initials: String(club.Acronym ?? ''),
+      city: String(club.Town ?? ''),
+      department: Number(club.Departement) || 0,
+      address: '',
+      mail: String(club.Email ?? ''),
+      phone: String(club.Phone1 ?? ''),
+      website: String(club.WebSiteUrl ?? ''),
+      logo: String(club.LogoUrl ?? ''),
     };
   } catch (err) {
     if (err instanceof AuthError || err instanceof NetworkError) throw err;
@@ -1054,7 +1068,7 @@ export async function getClubInfo(
 }
 
 /**
- * Discipline numbers for /api/search/tops endpoint.
+ * disciplineId values for /recherche/les-tops.
  * 1=Simple Hommes, 2=Simple Dames, 3=Double Hommes,
  * 4=Double Dames, 5=Mixte Hommes, 6=Mixte Dames.
  */
@@ -1097,31 +1111,28 @@ export async function getLastClub(
 export async function getClubTops(
   clubId: string
 ): Promise<Array<[number, Array<Record<string, unknown>>]>> {
-  const session = requireSession();
-  const instanceId = parseInt(clubId, 10);
-  const dateFrom = new Date().toISOString();
+  requireSession();
 
   const results = await Promise.allSettled(
     TOPS_DISCIPLINES.map(async (discipline) => {
-      const data = await bridgePost(
-        '/api/search/tops',
-        {
-          discipline,
-          dateFrom,
-          top: 500,
-          instanceId,
-          isFirstLoad: false,
-          sort: 'nom-ASC',
-        },
-        session.accessToken,
-        session.personId
+      const payload = await bridgeRsc(
+        `/recherche/les-tops?club=${encodeURIComponent(clubId)}&disciplineId=${discipline}&maxResults=500&isFirstLoad=false`
       );
-
-      if (!data || !Array.isArray(data)) {
-        return [discipline, []] as [number, Array<Record<string, unknown>>];
-      }
-
-      return [discipline, data as Array<Record<string, unknown>>] as [number, Array<Record<string, unknown>>];
+      const rows = (extractRscArray(payload, 'results') ?? []) as Array<Record<string, unknown>>;
+      const items = rows.map((r) => ({
+        rank: Number(r.Rank),
+        rate: toNumber(r.Rate),
+        realRate: toNumber(r.RealRate),
+        subLevel: String(r.SubLevel ?? ''),
+        personId: Number(r.PersonId),
+        name: String(r.PersonName ?? ''),
+        licence: String(r.PersonLicence ?? ''),
+        category: String(r.CategoryName ?? ''),
+        club: { id: Number(r.ClubId), name: String(r.ClubName ?? ''), acronym: String(r.ClubAcronym ?? '') },
+        frenchRank: Number(r.FrenchRank),
+        federalRank: Number(r.FederalRank),
+      }));
+      return [discipline, items] as [number, Array<Record<string, unknown>>];
     })
   );
 
@@ -1255,44 +1266,5 @@ export async function getRankingLevels(): Promise<RankingLevel[]> {
   } catch (err) {
     if (err instanceof AuthError || err instanceof NetworkError) throw err;
     return [];
-  }
-}
-
-/**
- * Get the list of clubs for search.
- * Uses myffbad.fr /api/search/clubs endpoint.
- */
-export async function getClubList(): Promise<ClubListResponse> {
-  const session = requireSession();
-
-  try {
-    const data = await bridgeGet(
-      '/api/search/clubs',
-      session.accessToken,
-      session.personId
-    );
-
-    if (!data) {
-      return { Retour: 'No data' };
-    }
-
-    const results = Array.isArray(data) ? data : ((data as Record<string, unknown>).results ?? data);
-
-    if (!Array.isArray(results)) {
-      return { Retour: 'No data' };
-    }
-
-    const items = (results as Array<Record<string, unknown>>).map((raw) => ({
-      ID_Club: String(raw.id ?? raw.clubId ?? raw.ID_Club ?? ''),
-      Club: String(raw.id ?? raw.clubId ?? raw.Club ?? ''),
-      NomClub: String(raw.name ?? raw.clubName ?? raw.NomClub ?? ''),
-      Nom: String(raw.name ?? raw.clubName ?? raw.Nom ?? ''),
-      ...raw,
-    }));
-
-    return { Retour: items };
-  } catch (err) {
-    if (err instanceof AuthError || err instanceof NetworkError) throw err;
-    return { Retour: 'Error fetching club list' };
   }
 }
