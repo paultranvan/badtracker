@@ -23,7 +23,7 @@ No test framework is configured. No linter is configured.
 
 - Prereqs: `ANDROID_HOME=~/dev/sdk/android`, a JDK ≥ 17 on `JAVA_HOME` (JDK 20 works), AVD `Pixel_3a_API_34_extension_level_7_x86_64`.
 - Boot the emulator first, then `npx expo run:android`: builds the debug APK (dev client), installs it, and starts Metro on :8081. Afterwards `npx expo start` is enough as long as native deps are unchanged.
-- No test account: signing in requires a real myffbad.fr licence number + password.
+- Credentials for testing: `private/ffbad.txt` (gitignored) — line 1 licence number, line 2 password, each after a `label:` prefix.
 - `.env` (see `.env.example`) holds Metro flags and `FIREBASE_APP_ID`, which is only needed for `npm run deploy` (release APK → Firebase App Distribution).
 
 ## Architecture
@@ -36,9 +36,9 @@ The app does **not** make direct HTTP calls to myffbad.fr. Instead, a hidden `<W
 
 The flow is:
 1. `src/api/webview-bridge.tsx` — Renders a hidden WebView on myffbad.fr and injects a script serving three request types. Exports module-level functions (not hooks): `bridgeLogin` (signInAction + personId), `bridgeAction(name, args)` (Next.js Server Action by name), `bridgeRsc(path)` (RSC payload of a page).
-2. `src/api/ffbad.ts` — High-level API functions (`getLicenceInfo`, `searchPlayersByKeywords`, `getResultsByLicence`, `getRankingEvolution`, `getClubInfo`, etc.) that call bridge functions and normalize myffbad.fr data to the app's internal (legacy-API-shaped) format.
+2. `src/api/ffbad.ts` — High-level API functions (`getLicenceInfo`, `searchPlayersByKeywords`, `getResultsByLicence`, `getRankingEvolution`, `getClubInfo`, etc.) that call bridge functions and normalize myffbad.fr data to the app's internal format.
 3. `src/api/schemas.ts` — Zod schemas for all API response types. Responses use a `{ Retour: data | errorString }` wrapper pattern.
-4. `src/api/client.ts` — Legacy axios client for the old FFBaD REST API (`api.ffbad.org`). Not used by current WebView-based API calls but kept for type definitions.
+4. `src/api/client.ts` — Axios client for `api.ffbad.org`; imported nowhere.
 
 Key detail: The bridge maintains module-level state (`webViewRef`, `pendingRequests`, `bridgeReady`). The `WebViewBridgeProvider` component must be mounted in the component tree for API calls to work.
 
@@ -46,7 +46,7 @@ Key detail: The bridge maintains module-level state (`webViewRef`, `pendingReque
 
 - `src/auth/context.tsx` — `SessionProvider` manages login/logout, auto-login from SecureStore, and exposes `useSession()`.
 - `src/auth/storage.ts` — Persists credentials in `expo-secure-store`.
-- Session info (personId, licence) is injected into `ffbad.ts` via `setSessionInfo()` at login time. There is no access token: the session is the `jwt` cookie inside the WebView.
+- Session info (personId, licence) is injected into `ffbad.ts` via `setSessionInfo()` at login time. The session itself is myffbad.fr's HttpOnly `jwt` cookie inside the WebView; JS never sees a token.
 
 ### Routing (expo-router)
 
@@ -57,28 +57,35 @@ app/
   (app)/
     _layout.tsx        — Stack navigator
     (tabs)/
-      _layout.tsx      — Tab bar: Home, Matches, Search, Club, Settings
-      index.tsx        — Dashboard (current user's rankings)
+      _layout.tsx      — Tab bar: Home, Matches, Players, Club, Settings
+      index.tsx        — Dashboard (current user's rankings, recent matches, insights)
       matches.tsx      — Match history
-      search.tsx       — Player search
-      club.tsx         — Club info & leaderboard
-      settings/        — Settings screens with bookmarks
-    player/[licence].tsx  — Player profile (from search results)
+      players.tsx      — Player search + bookmarked players
+      club.tsx         — Club info, leaderboard & club search
+      settings/        — Language, clear cache, log out
+    player/[licence]/
+      index.tsx        — Player profile (rankings, head-to-head)
+      matches.tsx      — That player's match history
+    insight-matches/[type].tsx — Matches behind an insight card
     ranking-chart.tsx     — Ranking evolution chart
     club/[clubId].tsx     — Club detail page
 ```
 
 ### Provider Nesting Order (root _layout.tsx)
 
-`ConnectivityProvider` > `WebViewBridgeProvider` > `SessionProvider` > `BookmarksProvider`
+`ConnectivityProvider` > `WebViewBridgeProvider` > `SessionProvider` > `RankingLevelsProvider` > `BookmarksProvider`
 
 ### Data Hooks
 
-Custom hooks in `src/hooks/` encapsulate API calls with caching: `useDashboardData`, `usePlayerSearch`, `useMatchHistory`, `useRankingEvolution`, `useClubSearch`, `useClubLeaderboard`.
+Custom hooks in `src/hooks/` encapsulate API calls with caching: `useDashboardData`, `usePlayerSearch`, `useMatchHistory`, `useRankingEvolution`, `useClubSearch`, `useClubLeaderboard`, `useInsights`, `useHeadToHead`, `useBookmarkH2HCounts`, `useBookmarkClubs`.
+
+- `useMatchHistory` filters on the current season (Sept–Aug) by default.
+- Head-to-head is computed from the logged-in user's own match details (no dedicated endpoint).
 
 ### Other Key Modules
 
-- `src/cache/storage.ts` — AsyncStorage-based caching layer
+- `src/cache/storage.ts` — AsyncStorage-based caching layer (`cacheGetWithTTL`/`cacheSetWithTTL`); `src/cache/prefetch.ts` warms the club leaderboard after login
+- `src/ranking-levels/context.tsx` — Ranking thresholds (`getRankingLevels`), cached 24h
 - `src/bookmarks/context.tsx` — Player bookmarks (stored locally)
 - `src/connectivity/context.tsx` — Network status monitoring + `OfflineBar` component
 - `src/i18n/` — i18next with French (`fr.json`) and English (`en.json`) locales
@@ -100,7 +107,7 @@ Custom hooks in `src/hooks/` encapsulate API calls with caching: `useDashboardDa
 
 ## myffbad.fr API Reference
 
-myffbad.fr is a Next.js App Router site (rewritten in 2026). The old `/api/*` REST endpoints (Verify-Token, `accessToken`/`currentpersonid` headers) **all return 404** — don't use them. Data comes from two mechanisms, both used from inside the WebView:
+myffbad.fr is a Next.js App Router site with no public JSON API (`/api/*` paths return 404). Data comes from two mechanisms, both used from inside the WebView:
 
 ### Server Actions (`bridgeAction`)
 - `POST /` (any page route) with headers `next-action: <id>`, `accept: text/x-component`, `content-type: text/plain;charset=UTF-8`; body = JSON array of arguments.
@@ -136,4 +143,5 @@ Also present, not used by the app yet: `getRankingEvolutionAction`, `getPlayerAc
 ### Common Pitfalls
 - Every page's RSC payload also embeds the layout's 401/403/404 templates — don't take the first match of a test id blindly.
 - `/deconnexion` (GET) does not log out; logging in again simply replaces the `jwt` cookie.
-- There is no full club list endpoint anymore; club search is server-side per query.
+- There is no endpoint listing all clubs; club search is server-side per query.
+- The results/details/tops data is normalized in `ffbad.ts` (`normalizeResultItem`, `normalizeDetailMatch`, `getClubTops`) to the shapes `transformResultItem`, `expandWithDetail` and `mergeTopsResults` consume — change both sides together.
