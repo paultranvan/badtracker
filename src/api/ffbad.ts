@@ -901,12 +901,9 @@ export async function getRankingEvolution(
   }
 
   try {
-    const data = await bridgePost(
-      `/api/person/${personId}/rankingSemester/evolution`,
-      {},
-      session.accessToken,
-      personId
-    );
+    const data = await bridgeAction<unknown>('getRankingSemesterEvolutionAction', [
+      Number(personId),
+    ]);
 
     if (!data) {
       return { Retour: 'No data' };

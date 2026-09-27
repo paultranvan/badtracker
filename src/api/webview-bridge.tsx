@@ -235,6 +235,8 @@ const INJECTED_JS = `
       if (lines[i].indexOf(prefix) === 0) {
         var raw = lines[i].slice(prefix.length);
         if (raw === '"$undefined"') return null;
+        // An "E" row is an error thrown inside the server action.
+        if (raw.charAt(0) === 'E') throw new BridgeError('Server action failed: ' + raw.slice(1), 500);
         return JSON.parse(raw);
       }
     }
