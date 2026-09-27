@@ -12,7 +12,6 @@ import { AuthError, NetworkError } from './errors';
 // ============================================================
 
 let currentPersonId: string | null = null;
-let currentAccessToken: string | null = null;
 let currentLicence: string | null = null;
 
 /**
@@ -21,25 +20,22 @@ let currentLicence: string | null = null;
  */
 export function setSessionInfo(info: {
   personId: string;
-  accessToken: string;
   licence: string;
 } | null): void {
   if (info) {
     currentPersonId = info.personId;
-    currentAccessToken = info.accessToken;
     currentLicence = info.licence;
   } else {
     currentPersonId = null;
-    currentAccessToken = null;
     currentLicence = null;
   }
 }
 
-function requireSession(): { personId: string; accessToken: string; licence: string } {
-  if (!currentPersonId || currentAccessToken == null || !currentLicence) {
+function requireSession(): { personId: string; licence: string } {
+  if (!currentPersonId || !currentLicence) {
     throw new AuthError('Not authenticated');
   }
-  return { personId: currentPersonId, accessToken: currentAccessToken, licence: currentLicence };
+  return { personId: currentPersonId, licence: currentLicence };
 }
 
 // ============================================================
@@ -60,15 +56,12 @@ export async function validateCredentials(
   nom: string;
   prenom: string;
   personId: string;
-  accessToken: string;
   clubId?: string;
 }> {
   const result = await bridgeLogin(licence, password);
   const personId = result.personId;
 
-  // myffbad.fr now authenticates with an HttpOnly cookie held by the WebView.
-  const accessToken = '';
-  setSessionInfo({ personId, accessToken, licence: result.licence });
+  setSessionInfo({ personId, licence: result.licence });
 
   let nom = '';
   let prenom = '';
@@ -97,7 +90,6 @@ export async function validateCredentials(
     nom,
     prenom,
     personId,
-    accessToken,
     clubId,
   };
 }

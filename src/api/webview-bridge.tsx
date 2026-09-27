@@ -56,74 +56,14 @@ const MAX_RELOAD_ATTEMPTS = 1;
 // ============================================================
 
 /**
- * This script runs inside the WebView on the myffbad.fr origin.
- * It loads CryptoJS from CDN, then implements:
- * 1. Verify-Token generation using MD5 + AES (matching myffbad.fr's algorithm)
- * 2. Required headers: Caller-URL, accessToken, currentpersonid, apiseasonid
- * 3. Message handling for API requests from React Native
- * 4. Response forwarding via postMessage
+ * This script runs inside the WebView on the myffbad.fr origin, so requests
+ * carry the site's HttpOnly jwt cookie. It serves three request types from
+ * React Native — LOGIN, ACTION (Next.js Server Action) and RSC (page payload) —
+ * and forwards responses via postMessage.
  */
 const INJECTED_JS = `
 (function() {
   if (window.__bridgeReady) return;
-
-  var cryptoReady = false;
-  var CryptoJS = null;
-
-  // Session state set after login
-  var sessionPersonId = null;
-  var sessionAccessToken = null;
-  var sessionSeasonId = null;
-
-  function loadCryptoJS() {
-    return new Promise(function(resolve, reject) {
-      if (window.CryptoJS) {
-        CryptoJS = window.CryptoJS;
-        cryptoReady = true;
-        resolve();
-        return;
-      }
-      var script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js';
-      script.onload = function() {
-        CryptoJS = window.CryptoJS;
-        cryptoReady = true;
-        resolve();
-      };
-      script.onerror = function() { reject(new Error('Failed to load CryptoJS')); };
-      document.head.appendChild(script);
-    });
-  }
-
-  var TOKEN_SALT = '93046758d21048ae10e9fa249537aa79';
-
-  function generateVerifyToken(serviceBaseURL) {
-    var t = (new Date()).getTime();
-    var encrypted = CryptoJS.AES.encrypt(t.toString(), TOKEN_SALT).toString();
-    var hash = CryptoJS.SHA256(encrypted + '.' + serviceBaseURL + '.' + TOKEN_SALT).toString();
-    return hash + '.' + encrypted;
-  }
-
-  function getCookie(name) {
-    var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-    return match ? decodeURIComponent(match[2]) : null;
-  }
-
-  function setCookie(name, value, days) {
-    var expires = '';
-    if (days) {
-      var d = new Date();
-      d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
-      expires = '; expires=' + d.toUTCString();
-    }
-    document.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/';
-  }
-
-  function getServiceBaseURL(path) {
-    var match = path.match(/^\\/api\\/[^\\/]+\\//);
-    var relative = match ? match[0] : '/api/auth/';
-    return window.location.origin + relative;
-  }
 
   function sendResponse(id, data) {
     window.ReactNativeWebView.postMessage(JSON.stringify({
@@ -311,104 +251,7 @@ const INJECTED_JS = `
         return;
       }
 
-      // Special "exec" type: evaluate JS and return result
-      if (msg.method === 'EXEC') {
-        try {
-          var execResult = eval(msg.path);
-          if (execResult && typeof execResult.then === 'function') {
-            execResult = await execResult;
-          }
-          sendResponse(id, execResult);
-        } catch(e) {
-          sendError(id, 'Exec error: ' + e.message, 0);
-        }
-        return;
-      }
-
-      if (!cryptoReady) { await loadCryptoJS(); }
-
-      var baseURL = getServiceBaseURL(msg.path);
-      var token = generateVerifyToken(baseURL);
-
-      var headers = {
-        'Content-Type': 'application/json',
-        'Verify-Token': token,
-        'Caller-URL': baseURL
-      };
-
-      // Add accessToken from session state, cookie, or message
-      var accessToken = msg.accessToken || sessionAccessToken || getCookie('accessToken');
-      if (accessToken) {
-        headers['accessToken'] = accessToken;
-      }
-
-      // Add currentpersonid header (required by myffbad.fr for authenticated endpoints)
-      var personId = msg.personId || sessionPersonId || getCookie('personId');
-      if (personId) {
-        headers['currentpersonid'] = String(personId);
-      }
-
-      // Add apiseasonid header if available
-      if (sessionSeasonId) {
-        headers['apiseasonid'] = String(sessionSeasonId);
-      }
-
-      var fetchOptions = {
-        method: msg.method || 'GET',
-        headers: headers,
-        credentials: 'include'
-      };
-
-      if (msg.body && (msg.method === 'POST' || msg.method === 'PUT')) {
-        fetchOptions.body = JSON.stringify(msg.body);
-      }
-
-      var url = msg.path;
-      if (!url.startsWith('http')) {
-        url = window.location.origin + url;
-      }
-
-      var response = await fetch(url, fetchOptions);
-
-      // For login response, store session info and set cookies
-      if (msg.path.includes('/api/auth/login') && response.ok) {
-        var cloned = response.clone();
-        try {
-          var loginData = await cloned.json();
-          if (loginData && loginData.personId) {
-            sessionPersonId = loginData.personId;
-            setCookie('personId', String(loginData.personId), 21);
-            if (loginData.accessToken) {
-              sessionAccessToken = loginData.accessToken;
-              setCookie('accessToken', loginData.accessToken, 21);
-            }
-            if (loginData.currentSeason && loginData.currentSeason.seasonId) {
-              sessionSeasonId = loginData.currentSeason.seasonId;
-            }
-          }
-          sendResponse(id, loginData);
-          return;
-        } catch(e) {
-          // Fall through to normal handling
-        }
-      }
-
-      if (!response.ok) {
-        var errorText = '';
-        try { errorText = await response.text(); } catch(e) {}
-        sendError(id, errorText || response.statusText, response.status);
-        return;
-      }
-
-      var contentType = response.headers.get('content-type') || '';
-      var data;
-      if (contentType.includes('application/json')) {
-        data = await response.json();
-      } else {
-        data = await response.text();
-      }
-
-      sendResponse(id, data);
+      sendError(id, 'Unsupported request: ' + msg.method, 0);
     } catch (e) {
       sendError(id, e.message || 'Unknown error', e.status || 0);
     }
@@ -428,13 +271,8 @@ const INJECTED_JS = `
     } catch(e) {}
   });
 
-  loadCryptoJS().then(function() {
-    window.__bridgeReady = true;
-    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ready' }));
-  }).catch(function() {
-    window.__bridgeReady = true;
-    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ready' }));
-  });
+  window.__bridgeReady = true;
+  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ready' }));
 })();
 true;
 `;
@@ -492,8 +330,6 @@ async function sendRequest(
   method: string,
   path: string,
   body?: object,
-  accessToken?: string,
-  personId?: string,
   route?: string
 ): Promise<unknown> {
   if (!bridgeReady) {
@@ -514,7 +350,7 @@ async function sendRequest(
 
     pendingRequests.set(id, { resolve, reject, timer });
 
-    const message = JSON.stringify({ id, method, path, body, accessToken, personId, route });
+    const message = JSON.stringify({ id, method, path, body, route });
 
     const escapedMessage = message
       .replace(/\\/g, '\\\\')
@@ -546,7 +382,7 @@ async function sendRequest(
 // ============================================================
 
 /**
- * Login via myffbad.fr. Returns user info including personId and accessToken.
+ * Login via myffbad.fr's signInAction. Returns the logged-in personId.
  */
 export async function bridgeLogin(
   licence: string,
@@ -572,7 +408,7 @@ export async function bridgeAction<T = unknown>(
   args: unknown[] = [],
   route?: string
 ): Promise<T> {
-  return (await sendRequest('ACTION', name, args, undefined, undefined, route)) as T;
+  return (await sendRequest('ACTION', name, args, route)) as T;
 }
 
 /**
@@ -580,29 +416,6 @@ export async function bridgeAction<T = unknown>(
  */
 export async function bridgeRsc(path: string): Promise<string> {
   return (await sendRequest('RSC', path)) as string;
-}
-
-/**
- * Make a GET request through the WebView bridge.
- */
-export async function bridgeGet(
-  path: string,
-  accessToken?: string,
-  personId?: string
-): Promise<unknown> {
-  return sendRequest('GET', path, undefined, accessToken, personId);
-}
-
-/**
- * Make a POST request through the WebView bridge.
- */
-export async function bridgePost(
-  path: string,
-  body: object,
-  accessToken?: string,
-  personId?: string
-): Promise<unknown> {
-  return sendRequest('POST', path, body, accessToken, personId);
 }
 
 /**

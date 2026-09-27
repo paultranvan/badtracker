@@ -17,7 +17,6 @@ interface StoredCredentials {
   licence: string;
   password: string;
   personId?: string;
-  accessToken?: string;
   nom?: string;
   prenom?: string;
   clubId?: string;
@@ -30,14 +29,12 @@ interface StoredCredentials {
  * @param password - Account password
  * @param remember - Whether to persist across app restarts
  * @param personId - myffbad.fr person ID (from login response)
- * @param accessToken - myffbad.fr access token (from login response)
  */
 export async function storeCredentials(
   licence: string,
   password: string,
   remember: boolean,
   personId?: string,
-  accessToken?: string,
   nom?: string,
   prenom?: string,
   clubId?: string
@@ -45,7 +42,7 @@ export async function storeCredentials(
   if (remember) {
     await SecureStore.setItemAsync(
       CREDENTIALS_KEY,
-      JSON.stringify({ licence, password, personId, accessToken, nom, prenom, clubId }),
+      JSON.stringify({ licence, password, personId, nom, prenom, clubId }),
       {
         keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
       }

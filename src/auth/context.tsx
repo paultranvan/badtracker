@@ -84,11 +84,10 @@ export function SessionProvider({ children }: PropsWithChildren) {
           return;
         }
 
-        // If we have stored personId/accessToken, set session info immediately
+        // If we have a stored personId, set session info immediately
         if (stored.personId) {
           setSessionInfo({
             personId: stored.personId,
-            accessToken: stored.accessToken ?? '',
             licence: stored.licence,
           });
         }
@@ -111,7 +110,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
               nom: stored.nom ?? '',
               prenom: stored.prenom ?? '',
               personId: stored.personId,
-              accessToken: stored.accessToken ?? '',
               clubId: stored.clubId,
             });
           } else {
@@ -143,7 +141,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
               nom: stored.nom ?? '',
               prenom: stored.prenom ?? '',
               personId: stored.personId,
-              accessToken: stored.accessToken ?? '',
               clubId: stored.clubId,
             });
           } else {
@@ -152,7 +149,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
               nom: stored.nom ?? '',
               prenom: stored.prenom ?? '',
               personId: '',
-              accessToken: '',
               clubId: stored.clubId,
             });
           }
@@ -160,19 +156,17 @@ export function SessionProvider({ children }: PropsWithChildren) {
           // Validation succeeded — update session info
           setSessionInfo({
             personId: result.personId,
-            accessToken: result.accessToken,
             licence: result.licence,
           });
 
           applySession(result);
 
-          // Update stored credentials with fresh personId/accessToken/name
+          // Update stored credentials with fresh personId/name
           await storeCredentials(
             stored.licence,
             stored.password,
             true,
             result.personId,
-            result.accessToken,
             result.nom,
             result.prenom,
             result.clubId
@@ -192,7 +186,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
           if (stored?.personId) {
             setSessionInfo({
               personId: stored.personId,
-              accessToken: stored.accessToken ?? '',
               licence: stored.licence,
             });
             applySession({
@@ -200,7 +193,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
               nom: stored.nom ?? '',
               prenom: stored.prenom ?? '',
               personId: stored.personId,
-              accessToken: stored.accessToken ?? '',
               clubId: stored.clubId,
             });
           } else {
@@ -239,7 +231,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
       // Set session info for API calls
       setSessionInfo({
         personId: userInfo.personId,
-        accessToken: userInfo.accessToken,
         licence: userInfo.licence,
       });
 
@@ -249,7 +240,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
         password,
         remember,
         userInfo.personId,
-        userInfo.accessToken,
         userInfo.nom,
         userInfo.prenom,
         userInfo.clubId

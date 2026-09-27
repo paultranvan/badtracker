@@ -36,13 +36,12 @@ export interface FFBaDCallParams {
 
 /**
  * Authenticated user session data.
- * personId and accessToken come from myffbad.fr login response.
+ * personId comes from myffbad.fr's session after login.
  */
 export interface UserSession {
   licence: string;
   nom: string;
   prenom: string;
   personId: string;
-  accessToken: string;
   clubId?: string;
 }
