@@ -51,3 +51,7 @@ yarn-error.*
 .planning/
 docs/plans/
 .claude
+
+
+# Private
+private/
