@@ -1,4 +1,4 @@
-import { bridgeLogin, bridgeGet, bridgePost, bridgeAction, bridgeRsc } from './webview-bridge';
+import { bridgeLogin, bridgeAction, bridgeRsc } from './webview-bridge';
 import type {
   LicenceInfoResponse,
   LicenceSearchResponse,
@@ -1206,35 +1206,26 @@ export interface RankingLevel {
 /**
  * Fetch official ranking level thresholds from FFBaD.
  *
- * GET /api/common/rankingLevel returns a JSON **string** (not object).
- * The parsed structure contains ValuesLow with per-rank minimum CPPH rates
- * broken down by gender and discipline. We use Men's rates for now.
+ * Read from the `"rankingLevels":[…]` array embedded in the RSC payload of
+ * /seuils-de-classement: per-rank minimum CPPH rates broken down by gender
+ * and discipline. We use Men's rates for now.
  *
  * Returns levels sorted descending by simple rate (N1 first, P12 last).
  * NC is excluded (null rates).
  */
 export async function getRankingLevels(): Promise<RankingLevel[]> {
-  const session = requireSession();
+  requireSession();
 
   try {
-    const data = await bridgeGet(
-      '/api/common/rankingLevel',
-      session.accessToken,
-      session.personId
-    );
-
-    if (!data) return [];
-
-    // Response is a JSON string — parse it
-    const parsed = typeof data === 'string' ? JSON.parse(data) : data;
-    const valuesLow = parsed?.ValuesLow;
-
-    if (!valuesLow || typeof valuesLow !== 'object') return [];
+    const payload = await bridgeRsc('/seuils-de-classement');
+    const rows = extractRscArray(payload, 'rankingLevels') as
+      | Array<Record<string, unknown>>
+      | null;
+    if (!rows) return [];
 
     const levels: RankingLevel[] = [];
 
-    for (const key of Object.keys(valuesLow)) {
-      const entry = valuesLow[key] as Record<string, unknown>;
+    for (const entry of rows) {
       const subLevel = entry.SubLevel as string | undefined;
       const menSingleRate = entry.MenSingleRate as string | null | undefined;
       const menDoubleRate = entry.MenDoubleRate as string | null | undefined;
