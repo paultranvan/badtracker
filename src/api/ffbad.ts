@@ -405,9 +405,8 @@ async function enrichWithDetails(
   items: Array<Record<string, unknown>>,
   personId: string
 ): Promise<Array<Record<string, unknown>>> {
-  const session = requireSession();
+  requireSession();
 
-  // Fetch details in parallel, with a concurrency limit to avoid flooding
   const detailPromises = items.map(async (item) => {
     const date = item.date as string | null;
     const disciplineId = item.disciplineId as number | null;
@@ -417,18 +416,9 @@ async function enrichWithDetails(
     if (!date || disciplineId == null || bracketId == null) return item;
 
     try {
-      const dateOnly = date.includes('T') ? date.split('T')[0] : date;
-      const detail = await bridgePost(
-        `/api/person/${personId}/result/detail`,
-        { date: dateOnly, discipline: disciplineId, bracketId },
-        session.accessToken,
-        session.personId
-      );
-
-      if (!detail || typeof detail !== 'object') return item;
-      const d = detail as Record<string, unknown>;
-
-      return { ...item, _detail: d };
+      const detail = await getMatchDetail(personId, date, disciplineId, bracketId);
+      if (!detail) return item;
+      return { ...item, _detail: detail };
     } catch {
       return item;
     }
@@ -437,12 +427,95 @@ async function enrichWithDetails(
   return Promise.all(detailPromises);
 }
 
+const DISCIPLINE_NAMES: Record<string, string> = {
+  '1': 'SIMPLE HOMMES',
+  '2': 'SIMPLE DAMES',
+  '3': 'DOUBLE HOMMES',
+  '4': 'DOUBLE DAMES',
+  '5': 'MIXTE',
+  '6': 'SIMPLE',
+  '7': 'DOUBLE',
+};
+
+function toNumber(value: unknown): number | null {
+  if (value == null || value === '') return null;
+  const num = Number(value);
+  return isNaN(num) ? null : num;
+}
+
+/**
+ * Convert a getPlayerEventResultsAction item to the legacy /result/Decade
+ * shape that transformResultItem, the hooks and the cache rely on.
+ * Interclub items come with a negative BracketId (-MatchId), which the
+ * detail action expects as-is.
+ */
+function normalizeResultItem(r: Record<string, unknown>): Record<string, unknown> {
+  return {
+    date: r.Date,
+    name: r.EventName,
+    subName: r.SubName,
+    winPoint: toNumber(r.WinPoints),
+    discipline: DISCIPLINE_NAMES[String(r.DisciplineId)] ?? null,
+    eventId: toNumber(r.EventId),
+    resultId: toNumber(r.ResultId),
+    disciplineId: toNumber(r.DisciplineId),
+    bracketId: toNumber(r.BracketId),
+    roundId: toNumber(r.RoundId),
+    matchCount: toNumber(r.MatchCount),
+    inRating: r.InRating === 1 || r.InRating === '1',
+    isValidated: r.IsValidate === 1 || r.IsValidate === '1',
+    integrationDate: r.IntegrationDate,
+    status: r.Status,
+    isInternational: r.IsInternational === '1',
+  };
+}
+
+/**
+ * Convert a getPlayerEventDetailsAction match to the legacy /result/detail
+ * shape: Persons keyed by PersonId, set scores split into winner/loser arrays.
+ */
+function normalizeDetailMatch(m: Record<string, unknown>): Record<string, unknown> {
+  const side = (s: unknown) => {
+    const obj = (s ?? {}) as Record<string, unknown>;
+    const persons = (obj.Persons ?? []) as Array<Record<string, unknown>>;
+    return {
+      IsWinner: obj.IsWinner,
+      Persons: Object.fromEntries(
+        persons.map((p) => [String(p.PersonId), { ...p, WinPoints: toNumber(p.WinPoints) }])
+      ),
+    };
+  };
+
+  const topScores: string[] = [];
+  const bottomScores: string[] = [];
+  for (let set = 1; set <= 3; set++) {
+    const a = String(m[`Set${set}1`] ?? '0');
+    const b = String(m[`Set${set}2`] ?? '0');
+    if (a === '0' && b === '0') continue;
+    topScores.push(a);
+    bottomScores.push(b);
+  }
+  const topWins = (m.Top as Record<string, unknown> | undefined)?.IsWinner === '1';
+
+  return {
+    score: m.Score,
+    scoreWinner: topWins ? topScores : bottomScores,
+    scoreLoser: topWins ? bottomScores : topScores,
+    winSet: toNumber(m.WinSet1),
+    lostSet: toNumber(m.LostSet2),
+    roundName: m.RoundName,
+    roundPositionName: m.RoundPositionName,
+    discipline: DISCIPLINE_NAMES[String(m.DisciplineId)],
+    top: side(m.Top),
+    bottom: side(m.Bottom),
+  };
+}
+
 /**
  * Fetches match results for a player.
  *
- * Uses myffbad.fr /api/person/{personId}/result/Decade endpoint which returns
- * 10 years of results with all IDs populated (eventId, disciplineId, bracketId, roundId)
- * and discipline names like "SIMPLE HOMMES", "DOUBLE HOMMES", "MIXTE".
+ * Uses getPlayerEventResultsAction with season "Decade", which returns
+ * 10 years of results with all IDs populated (eventId, disciplineId, bracketId, roundId).
  *
  * Returns raw result items WITHOUT detail enrichment — details are fetched lazily.
  * Also returns _rawItems for lazy detail loading later.
@@ -466,23 +539,16 @@ export async function getResultsByLicence(
   }
 
   try {
-    const data = await bridgeGet(
-      `/api/person/${personId}/result/Decade`,
-      session.accessToken,
-      session.personId  // Always the logged-in user's personId
+    const data = await bridgeAction<Array<Record<string, unknown>> | null>(
+      'getPlayerEventResultsAction',
+      [{ personId: Number(personId), season: 'Decade', isHistory: true }]
     );
 
-    if (!data) {
+    if (!Array.isArray(data)) {
       return { Retour: 'No results' };
     }
 
-    const results = Array.isArray(data) ? data : ((data as Record<string, unknown>).results ?? data);
-
-    if (!Array.isArray(results)) {
-      return { Retour: 'No results' };
-    }
-
-    const rawItems = results as Array<Record<string, unknown>>;
+    const rawItems = data.map(normalizeResultItem);
 
     // Transform to the ResultItem format expected by consumers (no detail enrichment)
     const items = rawItems.map(transformResultItem);
@@ -510,36 +576,30 @@ export async function getMatchDetailsForBrackets(
 }
 
 /**
- * Fetch detailed match data for a single result item.
- * Uses POST /api/person/{personId}/result/detail with:
- *   - date: YYYY-MM-DD format (not full ISO)
- *   - discipline: disciplineId number (field name is "discipline", not "disciplineId")
- *   - bracketId: bracket identifier from /result/actual
+ * Fetch the matches of one bracket via getPlayerEventDetailsAction
+ * (date as YYYY-MM-DD), normalized to the legacy /result/detail shape.
  *
  * Returns enriched data: opponent names/licences, set scores, round info, partner.
- * Returns null if the detail endpoint fails (Hypercube limitation for some matches).
+ * Returns null if the detail call fails (Hypercube limitation for some matches).
  */
 export async function getMatchDetail(
   personId: string,
   date: string,
   discipline: number,
   bracketId: number
-): Promise<Record<string, unknown> | null> {
-  const session = requireSession();
+): Promise<Array<Record<string, unknown>> | null> {
+  requireSession();
 
   try {
-    // Format date as YYYY-MM-DD (truncate time portion from ISO string)
     const dateOnly = date.includes('T') ? date.split('T')[0] : date;
 
-    const data = await bridgePost(
-      `/api/person/${personId}/result/detail`,
-      { date: dateOnly, discipline, bracketId },
-      session.accessToken,
-      session.personId
+    const data = await bridgeAction<Array<Record<string, unknown>> | null>(
+      'getPlayerEventDetailsAction',
+      [{ personId: Number(personId), date: dateOnly, disciplineId: discipline, bracketId }]
     );
 
-    if (!data || typeof data !== 'object') return null;
-    return data as Record<string, unknown>;
+    if (!Array.isArray(data)) return null;
+    return data.map(normalizeDetailMatch);
   } catch {
     // Hypercube service may fail for some matches — this is expected
     return null;
