@@ -1,4 +1,4 @@
-import { bridgeLogin, bridgeGet, bridgePost } from './webview-bridge';
+import { bridgeLogin, bridgeGet, bridgePost, bridgeAction, bridgeRsc } from './webview-bridge';
 import type {
   LicenceInfoResponse,
   LicenceSearchResponse,
@@ -37,7 +37,7 @@ export function setSessionInfo(info: {
 }
 
 function requireSession(): { personId: string; accessToken: string; licence: string } {
-  if (!currentPersonId || !currentAccessToken || !currentLicence) {
+  if (!currentPersonId || currentAccessToken == null || !currentLicence) {
     throw new AuthError('Not authenticated');
   }
   return { personId: currentPersonId, accessToken: currentAccessToken, licence: currentLicence };
@@ -65,14 +65,24 @@ export async function validateCredentials(
   clubId?: string;
 }> {
   const result = await bridgeLogin(licence, password);
-  const personId = String(result.personId);
+  const personId = result.personId;
 
-  // Set session info so getLastClub can authenticate
-  setSessionInfo({
-    personId,
-    accessToken: result.accessToken,
-    licence: result.licence,
-  });
+  // myffbad.fr now authenticates with an HttpOnly cookie held by the WebView.
+  const accessToken = '';
+  setSessionInfo({ personId, accessToken, licence: result.licence });
+
+  let nom = '';
+  let prenom = '';
+  try {
+    const search = await searchPlayersByKeywords(licence);
+    if (typeof search.Retour !== 'string') {
+      const me = search.Retour.find((p) => p.Licence === licence);
+      nom = me?.Nom ?? '';
+      prenom = me?.Prenom ?? '';
+    }
+  } catch {
+    // Name lookup failure is non-critical
+  }
 
   // Fetch user's club (non-blocking — login succeeds even if this fails)
   let clubId: string | undefined;
@@ -85,10 +95,10 @@ export async function validateCredentials(
 
   return {
     licence: result.licence,
-    nom: result.nom,
-    prenom: result.prenom,
+    nom,
+    prenom,
     personId,
-    accessToken: result.accessToken,
+    accessToken,
     clubId,
   };
 }
@@ -112,12 +122,12 @@ export async function getLicenceInfo(
 
   // For current user, use their personId directly
   if (licence === session.licence) {
-    return fetchPlayerRankings(session.personId, session.accessToken, licence);
+    return fetchPlayerRankings(session.personId, licence);
   }
 
   // If we have a personId (e.g. from search results), use it directly
   if (knownPersonId) {
-    return fetchPlayerRankings(knownPersonId, session.accessToken, licence);
+    return fetchPlayerRankings(knownPersonId, licence);
   }
 
   // For other players without personId, search to find them
@@ -126,7 +136,7 @@ export async function getLicenceInfo(
     const found = searchResponse.Retour[0] as Record<string, unknown>;
     const foundPersonId = found.personId as string | undefined;
     if (foundPersonId) {
-      return fetchPlayerRankings(foundPersonId, session.accessToken, licence);
+      return fetchPlayerRankings(foundPersonId, licence);
     }
   }
 
@@ -138,16 +148,13 @@ export async function getLicenceInfo(
  */
 async function fetchPlayerRankings(
   personId: string,
-  accessToken: string,
   licence: string
 ): Promise<LicenceInfoResponse> {
-  const session = requireSession();
   try {
-    const data = (await bridgeGet(
-      `/api/person/${personId}/rankings`,
-      accessToken,
-      session.personId
-    )) as Record<string, unknown>;
+    const data = await bridgeAction<Record<string, unknown> | null>(
+      'getPlayerRankingAction',
+      [Number(personId)]
+    );
 
     if (!data) {
       return { Retour: 'No data' };
@@ -167,11 +174,8 @@ async function fetchPlayerRankings(
 /**
  * Transform myffbad.fr rankings response to LicenceInfoItem format.
  *
- * myffbad.fr returns a flat object with fields like:
- *   simpleSubLevel: "P10", simpleRate: 909,
- *   doubleSubLevel: "D8", doubleRate: 1283,
- *   mixteSubLevel: "D9", mixteRate: 1100,
- *   clubId: 1162, etc.
+ * getPlayerRankingAction returns a flat object with string fields like:
+ *   SimpleSubLevel: "D9", SimpleRate: "971.00", DoubleSubLevel: "D8", …
  */
 function transformRankingsToLicenceInfo(
   data: Record<string, unknown>,
@@ -182,88 +186,98 @@ function transformRankingsToLicenceInfo(
     Licence: licence,
     Nom: '',
     Prenom: '',
-    Club: String(data.clubId ?? ''),
+    Club: data.ClubId && data.ClubId !== '0' ? String(data.ClubId) : '',
     NomClub: '',
     IS_ACTIF: true,
     personId,
-    ClassementSimple: data.simpleSubLevel ?? '',
-    CPPHSimple: data.simpleRate,
-    ClassementDouble: data.doubleSubLevel ?? '',
-    CPPHDouble: data.doubleRate,
-    ClassementMixte: data.mixteSubLevel ?? '',
-    CPPHMixte: data.mixteRate,
+    ClassementSimple: data.SimpleSubLevel ?? '',
+    CPPHSimple: data.SimpleRate,
+    ClassementDouble: data.DoubleSubLevel ?? '',
+    CPPHDouble: data.DoubleRate,
+    ClassementMixte: data.MixteSubLevel ?? '',
+    CPPHMixte: data.MixteRate,
     // Extra ranking data for potential future use
-    bestSimpleSubLevel: data.bestSimpleSubLevel,
-    bestDoubleSubLevel: data.bestDoubleSubLevel,
-    bestMixteSubLevel: data.bestMixteSubLevel,
+    bestSimpleSubLevel: data.BestSimpleSubLevel,
+    bestDoubleSubLevel: data.BestDoubleSubLevel,
+    bestMixteSubLevel: data.BestMixteSubLevel,
   };
 }
 
 /**
+ * Extract the first JSON array following `"<key>":` in an RSC payload.
+ * RSC rows embed component props as plain JSON, so a bracket-matching scan
+ * (string-aware) is enough to lift the array out.
+ */
+function extractRscArray(payload: string, key: string): unknown[] | null {
+  const marker = `"${key}":[`;
+  const start = payload.indexOf(marker);
+  if (start < 0) return null;
+
+  const from = start + marker.length - 1;
+  let depth = 0;
+  let inString = false;
+  for (let i = from; i < payload.length; i++) {
+    const ch = payload[i];
+    if (inString) {
+      if (ch === '\\') i++;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') {
+      inString = true;
+    } else if (ch === '[' || ch === '{') {
+      depth++;
+    } else if (ch === ']' || ch === '}') {
+      depth--;
+      if (depth === 0) return JSON.parse(payload.slice(from, i + 1));
+    }
+  }
+  return null;
+}
+
+/**
+ * Split "Paul TRAN-VAN" into first name and upper-case last name.
+ */
+function splitPersonName(fullName: string): { nom: string; prenom: string } {
+  const parts = fullName.trim().split(/\s+/);
+  const isUpper = (w: string) => w === w.toUpperCase() && w !== w.toLowerCase();
+  const nom = parts.filter(isUpper).join(' ');
+  const prenom = parts.filter((w) => !isUpper(w)).join(' ');
+  return nom ? { nom, prenom } : { nom: fullName, prenom: '' };
+}
+
+/**
  * Search for players by keywords (name, licence number, etc.).
- * Uses myffbad.fr /api/search/ endpoint (POST with filter body).
- *
- * The myffbad.fr site sends: POST /api/search/ with body:
- *   { type: "PERSON", text: "...", page: 0 }
- *
- * Response contains: { persons: [...], currentPage, totalPage }
- * Each person: { personId, personName, clubName, clubId, personLicence }.
+ * Results are embedded in the RSC payload of /recherche/joueur?search=…
+ * as `"results":[{PersonId, PersonName, PersonLicence, ClubId, ClubName, …}]`.
  */
 export async function searchPlayersByKeywords(
   keywords: string
 ): Promise<LicenceSearchResponse> {
-  const session = requireSession();
+  requireSession();
 
   try {
-    const data = await bridgePost(
-      '/api/search/',
-      { type: 'PERSON', text: keywords },
-      session.accessToken,
-      session.personId
+    const payload = await bridgeRsc(
+      `/recherche/joueur?search=${encodeURIComponent(keywords)}`
     );
+    const results = extractRscArray(payload, 'results');
 
-    if (!data || typeof data === 'string') {
+    if (!results || results.length === 0) {
       return { Retour: 'No results' };
     }
 
-    const obj = data as Record<string, unknown>;
-
-    // Response shape: { persons: [...], currentPage, totalPage }
-    const results = Array.isArray(data)
-      ? data
-      : (obj.persons ?? obj.results ?? obj.data ?? []);
-
-    if (!Array.isArray(results) || results.length === 0) {
-      return { Retour: 'No results' };
-    }
-
-    // Transform myffbad.fr response to LicenceInfoItem format
-    // Response fields: personId, personName, clubName, clubId, personLicence
     const items = (results as Array<Record<string, unknown>>).map((r) => {
-      // personName is "LastName FirstName" — split it
-      const fullName = String(r.personName ?? r.name ?? '');
-      const parts = fullName.split(' ');
-      const nom = parts[0] ?? '';
-      const prenom = parts.slice(1).join(' ') ?? '';
-
-      // Club may be nested object {id, name, acronym} or flat fields
-      const clubObj = (r.club && typeof r.club === 'object') ? r.club as Record<string, unknown> : undefined;
-      const clubId = String(clubObj?.id ?? r.clubId ?? '');
-      const clubName = String(clubObj?.name ?? r.clubName ?? r.nomClub ?? '');
-      const clubAcronym = String(clubObj?.acronym ?? r.clubAcronym ?? '');
-
+      const { nom, prenom } = splitPersonName(String(r.PersonName ?? ''));
       return {
-        Licence: String(r.personLicence ?? r.licence ?? r.licenceNumber ?? ''),
-        Nom: r.lastName ? String(r.lastName) : nom,
-        Prenom: r.firstName ? String(r.firstName) : prenom,
-        Club: clubId,
-        NomClub: clubName,
-        ClubAcronyme: clubAcronym,
-        personId: String(r.personId ?? r.id ?? ''),
+        Licence: String(r.PersonLicence ?? ''),
+        Nom: nom,
+        Prenom: prenom,
+        Club: r.ClubId != null ? String(r.ClubId) : '',
+        NomClub: String(r.ClubName ?? ''),
+        ClubAcronyme: String(r.ClubAcronym ?? ''),
+        personId: String(r.PersonId ?? ''),
       };
     });
 
-    return { Retour: items.length > 0 ? items : 'No results' };
+    return { Retour: items };
   } catch (err) {
     if (err instanceof AuthError || err instanceof NetworkError) throw err;
     return { Retour: 'Search error' };
@@ -990,26 +1004,24 @@ export async function getClubInfo(
 const TOPS_DISCIPLINES = [1, 2, 3, 4, 5, 6] as const;
 
 /**
- * Fetch a player's last (current) club.
- * GET /api/person/{personId}/lastCLub/
+ * Fetch a player's last (current) club — the first entry of their club history.
  * Returns club initials and id, or null on failure.
  */
 export async function getLastClub(
   personId: string
 ): Promise<{ id: string; initials: string } | null> {
-  const session = requireSession();
+  requireSession();
 
   try {
-    const data = (await bridgeGet(
-      `/api/person/${personId}/lastCLub/`,
-      session.accessToken,
-      session.personId
-    )) as Record<string, unknown>;
+    const history = await bridgeAction<Array<Record<string, unknown>> | null>(
+      'getClubsHistoryAction',
+      [Number(personId)]
+    );
+    const last = history?.[0];
+    if (!last) return null;
 
-    if (!data || typeof data === 'string') return null;
-
-    const id = String(data.id ?? data.clubId ?? '');
-    const initials = String(data.initials ?? data.acronym ?? '');
+    const id = String(last.InstanceId ?? '');
+    const initials = String(last.Sigle ?? '');
     if (!initials) return null;
 
     return { id, initials };

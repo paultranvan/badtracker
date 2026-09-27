@@ -85,10 +85,10 @@ export function SessionProvider({ children }: PropsWithChildren) {
         }
 
         // If we have stored personId/accessToken, set session info immediately
-        if (stored.personId && stored.accessToken) {
+        if (stored.personId) {
           setSessionInfo({
             personId: stored.personId,
-            accessToken: stored.accessToken,
+            accessToken: stored.accessToken ?? '',
             licence: stored.licence,
           });
         }
@@ -105,13 +105,13 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
         if (bridgeResult === 'timeout') {
           // Bridge not ready in time — use stored data if available
-          if (stored.personId && stored.accessToken) {
+          if (stored.personId) {
             applySession({
               licence: stored.licence,
               nom: stored.nom ?? '',
               prenom: stored.prenom ?? '',
               personId: stored.personId,
-              accessToken: stored.accessToken,
+              accessToken: stored.accessToken ?? '',
               clubId: stored.clubId,
             });
           } else {
@@ -137,13 +137,13 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
         if (result === 'timeout') {
           // Timeout: use stored session data if available
-          if (stored.personId && stored.accessToken) {
+          if (stored.personId) {
             applySession({
               licence: stored.licence,
               nom: stored.nom ?? '',
               prenom: stored.prenom ?? '',
               personId: stored.personId,
-              accessToken: stored.accessToken,
+              accessToken: stored.accessToken ?? '',
               clubId: stored.clubId,
             });
           } else {
@@ -189,10 +189,10 @@ export function SessionProvider({ children }: PropsWithChildren) {
         } else if (error instanceof NetworkError) {
           // Network error: use stored session data if available
           const stored = await getStoredCredentials();
-          if (stored?.personId && stored?.accessToken) {
+          if (stored?.personId) {
             setSessionInfo({
               personId: stored.personId,
-              accessToken: stored.accessToken,
+              accessToken: stored.accessToken ?? '',
               licence: stored.licence,
             });
             applySession({
@@ -200,7 +200,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
               nom: stored.nom ?? '',
               prenom: stored.prenom ?? '',
               personId: stored.personId,
-              accessToken: stored.accessToken,
+              accessToken: stored.accessToken ?? '',
               clubId: stored.clubId,
             });
           } else {

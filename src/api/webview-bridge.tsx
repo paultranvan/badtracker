@@ -137,9 +137,178 @@ const INJECTED_JS = `
     }));
   }
 
+  function BridgeError(message, status) {
+    this.message = message;
+    this.status = status;
+  }
+
+  // ---- Next.js Server Actions ----
+  // Action IDs change on every myffbad.fr deploy, so they are resolved by
+  // name from the JS chunks and cached per build.
+
+  var ACTION_CACHE_KEY = '__badtracker_actions';
+  var actionIds = null;
+  var discovering = null;
+  var sessionLicence = null;
+
+  try {
+    var cached = JSON.parse(localStorage.getItem(ACTION_CACHE_KEY) || 'null');
+    if (cached && cached.ids) actionIds = cached.ids;
+  } catch(e) {}
+
+  var CHUNK_RE = /static\\/chunks\\/[a-z0-9_\\-]+\\.js/g;
+  var ACTION_RE = /createServerReference\\)\\("([0-9a-f]{40,44})",[^,]+,void 0,[^,]+,"([A-Za-z0-9_]+)"\\)/g;
+
+  function discoveryPages() {
+    // /connexion only exposes signInAction when fetched logged out.
+    var pages = [
+      ['/connexion', 'omit'],
+      ['/', 'include'],
+      ['/profil/joueur', 'include'],
+      ['/recherche/joueur', 'include'],
+      ['/recherche/club', 'include'],
+      ['/recherche/les-tops', 'include']
+    ];
+    if (sessionLicence) {
+      pages.push(['/joueur/' + sessionLicence, 'include']);
+      pages.push(['/joueur/' + sessionLicence + '/mes-adversaires', 'include']);
+      pages.push(['/joueur/' + sessionLicence + '/classement-historique', 'include']);
+    }
+    return pages;
+  }
+
+  async function fetchText(url, credentials) {
+    try {
+      var r = await fetch(url, { credentials: credentials || 'include' });
+      return r.ok ? await r.text() : '';
+    } catch(e) {
+      return '';
+    }
+  }
+
+  async function discoverActions() {
+    var seen = {};
+    var queue = [];
+    function addChunks(text) {
+      var m = text.match(CHUNK_RE) || [];
+      for (var i = 0; i < m.length; i++) {
+        var path = '/_next/' + m[i];
+        if (!seen[path]) { seen[path] = true; queue.push(path); }
+      }
+    }
+
+    var pages = discoveryPages();
+    var htmls = await Promise.all(pages.map(function(p) { return fetchText(p[0], p[1]); }));
+    htmls.forEach(addChunks);
+
+    var ids = {};
+    while (queue.length) {
+      var batch = queue.splice(0, queue.length);
+      var texts = await Promise.all(batch.map(function(c) { return fetchText(c); }));
+      texts.forEach(function(t) {
+        addChunks(t);
+        var m;
+        ACTION_RE.lastIndex = 0;
+        while ((m = ACTION_RE.exec(t))) { ids[m[2]] = m[1]; }
+      });
+    }
+
+    actionIds = ids;
+    try { localStorage.setItem(ACTION_CACHE_KEY, JSON.stringify({ ids: ids })); } catch(e) {}
+    return ids;
+  }
+
+  function ensureDiscovery() {
+    if (!discovering) {
+      discovering = discoverActions().finally(function() { discovering = null; });
+    }
+    return discovering;
+  }
+
+  function parseActionResponse(text) {
+    var lines = text.split('\\n');
+    var ref = '1';
+    var head = lines[0] && lines[0].match(/"a":"\\$@([0-9a-f]+)"/);
+    if (head) ref = head[1];
+    var prefix = ref + ':';
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].indexOf(prefix) === 0) {
+        var raw = lines[i].slice(prefix.length);
+        if (raw === '"$undefined"') return null;
+        return JSON.parse(raw);
+      }
+    }
+    return null;
+  }
+
+  async function postAction(route, actionId, args) {
+    return fetch(route, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'next-action': actionId,
+        'accept': 'text/x-component',
+        'content-type': 'text/plain;charset=UTF-8'
+      },
+      body: JSON.stringify(args || [])
+    });
+  }
+
+  async function callAction(name, args, route) {
+    if (!actionIds || !actionIds[name]) await ensureDiscovery();
+    if (!actionIds[name]) throw new BridgeError('Unknown server action: ' + name, 404);
+
+    var response = await postAction(route || '/', actionIds[name], args);
+    if (response.headers.get('x-nextjs-action-not-found')) {
+      await ensureDiscovery();
+      if (!actionIds[name]) throw new BridgeError('Unknown server action: ' + name, 404);
+      response = await postAction(route || '/', actionIds[name], args);
+    }
+    var text = await response.text();
+    if (!response.ok) throw new BridgeError(text || response.statusText, response.status);
+    return parseActionResponse(text);
+  }
+
+  async function login(licence, password) {
+    sessionLicence = licence;
+    // The auth cookie is only set when the action is posted to /connexion.
+    var result = await callAction(
+      'signInAction',
+      [{ licence: licence, password: password, rememberMe: true }],
+      '/connexion'
+    );
+    if (!result || !result.success) {
+      throw new BridgeError((result && result.error) || 'Login failed', 401);
+    }
+    var personId = await callAction('getCurrentPersonIdAction', []);
+    if (!personId) throw new BridgeError('Login succeeded but no session cookie', 401);
+    return { personId: String(personId), licence: licence };
+  }
+
   async function handleRequest(msg) {
     var id = msg.id;
     try {
+      if (msg.method === 'LOGIN') {
+        sendResponse(id, await login(msg.body.licence, msg.body.password));
+        return;
+      }
+
+      if (msg.method === 'ACTION') {
+        sendResponse(id, await callAction(msg.path, msg.body, msg.route));
+        return;
+      }
+
+      if (msg.method === 'RSC') {
+        var rscResponse = await fetch(msg.path, { credentials: 'include', headers: { 'RSC': '1' } });
+        var rscText = await rscResponse.text();
+        if (!rscResponse.ok) {
+          sendError(id, rscText || rscResponse.statusText, rscResponse.status);
+          return;
+        }
+        sendResponse(id, rscText);
+        return;
+      }
+
       // Special "exec" type: evaluate JS and return result
       if (msg.method === 'EXEC') {
         try {
@@ -239,7 +408,7 @@ const INJECTED_JS = `
 
       sendResponse(id, data);
     } catch (e) {
-      sendError(id, e.message || 'Unknown error', 0);
+      sendError(id, e.message || 'Unknown error', e.status || 0);
     }
   }
 
@@ -322,7 +491,8 @@ async function sendRequest(
   path: string,
   body?: object,
   accessToken?: string,
-  personId?: string
+  personId?: string,
+  route?: string
 ): Promise<unknown> {
   if (!bridgeReady) {
     await readyPromise;
@@ -342,7 +512,7 @@ async function sendRequest(
 
     pendingRequests.set(id, { resolve, reject, timer });
 
-    const message = JSON.stringify({ id, method, path, body, accessToken, personId });
+    const message = JSON.stringify({ id, method, path, body, accessToken, personId, route });
 
     const escapedMessage = message
       .replace(/\\/g, '\\\\')
@@ -379,34 +549,35 @@ async function sendRequest(
 export async function bridgeLogin(
   licence: string,
   password: string
-): Promise<{
-  personId: number;
-  accessToken: string;
-  nom: string;
-  prenom: string;
-  licence: string;
-}> {
-  const data = (await sendRequest('POST', '/api/auth/login', {
-    login: licence,
-    password: password,
-    isEncrypted: false,
-  })) as Record<string, unknown>;
+): Promise<{ personId: string; licence: string }> {
+  const data = (await sendRequest('LOGIN', '', { licence, password })) as {
+    personId?: string;
+  } | null;
 
-  if (!data || !data.personId) {
-    const message =
-      typeof data === 'object' && data?.message
-        ? String(data.message)
-        : 'Login failed';
-    throw new AuthError(message);
+  if (!data?.personId) {
+    throw new AuthError('Login failed');
   }
 
-  return {
-    personId: data.personId as number,
-    accessToken: (data.accessToken as string) ?? '',
-    nom: (data.lastName as string) ?? (data.nom as string) ?? '',
-    prenom: (data.firstName as string) ?? (data.prenom as string) ?? '',
-    licence,
-  };
+  return { personId: data.personId, licence };
+}
+
+/**
+ * Call a myffbad.fr Next.js Server Action by its exported name.
+ * `route` is the page the action is posted to (defaults to `/`).
+ */
+export async function bridgeAction<T = unknown>(
+  name: string,
+  args: unknown[] = [],
+  route?: string
+): Promise<T> {
+  return (await sendRequest('ACTION', name, args, undefined, undefined, route)) as T;
+}
+
+/**
+ * Fetch the React Server Components payload of a myffbad.fr page.
+ */
+export async function bridgeRsc(path: string): Promise<string> {
+  return (await sendRequest('RSC', path)) as string;
 }
 
 /**
