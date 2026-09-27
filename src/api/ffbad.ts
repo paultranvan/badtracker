@@ -1149,56 +1149,29 @@ export interface OpponentListItem {
 
 /**
  * Fetch the logged-in user's full opponent list with match counts.
- *
- * GET /api/person/{personId}/opponentList
- *
- * Returns all opponents across the full match history, each with MatchCount.
+ * Read from the `"opponents":[…]` array embedded in the RSC payload of
+ * /joueur/{licence}/mes-adversaires.
  */
 export async function getOpponentList(): Promise<OpponentListItem[]> {
   const session = requireSession();
 
   try {
-    const data = await bridgeGet(
-      `/api/person/${session.personId}/opponentList`,
-      session.accessToken,
-      session.personId
-    );
+    const payload = await bridgeRsc(`/joueur/${session.licence}/mes-adversaires`);
+    const opponents = extractRscArray(payload, 'opponents') as
+      | Array<Record<string, unknown>>
+      | null;
+    if (!opponents) return [];
 
-    // Response may be a direct array or wrapped in { Retour: [...] }
-    if (Array.isArray(data)) return data as OpponentListItem[];
-    const response = data as Record<string, unknown>;
-    const retour = response.Retour;
-    if (!retour || typeof retour === 'string' || !Array.isArray(retour)) return [];
-    return retour as OpponentListItem[];
+    return opponents.map((o) => ({
+      PersonId: String(o.PersonId ?? ''),
+      PersonName: String(o.PersonName ?? ''),
+      PersonLicence: String(o.PersonLicence ?? ''),
+      MatchCount: Number(o.MatchCount ?? 0),
+      LastDate: String(o.LastDate ?? ''),
+    }));
   } catch (err) {
     if (err instanceof AuthError || err instanceof NetworkError) throw err;
     return [];
-  }
-}
-
-/**
- * Fetch head-to-head data between the logged-in user and another player.
- *
- * GET /api/person/{myPersonId}/playerOpposition/{theirPersonId}
- *
- * Response shape is discovered at runtime — returned as raw data.
- */
-export async function getPlayerOpposition(
-  theirPersonId: string
-): Promise<unknown> {
-  const session = requireSession();
-
-  try {
-    const data = await bridgeGet(
-      `/api/person/${session.personId}/playerOpposition/${theirPersonId}`,
-      session.accessToken,
-      session.personId
-    );
-
-    return data;
-  } catch (err) {
-    if (err instanceof AuthError || err instanceof NetworkError) throw err;
-    return null;
   }
 }
 
