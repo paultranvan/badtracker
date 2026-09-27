@@ -15,7 +15,16 @@ npx expo run:android
 npx tsc --noEmit
 ```
 
+Caveat: `tsconfig.json`'s `include` only lists `nativewind-env.d.ts`, so `npx tsc --noEmit` currently type-checks nothing. To really check, use a throwaway config that extends it with `"include": ["nativewind-env.d.ts", "expo-env.d.ts", "src/**/*", "app/**/*"]`.
+
 No test framework is configured. No linter is configured.
+
+### Running locally
+
+- Prereqs: `ANDROID_HOME=~/dev/sdk/android`, a JDK ≥ 17 on `JAVA_HOME` (JDK 20 works), AVD `Pixel_3a_API_34_extension_level_7_x86_64`.
+- Boot the emulator first, then `npx expo run:android`: builds the debug APK (dev client), installs it, and starts Metro on :8081. Afterwards `npx expo start` is enough as long as native deps are unchanged.
+- No test account: signing in requires a real myffbad.fr licence number + password.
+- `.env` (see `.env.example`) holds Metro flags and `FIREBASE_APP_ID`, which is only needed for `npm run deploy` (release APK → Firebase App Distribution).
 
 ## Architecture
 
@@ -23,11 +32,11 @@ BadTracker is a React Native (Expo SDK 54) app for tracking French badminton (FF
 
 ### API Layer: WebView Bridge Pattern
 
-The app does **not** make direct HTTP calls to myffbad.fr. Instead, a hidden `<WebView>` loads myffbad.fr and executes API requests from within that page context. This is necessary because myffbad.fr requires a `Verify-Token` header generated via CryptoJS (AES + SHA256) using the page's origin.
+The app does **not** make direct HTTP calls to myffbad.fr. Instead, a hidden `<WebView>` loads myffbad.fr and runs requests from within that page context, so they are same-origin and carry the site's HttpOnly `jwt` session cookie.
 
 The flow is:
-1. `src/api/webview-bridge.tsx` — Renders a hidden WebView on myffbad.fr, injects JS that handles fetch requests and Verify-Token generation. Exports `bridgeGet`, `bridgePost`, `bridgeLogin` as module-level functions (not hooks).
-2. `src/api/ffbad.ts` — High-level API functions (`getLicenceInfo`, `searchPlayersByKeywords`, `getResultsByLicence`, `getRankingEvolution`, `getClubInfo`, etc.) that call bridge functions and transform myffbad.fr responses to the app's internal format.
+1. `src/api/webview-bridge.tsx` — Renders a hidden WebView on myffbad.fr and injects a script serving three request types. Exports module-level functions (not hooks): `bridgeLogin` (signInAction + personId), `bridgeAction(name, args)` (Next.js Server Action by name), `bridgeRsc(path)` (RSC payload of a page).
+2. `src/api/ffbad.ts` — High-level API functions (`getLicenceInfo`, `searchPlayersByKeywords`, `getResultsByLicence`, `getRankingEvolution`, `getClubInfo`, etc.) that call bridge functions and normalize myffbad.fr data to the app's internal (legacy-API-shaped) format.
 3. `src/api/schemas.ts` — Zod schemas for all API response types. Responses use a `{ Retour: data | errorString }` wrapper pattern.
 4. `src/api/client.ts` — Legacy axios client for the old FFBaD REST API (`api.ffbad.org`). Not used by current WebView-based API calls but kept for type definitions.
 
@@ -37,8 +46,7 @@ Key detail: The bridge maintains module-level state (`webViewRef`, `pendingReque
 
 - `src/auth/context.tsx` — `SessionProvider` manages login/logout, auto-login from SecureStore, and exposes `useSession()`.
 - `src/auth/storage.ts` — Persists credentials in `expo-secure-store`.
-- Session info (personId, accessToken, licence) is injected into `ffbad.ts` via `setSessionInfo()` at login time.
-- The `currentpersonid` header must always be the **logged-in user's** personId, not the target player's.
+- Session info (personId, licence) is injected into `ffbad.ts` via `setSessionInfo()` at login time. There is no access token: the session is the `jwt` cookie inside the WebView.
 
 ### Routing (expo-router)
 
@@ -92,150 +100,40 @@ Custom hooks in `src/hooks/` encapsulate API calls with caching: `useDashboardDa
 
 ## myffbad.fr API Reference
 
-### Verify-Token Algorithm
-- Uses SHA-256 (64 hex chars), NOT MD5
-- Salt: `93046758d21048ae10e9fa249537aa79`
-- `serviceBaseURL` = `origin + /api/{service}/` (e.g., `https://myffbad.fr/api/person/`)
-- Generation: `t = Date.now()` → `encrypted = AES.encrypt(t, salt)` → `hash = SHA256(encrypted + '.' + serviceBaseURL + '.' + salt)` → `token = hash + '.' + encrypted`
+myffbad.fr is a Next.js App Router site (rewritten in 2026). The old `/api/*` REST endpoints (Verify-Token, `accessToken`/`currentpersonid` headers) **all return 404** — don't use them. Data comes from two mechanisms, both used from inside the WebView:
 
-### Required Headers
-- `Verify-Token`: generated token
-- `Caller-URL`: same as serviceBaseURL
-- `Content-Type: application/json`
-- `accessToken`: from login response
-- `currentpersonid`: logged-in user's personId (always the current user, not the target player)
-- `apiseasonid`: seasonId from login response's `currentSeason.seasonId` (for some endpoints)
+### Server Actions (`bridgeAction`)
+- `POST /` (any page route) with headers `next-action: <id>`, `accept: text/x-component`, `content-type: text/plain;charset=UTF-8`; body = JSON array of arguments.
+- Response is RSC text: row 0 is `{"a":"$@1",…}`, the return value is the row `1:<json>` (`"$undefined"` → null, `E{…}` → the action threw).
+- Action IDs change on every myffbad.fr deploy. The bridge resolves them by name by scanning `/_next/static/chunks/*.js` for `createServerReference)("<id>",…,"<name>")` and caches them in the WebView's localStorage; a stale ID answers 404 + `x-nextjs-action-not-found`, which triggers rediscovery. `signInAction` only appears in the chunks of `/connexion` fetched **logged out** (`credentials: 'omit'`). Some actions are exported as `default` and can't be resolved by name.
 
-### Authentication (`/api/auth/`)
-
-| Endpoint | Method | Body / Notes |
+| Action | Args | Returns |
 |---|---|---|
-| `/api/auth/login` | POST | `{login, password, isEncrypted: false}` → `{personId, firstName, lastName, accessToken, licence, currentSeason: {seasonId}}` |
-| `/api/auth/connectUserByToken` | POST | `{token}` |
-| `/api/auth/resetPassword` | POST | `{login, url: "https://myffbad.fr/motdepasse"}` |
-| `/api/auth/updatePassword` | POST | |
-| `/api/auth/updateLogin` | POST | |
-| `/api/auth/{personId}/getUserLogin` | GET | |
+| `signInAction` | `[{licence, password, rememberMe}]` — must be POSTed to `/connexion` (elsewhere it returns success without setting the cookie) | `{success, error?}` + `Set-Cookie: jwt=…` |
+| `getCurrentPersonIdAction` | `[]` | personId string, or undefined when logged out |
+| `getPlayerRankingAction` | `[personId]` | flat PascalCase: `SimpleSubLevel`, `SimpleRate`, `FederalSimpleRank`, `BestSimpleSubLevel`, `SimpleUpRate`/`SimpleDownRate`… (same for Double/Mixte) |
+| `getPlayerEventResultsAction` | `[{personId, season: "Decade", isHistory: true}]` (`isHistory:false`, no season → current season) | `[{Date, EventName, SubName, DisciplineId, EventId, BracketId, WinPoints, MatchCount, Status, …}]` — interclub rows have `BracketId = -MatchId` |
+| `getPlayerEventDetailsAction` | `[{personId, date: "YYYY-MM-DD", disciplineId, bracketId}]` | matches: `{Score, Set11, Set12, …, RoundName, RoundPositionName, Top/Bottom: {IsWinner: "0"/"1", Persons: [{PersonId, PersonName, PersonLicence, RankingSubLevel, WinPoints, …}]}}` |
+| `getRankingSemesterEvolutionAction` | `[personId]` | `[{RankingDate, SimpleSubLevel, SimpleRate, SimpleRank, …}]` |
+| `getClubsHistoryAction` | `[personId]` | `[{Season, InstanceId, Name, Sigle, City}]`, most recent first |
 
-### Player Rankings & Info (`/api/person/`)
+Also present, not used by the app yet: `getRankingEvolutionAction`, `getPlayerActualRateEvolutionAction`, `getPlayerStatisticsAction`, `getOpponentDetailsAction`, `getSeasonsAction`, `getFavoritePlayersAction`, `getMyClubAction`, `getClubStatisticsAction`.
 
-| Endpoint | Method | Notes |
+`DisciplineId`: 1 Simple Hommes, 2 Simple Dames, 3 Double Hommes, 4 Double Dames, 5 Double Mixte, 6 Simple intergenre, 7 Double intergenre.
+
+### RSC page payloads (`bridgeRsc`)
+`GET <page>` with header `RSC: 1` returns the page's RSC stream; component props are plain JSON, so `ffbad.ts` lifts arrays out with `extractRscArray(payload, key)`.
+
+| Page | Key | Content |
 |---|---|---|
-| `/api/person/{personId}/rankings` | GET | Flat object: `simpleSubLevel`, `simpleRate`, `doubleSubLevel`, `doubleRate`, `mixteSubLevel`, `mixteRate`, `bestXxxSubLevel`, etc. |
-| `/api/person/{personId}/informations/` | GET | Player personal info |
-| `/api/person/{personId}/informationsLicence/{licence}` | GET | Player info by licence |
-| `/api/person/{personId}/statistics` | GET | Current season stats |
-| `/api/person/{personId}/statistics/{season}` | GET | Stats by season (e.g., `"Decade"`, `"2024-2025"`) |
-| `/api/person/{personId}/lastCLub/` | GET | Last club (note: capital `CL`) |
-| `/api/person/{personId}/club/history` | GET | Club transfer history |
-| `/api/person/{personId}/coach` | GET | Coaching info |
-| `/api/person/{personId}/officials` | GET | Official roles |
-| `/api/person/{personId}/leaders` | GET | Leadership roles |
-| `/api/person/{personId}/sanctions` | GET | |
-| `/api/person/{personId}/handicap` | GET/POST | |
-
-### Match Results (`/api/person/`)
-
-| Endpoint | Method | Notes |
-|---|---|---|
-| `/api/person/{personId}/result` | GET | Sparse results (IDs null) — **avoid** |
-| `/api/person/{personId}/result/actual` | GET | Rich results with all IDs — **use this** |
-| `/api/person/{personId}/result/{season}` | GET | By season (e.g., `"Decade"`, `"2024-2025"`) |
-| `/api/person/{personId}/result/detail` | POST | `{date: "YYYY-MM-DD", discipline: <number>, bracketId: <number>}` |
-
-**`/result/actual` response** — each item: `date`, `name`, `subName`, `winPoint`, `discipline` (`"SIMPLE HOMMES"`/`"DOUBLE HOMMES"`/`"MIXTE"`), `eventId`, `resultId`, `disciplineId`, `bracketId`, `roundId`, `matchCount`, `inRating`, `isValidated`, `integrationDate`, `status` (`"green"`/`"orange"`), `isInternational`
-
-**`/result/detail` response** — array of matches per bracketId. Each: `{score, scoreWinner[], scoreLoser[], winSet, lostSet, roundName, roundPositionName, top: {IsWinner, Persons: {[personId]: {PersonName, PersonLicence, Rate, RankingSubLevel, ClubAcronym, WinPoints}}}, bottom: {...}}`. Field `discipline` (not `disciplineId`). Date must be `YYYY-MM-DD`. `IsWinner` is string `"0"`/`"1"`.
-
-### Opponents (`/api/person/`)
-
-| Endpoint | Method | Notes |
-|---|---|---|
-| `/api/person/{personId}/opponentList` | GET | All opponents: `PersonId`, `PersonName`, `PersonLicence`, `PersonSex`, `SimpleSubLevel`, `DoubleSubLevel`, `MixteSubLevel`, `ClubId`, `ClubAcronym`, `ClubName`, `MatchCount`, `LastDate` |
-| `/api/person/{personId}/playerOpposition/{opponentPersonId}` | GET | Head-to-head stats |
-
-### Ranking Evolution (`/api/person/` and `/api/players/`)
-
-| Endpoint | Method | Base URL | Notes |
-|---|---|---|---|
-| `/api/person/{personId}/rankingSemester/evolution` | POST (empty body) | `/api/person/` | By semester: `{RankingDate, SimpleSubLevel, SimpleRate, DoubleSubLevel, DoubleRate, MixteSubLevel, MixteRate}` |
-| `/api/players/{personId}/rateEvolution` | GET | `/api/players/` | CPPH rate evolution |
-| `/api/players/{personId}/rateEvolution/decade` | GET | `/api/players/` | CPPH rate evolution (10 years) |
-
-### Search (`/api/search/`)
-
-| Endpoint | Method | Body / Notes |
-|---|---|---|
-| `/api/search/` | POST | `{type: "PERSON"\|"CLUB"\|"TOURNAMENT", text, page}` → `{persons, currentPage, totalPage}` |
-| `/api/search/tops` | POST | `{discipline?, dateFrom?, top?, instanceId?, categories?, subLevels?, isFirstLoad, sort?}` |
-
-**Search person response**: `{personId, sex, name, licence, category: {name, acronym}, rank: {simpleSubLevel, doubleSubLevel, mixteSubLevel}, club: {id, name, acronym}}` — nested objects, no CPPH. `sex`: `"HOMME"`/`"FEMME"`.
-
-### Club (`/api/club/`)
-
-| Endpoint | Method | Notes |
-|---|---|---|
-| `/api/club/{clubId}/informations/` | GET | Club info (name, address, initials, city, department, etc.) |
-
-No dedicated club members endpoint — use search with club initials via `/api/search/`.
-
-### Extended Service (`/api/players/`)
-
-Direct GET to `/api/players/` returns HTML. Use sub-paths only.
-
-| Endpoint | Method | Notes |
-|---|---|---|
-| `/api/players/{personId}/LastPartnerList/{discipline}/{limit}` | GET | Recent partners (limit default: 5) |
-| `/api/players/{personId}/isCompetitive` | GET | |
-| `/api/players/{personId}/personalFiles` | GET | |
-| `/api/players/{personId}/files/list` | GET | |
-| `/api/players/seasons` | GET | List seasons |
-| `/api/players/search/{query}` | POST | Search within players service |
-
-### Tournament (`/api/players/`)
-
-| Endpoint | Method | Notes |
-|---|---|---|
-| `/api/players/{competitionId}/informations` | POST | `{seasonId}` — tournament details |
-| `/api/players/{competitionId}/brackets` | GET | Tournament draw/brackets |
-| `/api/players/{competitionId}/matchs` | GET | Tournament matches |
-| `/api/players/{competitionId}/evaluations/{id}` | GET | Tournament evaluation |
-
-### Reference Data (`/api/common/`)
-
-| Endpoint | Method | Notes |
-|---|---|---|
-| `/api/common/sublevels` | GET | All ranking sublevels |
-| `/api/common/leagues` | GET | All leagues |
-| `/api/common/committees` | GET | All committees |
-| `/api/common/committees/{id}/clubs/` | GET | Clubs by committee |
-| `/api/common/leagues/{id}/committees/` | GET | Committees by league |
-| `/api/common/leagues/{id}/clubs/` | GET | Clubs by league |
-| `/api/common/category` | GET | All categories |
-| `/api/common/clubs` | GET | All clubs |
-| `/api/common/rankingLevel` | GET | Ranking level thresholds |
-
-### Charts (`/api/chart/`)
-
-| Endpoint | Method | Notes |
-|---|---|---|
-| `/api/chart/statistics/{type}` | GET | Pie chart data |
-| `/api/chart/statistics/{type}/{season}` | GET | Pie chart history |
-| `/api/chart/progress/{type}` | GET | Progress chart |
-| `/api/chart/evolution/real/{type}` | GET | Real evolution chart |
-| `/api/chart/evolution/category/{type}` | GET | Category evolution |
-| `/api/chart/rank/{type}/{param}` | GET | Chart by rank |
-| `/api/chart/category/{type}/{param}` | GET | Chart by category |
-| `/api/chart/gender/{type}/{param}` | GET | Chart by gender |
-| `/api/chart/pyramid/age/{type}/{param}` | GET | Age pyramid |
+| `/recherche/joueur?search=<q>` | `results` | players: `PersonId, PersonName ("Paul TRAN-VAN"), PersonLicence, Simple/Double/MixteSubLevel, ClubId, ClubName, ClubAcronym` |
+| `/recherche/club?search=<q>` | `results` | clubs: `InstanceId, Name, Acronym, Town, Departement, Phone1, Email, WebSiteUrl, LogoUrl, Gymnasiums` |
+| `/recherche/les-tops?club=<id>&disciplineId=<1-6>&maxResults=500&isFirstLoad=false` | `results` | `Rank, Rate, SubLevel, PersonId, PersonName, PersonLicence, CategoryName, Club*` (1 SH, 2 SD, 3 DH, 4 DD, 5 Mx H, 6 Mx D) |
+| `/joueur/<licence>/mes-adversaires` | `opponents` | logged-in user's opponents: `PersonId, PersonName, PersonLicence, MatchCount, LastDate, …` |
+| `/seuils-de-classement` | `rankingLevels` | `SubLevel, MenSingleRate, WomenSingleRate, MenDoubleRate, …` |
+| `/club/<id>` | — | markup only; the club name is the non-`401/403/404` `data-testid="hero-title"` |
 
 ### Common Pitfalls
-- MD5 instead of SHA-256 → 403
-- `/api/players/` direct GET → HTML (use sub-paths)
-- Missing `Caller-URL` → 403
-- `currentpersonid` must be the **logged-in user**, not the target
-- Search results have **nested** `rank` and `club` objects
-- `LastPartnerList` uses capital L's, lives on `/api/players/`
-- `lastCLub` has unusual casing (capital CL)
-- `rateEvolution` is on `/api/players/`, `rankingSemester/evolution` is on `/api/person/`
-- Tournament endpoints use `competitionId` and live on `/api/players/`
+- Every page's RSC payload also embeds the layout's 401/403/404 templates — don't take the first match of a test id blindly.
+- `/deconnexion` (GET) does not log out; logging in again simply replaces the `jwt` cookie.
+- There is no full club list endpoint anymore; club search is server-side per query.
